@@ -1,0 +1,19 @@
+{
+	"folders": [
+		{
+			"path": "../.."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"*.ino": "c",
+			"associative_base": "c",
+			"deque": "c",
+			"initializer_list": "c",
+			"list": "c",
+			"serstream": "c",
+			"vector": "c",
+			"ostream": "c"
+		}
+	}
+}
