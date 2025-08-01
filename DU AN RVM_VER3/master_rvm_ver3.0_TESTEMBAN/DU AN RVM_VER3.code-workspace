@@ -1,0 +1,23 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../../RVM_EM_BAN"
+		},
+		{
+			"path": "../../FILE_SLAVE_EMBAN_26_2/RVM_V3_1_slave1"
+		},
+		{
+			"path": "../slave_phatqua_TESTEMBAN"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"*.ino": "c",
+			"serialcomunicationv2.h": "c",
+			"protocol.h": "c"
+		}
+	}
+}
