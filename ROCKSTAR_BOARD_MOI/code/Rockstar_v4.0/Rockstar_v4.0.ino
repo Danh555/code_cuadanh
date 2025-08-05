@@ -81,6 +81,11 @@ void setup()
   setup_cambien();
   setup_motor();
 
+  pinMode(role_1,OUTPUT);
+  pinMode(role_2,OUTPUT);
+
+  EN_DONGCO(1); // khong kich role la dong co khong chay
+
   if (!MOTOR_COT.begin(addr_ExIO_Motor_COL, &Wire))
   {
     uart_debug.println("KHONG BAT DAU VOI MODULE MOTOR COT");
@@ -769,6 +774,8 @@ void reset_khaychuasanpham()
 
   uart_debug.println("RESET KHAY CHUA SAN PHAM\n\r");
   int count = 0;
+  EN_DONGCO(0);
+  delay(50);
   Motor_thangmay_xuong(70);
   int reading = doccambien(CTHT_THANG_GOC, 20, 0);
   int encoder_ = digitalRead(E_CHA);
@@ -813,6 +820,7 @@ void reset_khaychuasanpham()
         if (count > 10000)
         { // sua cho nay
           Motor_thangmay_dung();
+          EN_DONGCO(1);
           uart_debug.println("ERR: max limit encoder\n\r");
           uart_debug.print("count=");
           uart_debug.println(count);
@@ -970,6 +978,8 @@ void gogo(int vitri_)
         if (count > vitri_)
         {
           Motor_thangmay_dung();
+          delay(50);
+          EN_DONGCO(1);
           uart_debug.print("Da toi vi tri");
           uart_debug.print(" count=");
           uart_debug.println(count);
@@ -1403,6 +1413,7 @@ void drop_sku_process()
     if (chay_tamche == 1 && ui32_timeout_chaytamngan <= millis())
     {
       Motor_tamche_dung();
+      EN_DONGCO(0);//kich role cho thang len
       delay(100);
       uart_debug.print("Drop product at ");
       uart_debug.println((row_));
@@ -1761,6 +1772,20 @@ void ledbaodo()
       led_status = 1;
       ui32_timeout_chopled = millis() + 200;
     }
+  }
+}
+
+void EN_DONGCO(uint8_t muckich)
+{
+  if(muckich==1) //ko kich role
+  {
+      digitalWrite(role_1,HIGH);
+      // digitalWrite(role_2,HIGH);
+  }
+
+  else if(muckich==0) //kich role
+  {
+      digitalWrite(role_1,LOW);
   }
 }
 

@@ -25,6 +25,10 @@ int lastCBState_new[socambien];
 unsigned long lastDebounceTime_new[socambien] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 
+#define role_1 40
+#define role_2 35
+
+
 
 void setup_cambien()
 {
