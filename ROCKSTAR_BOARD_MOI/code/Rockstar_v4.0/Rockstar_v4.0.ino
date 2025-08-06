@@ -134,7 +134,7 @@ void setup()
   uart_debug.println("KIEM TRA DONG CO HANG COT(LUU Y CHI SAI KHI KHONG CAM TAI VAO):bat all");
   uart_debug.println("TAT DONG CO HANG COT KHI DANG TEST: tat_motor");
   uart_debug.println("-----------------------------------------------------------------------------------------");
-
+  EN_DONGCO(1); // khong kich role la dong co khong chay
   batton = xSemaphoreCreateBinary();
 
   xSemaphoreGive(batton);
@@ -325,6 +325,7 @@ void process()
     // ui32_timecho_guilenh = millis();
     if (ui16_du_lieu_data_nhan == 0x0101)
     {
+      EN_DONGCO(0);
       Motor_thangmay_len();
       ui8_status = 0x00;
       ui8_phanhoi_dungFunction = 1;
@@ -333,6 +334,7 @@ void process()
     else if (ui16_du_lieu_data_nhan == 0x0102)
     {
       // Motor_thangmay_xuong(30);
+      EN_DONGCO(0);
       ui8_check_doilenh = 1;
       ui32_tiemout_rskhay = millis() + 500;
       start_drop_sku = false;
@@ -342,6 +344,7 @@ void process()
 
     else if (ui16_du_lieu_data_nhan == 0x0100)
     {
+      EN_DONGCO(1);
       Motor_thangmay_dung();
       ui8_status = 0x00;
       ui8_phanhoi_dungFunction = 1;
@@ -685,7 +688,7 @@ void Motor_thangmay_len()
 {
   vitrithangmay = 1;
   running = df_run_up;
-  runMotor(Motor_thangmay, 70, chieuquay_thangmay_len, ui16_lastspeed);
+  runMotor(Motor_thangmay, 80, chieuquay_thangmay_len, ui16_lastspeed);
 }
 
 void Motor_thangmay_xuong(uint8_t ui8_tocdo)
@@ -703,14 +706,14 @@ void Motor_thangmay_dung()
 
 void Motor_tamche_ra()
 {
-  // runMotor(Motor_tamche,100,chieuquay_tamche_ra,ui16_lastspeed);
-  runMotor(Motor_tamche, 50, chieuquay_tamche_ra, ui16_lastspeed); // dành cho máy số 9
+  runMotor(Motor_tamche,100,chieuquay_tamche_ra,ui16_lastspeed);
+  // runMotor(Motor_tamche, 50, chieuquay_tamche_ra, ui16_lastspeed); // dành cho máy số 9
 }
 
 void Motor_tamche_vao()
 {
-  // runMotor(Motor_tamche,100,chieuquay_tamche_vao,ui16_lastspeed);
-  runMotor(Motor_tamche, 50, chieuquay_tamche_vao, ui16_lastspeed); // dành cho máy số 9
+  runMotor(Motor_tamche,100,chieuquay_tamche_vao,ui16_lastspeed);
+  // runMotor(Motor_tamche, 50, chieuquay_tamche_vao, ui16_lastspeed); // dành cho máy số 9
 }
 
 void Motor_tamche_dung()
@@ -794,6 +797,8 @@ void reset_khaychuasanpham()
     if (reading == 1)
     {
       Motor_thangmay_dung();
+      delay(50);
+      EN_DONGCO(1);
       ui32_timeout_nhaqua = millis() + 10000;
       ui8_check_khoacua = 1;
       vitrithangmay = 0;
@@ -820,6 +825,7 @@ void reset_khaychuasanpham()
         if (count > 10000)
         { // sua cho nay
           Motor_thangmay_dung();
+          delay(50);
           EN_DONGCO(1);
           uart_debug.println("ERR: max limit encoder\n\r");
           uart_debug.print("count=");
@@ -897,6 +903,7 @@ void reset_khaychuasanpham()
   // Motor_khoacua_hocqua(255);
   delay(200);
   Motor_dungkich_hocqua();
+  EN_DONGCO(1);
 
   // if (ui8_trangthai_thangmay == 0 && err_ == 0)
   // {
@@ -978,8 +985,8 @@ void gogo(int vitri_)
         if (count > vitri_)
         {
           Motor_thangmay_dung();
-          delay(50);
-          EN_DONGCO(1);
+          // delay(50);
+          // EN_DONGCO(1);
           uart_debug.print("Da toi vi tri");
           uart_debug.print(" count=");
           uart_debug.println(count);
@@ -1019,6 +1026,8 @@ void gogo(int vitri_)
     // flash_led_red();
   }
   Motor_thangmay_dung();
+  delay(50);
+  EN_DONGCO(1);
   uart_debug.print("Err code=");
   uart_debug.println(err_);
   uart_debug.println("done!\n\r");
@@ -1073,7 +1082,8 @@ void gogo_dixuong(int vitri_)
   int count = vitri_;
   uart_debug.println(count);
   // motor_1_Down(50);
-  Motor_thangmay_xuong(40);
+  EN_DONGCO(0);
+  Motor_thangmay_xuong(25);
   // int reading = doccambien(limDown_pin,0);
   int reading = doccambien(CTHT_THANG_GOC, 20, 0);
   int encoder_ = digitalRead(E_CHA);
@@ -1104,11 +1114,14 @@ void gogo_dixuong(int vitri_)
         // }
         // motor_1_Dung();
         Motor_thangmay_dung();
+        delay(50);
+        EN_DONGCO(1);
         uart_debug.print("limDownp_pin Pause lan 1\n\r");
         uart_debug.print("count= ");
         uart_debug.println(count);
         err_ = 0;
         ui8_check_doilenh = 0;
+        break;
       }
     }
 
@@ -1124,7 +1137,7 @@ void gogo_dixuong(int vitri_)
         timer_checkmotor = currentMillis + 5000;
         // uart_debug.println("check encoder");
         // uart_debug.println(count);
-        if (count <= 200)
+        if (count <= 100)
         {
           // for(int speed=50;speed<=30;speed--)
           // {
@@ -1138,6 +1151,8 @@ void gogo_dixuong(int vitri_)
           // Motor_thangmay_xuong(10);
           // }
           Motor_thangmay_dung();
+          delay(50);
+          EN_DONGCO(1);
           // ui32_timeout_vehome=millis()+300;
           ui8_toivitri_antoan = 1;
           uart_debug.print("Da toi vi tri");
@@ -1145,7 +1160,7 @@ void gogo_dixuong(int vitri_)
           uart_debug.println(count);
           count = 0;
           err_ = 0;
-          // break;
+          break;
         }
       }
       // else{
@@ -1167,7 +1182,7 @@ void gogo_dixuong(int vitri_)
         // //   delay(10);
         // // }
         // reading = doccambien(limDown_pin,0);
-        delay(500);
+        // delay(500);
         Motor_thangmay_xuong(20);
         reading = doccambien(CTHT_THANG_GOC, 20, 0);
         if (reading == 1)
@@ -1179,6 +1194,8 @@ void gogo_dixuong(int vitri_)
           // }
           // motor_1_Dung();
           Motor_thangmay_dung();
+          delay(10);
+          EN_DONGCO(1);
           // delay(10);
           // for(int speed=0;speed<=50;speed++)
           // {
@@ -1275,6 +1292,7 @@ void gogo_dixuong(int vitri_)
   // Motor_khoacua_hocqua(255);
   delay(200);
   Motor_dungkich_hocqua();
+  EN_DONGCO(1);
 
   if (ui8_trangthai_thangmay == 0 && err_ == 0)
   {
@@ -1438,6 +1456,7 @@ void drop_sku_process()
       //     delay(10);
       //   }
       disable_row_col();
+      EN_DONGCO(1);//kich role cho thang len
 
       set_motor(ROW[row_ + 1], COL[column_ - 1]);
       lanin = 0;
@@ -1817,6 +1836,7 @@ void Task2core(void *parameter)
       uart_debug.println("dung dong co tam che");
       // motor_3_Dung();
       Motor_tamche_dung();
+      // EN_DONGCO(1);
       ui8_dungtamche = 0;
     }
 
@@ -1840,8 +1860,8 @@ void Task2core(void *parameter)
     if (ui8_hoanthanh == 1 && ui32_timeout_comeback <= millis())
     {
       tatled();
-      reset_khaychuasanpham(); // danh cho may so 2
-      // move_thangmay_xuong();
+      // reset_khaychuasanpham(); // danh cho may so 2
+      move_thangmay_xuong();
       ui8_hoanthanh = 0;
     }
 
