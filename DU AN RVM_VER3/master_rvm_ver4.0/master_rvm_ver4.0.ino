@@ -1026,7 +1026,7 @@ void process()
 				ui8_hacuadi = 0;
         ui8_xoaloi=0;
         // control_BoNghien(0x01,ui8_slave[1]);
-        ui8_ketthucnghien=0;
+        ui8_ketthucnghien=1;
         ui8_control_BoNghien=0x01;
         ui8_status = 0x00;
         ui8_phanhoi_dungFunction=1;
