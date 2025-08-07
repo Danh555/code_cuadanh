@@ -1026,6 +1026,7 @@ void process()
 				ui8_hacuadi = 0;
         ui8_xoaloi=0;
         // control_BoNghien(0x01,ui8_slave[1]);
+        ui8_ketthucnghien=0;
         ui8_control_BoNghien=0x01;
         ui8_status = 0x00;
         ui8_phanhoi_dungFunction=1;
@@ -2103,12 +2104,12 @@ void processRS485(uint8_t slaveID)
   }
   if (RS485.isReceived == true)
   {
-    Serial_Debug.print("\nReceive: ");
+    // Serial_Debug.print("\nReceive: ");
 		// ui8_chophanhoi=0;
 		for (uint8_t i = 0; i <= buffer_receive_slave[0]; i++)
 		{
-			Serial_Debug.print(buffer_receive_slave[i], HEX);
-			Serial_Debug.print(" ");
+			// Serial_Debug.print(buffer_receive_slave[i], HEX);
+			// Serial_Debug.print(" ");
 		}
     RS485.isReceived = false;
     memcpy(order_command, (buffer_receive_slave + 2), 2);
@@ -2133,26 +2134,26 @@ void processRS485(uint8_t slaveID)
       {
         case codeSlaveRS485::check_error:
         {
-            Serial_Debug.printf("data thu 6: %d\n",buffer_receive_slave[6]);
+            // Serial_Debug.printf("data thu 6: %d\n",buffer_receive_slave[6]);
             if(buffer_receive_slave[5]==TrangThaiMotor_nghien_ep_phanloai::KHONGLOI)
             {
               if(motor_phanloai.ui8_kiemtra_trangthailoi==TrangthaiLoi::LOI) return;
                 motor_phanloai.ui8_kiemtra_trangthailoi=TrangthaiLoi::KHONGLOI;
                 // break;
-                Serial_Debug.printf("dong phan loai ok\n");
+                // Serial_Debug.printf("dong phan loai ok\n");
             }
 
             if(buffer_receive_slave[5]==TrangThaiMotor_nghien_ep_phanloai::LOI)
             {
                 motor_phanloai.ui8_kiemtra_trangthailoi=TrangthaiLoi::LOI;
-                Serial_Debug.println("loi bo phan loai ");
+                // Serial_Debug.println("loi bo phan loai ");
                 // break;
             }
 
             if(buffer_receive_slave[5]==TrangThaiMotor_nghien_ep_phanloai::DANGXULY)
             {
                 motor_phanloai.ui8_kiemtra_trangthailoi=TrangthaiLoi::BAN;
-                Serial_Debug.printf("dong phan loai dang ban\n");
+                // Serial_Debug.printf("dong phan loai dang ban\n");
                 // break;
             }        
 
@@ -2176,7 +2177,7 @@ void processRS485(uint8_t slaveID)
                 motor_nghien.ui8_kiemtra_trangthailoi=TrangthaiLoi::KHONGLOI;
                 // EEPROM.put(1, motor_nghien.ui8_kiemtra_trangthailoi);
 		          	// EEPROM.commit();
-                Serial_Debug.printf("dong co nghien ok\n");
+                // Serial_Debug.printf("dong co nghien ok\n");
               }
                 // break;
             }
@@ -2214,7 +2215,7 @@ void processRS485(uint8_t slaveID)
             if(buffer_receive_slave[7]==TrangThaiMotor_nghien_ep_phanloai::LOI )// rac day
             {
                 ui8_trangthai_thungracchai=1;
-                Serial_Debug.printf("rac day\n");
+                // Serial_Debug.printf("rac day\n");
                 // motor_nghien.ui8_kiemtra_trangthailoi=TrangthaiLoi::LOI;
                 // if(ui8_trangthaithungracchai==TrangThaiThungRac::KHONGDAY)
                 // {
@@ -2271,21 +2272,21 @@ void processRS485(uint8_t slaveID)
             {
               if(motor_ep.ui8_kiemtra_trangthailoi==TrangthaiLoi::LOI) return;
                 motor_ep.ui8_kiemtra_trangthailoi=TrangthaiLoi::KHONGLOI;
-                Serial_Debug.printf("dong ep ko loi\n");
+                // Serial_Debug.printf("dong ep ko loi\n");
 //                break;
             }
 
             if(buffer_receive_slave[5]==TrangThaiMotor_nghien_ep_phanloai::LOI)
             {
                 motor_ep.ui8_kiemtra_trangthailoi=TrangthaiLoi::LOI;
-                Serial_Debug.printf("dong ep dang loi\n");
+                // Serial_Debug.printf("dong ep dang loi\n");
 //                break;
             }
 
             if(buffer_receive_slave[5]==TrangThaiMotor_nghien_ep_phanloai::DANGXULY)
             {
                 motor_ep.ui8_kiemtra_trangthailoi=TrangthaiLoi::BAN;
-                Serial_Debug.printf("dong ep dang ban\n");
+                // Serial_Debug.printf("dong ep dang ban\n");
 //                break;
             }  
 
@@ -2334,13 +2335,13 @@ void processRS485(uint8_t slaveID)
           if(buffer_receive_slave[5] == 0x02)
           {
             ui8_trangthai_cuatren=MOCUA;
-            Serial_Debug.printf("mo cua tren\n");
+            // Serial_Debug.printf("mo cua tren\n");
             // break;
           }
           if(buffer_receive_slave[5]==0x01)
           {
             ui8_trangthai_cuatren=DONGCUA;
-            Serial_Debug.printf("dong cua tren\n");
+            // Serial_Debug.printf("dong cua tren\n");
             // break;
           }
 
@@ -2353,7 +2354,7 @@ void processRS485(uint8_t slaveID)
           else if(buffer_receive_slave[6]==0x01)
           {
             ui8_trangthai_cuaduoi=DONGCUA;
-            Serial_Debug.printf("dong cua duoi\n");
+            // Serial_Debug.printf("dong cua duoi\n");
             // break;
           }
 
@@ -2366,7 +2367,7 @@ void processRS485(uint8_t slaveID)
           else if(buffer_receive_slave[6]==0x02)
           {
             ui8_trangthai_cuaduoi=MOCUA;
-            Serial_Debug.printf("mo cua duoi\n");
+            // Serial_Debug.printf("mo cua duoi\n");
             // break;
           }
 
@@ -2402,7 +2403,7 @@ void processRS485(uint8_t slaveID)
 
           if(buffer_receive_slave[5]==0x00)
           {
-            Serial_Debug.printf("nha qua RESET\n");
+            // Serial_Debug.printf("nha qua RESET\n");
             ui8_trangthai_nhaqua=BINHTHUONG;
             // ui8_phanhoi_trangthainhaqua=1;
             break;

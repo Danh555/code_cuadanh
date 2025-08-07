@@ -1,0 +1,3 @@
+Code máy bán nhớt cải tiến
+-- Tách biến và khai báo thành 1 file riêng
+-- Tối ưu lại biến giúp dễ quản lý

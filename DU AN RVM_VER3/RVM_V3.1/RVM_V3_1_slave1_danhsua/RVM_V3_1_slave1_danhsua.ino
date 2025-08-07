@@ -898,12 +898,12 @@ void kiemtra_hoatdong_nghienchai()
         }
 
         // Nếu quá thời gian mà không thấy tín hiệu phân loại thì tắt để tránh trường hợp không gửi lệnh stop xuống
-        if (millis() - PhanLoai.beginTime > NghienChai.timeAutoStop &&
-            millis() - NghienChai.beginTime > NghienChai.timeAutoStop)
-        {
-            NghienChai.dangRunFlag = 0;
-            MotorNghienChai.YeuCau = TrangThaiMotorNghien::STOP;
-        }
+        // if (millis() - PhanLoai.beginTime > NghienChai.timeAutoStop &&
+        //     millis() - NghienChai.beginTime > NghienChai.timeAutoStop)
+        // {
+        //     NghienChai.dangRunFlag = 0;
+        //     MotorNghienChai.YeuCau = TrangThaiMotorNghien::STOP;
+        // }
     }
 }
 

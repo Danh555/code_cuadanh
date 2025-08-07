@@ -1,4 +1,6 @@
 
+// Slave1 là điều khiển bộ nghiền và bộ phân loại
+
 #include "RVM_V3_slave.h"
 
 uint8_t selfSlave1ID = 0x01; // Đặt Slave ID
@@ -10,7 +12,9 @@ void setup()
 {
     SerialDebug.begin(115200);
     RS485.begin(115200);
+    SerialDebug.onEvent(usbEventCallback);
 
+    SerialDebug.println("\nRVM_Slave1 [V3.1]");
     vTaskDelay(1000 / portTICK_PERIOD_MS);
 
     if (!EEPROM.begin(1024))
@@ -26,55 +30,63 @@ void setup()
     EEPROM.write(EEPROM_ADD::ADD_COUNT_RESET1, (value >> 8) & 0xFF);
     EEPROM.commit();
 
-#if 0
+#if 1
     Motor_M1.setup();
     Motor_M2.setup();
     Motor_M3.setup();
     Motor_M4.setup();
     Motor_M5.setup();
 
-    Relay1.setup();
-    Relay2.setup();
-    Relay3.setup();
-    Relay4.setup();
-    Relay5.setup();
 #endif
 
     SerialDebug.print("\nRVM_Slave [");
     for (uint8_t i = 0; i < 3; i++)
     {
-        SerialDebug.print(firmware[i], HEX);
         if (i == 2)
+        {
+            SerialDebug.print((firmware[i] * 255 + firmware[i + 1]), DEC);
             SerialDebug.println("]");
+        }
         else
+        {
+            SerialDebug.print(firmware[i], DEC);
             SerialDebug.print(".");
+        }
     }
+
+    CB_Encoder.setup();
+    CB_PhanLoai1_Trai.setup();
+    CB_PhanLoai1_Phai.setup();
+    CB_Rac1.setup();
+    CB_Rac2.setup();
+
+    pinMode(LED_ONBOARD, OUTPUT);
 
     // GET_EEPROM();
     // SET_ERROR_EEPROM();
 
     vTaskDelay(200 / portTICK_PERIOD_MS);
 
-    // xTaskCreatePinnedToCore( // Use xTaskCreate() in vanilla FreeRTOS
-    //     taskControlAll,      // Function to be called
-    //     "taskControlAll",    // Name of task
-    //     10240,               // Stack size (bytes in ESP32, words in FreeRTOS)
-    //     NULL,                // Parameter to pass
-    //     2,                   // Task priority (must be same to prevent lockup)
-    //     NULL,                // Task handle
-    //     1);                  // Run on one core for demo purposes (ESP32 only)
+    xTaskCreatePinnedToCore( // Use xTaskCreate() in vanilla FreeRTOS
+        taskControlAll,      // Function to be called
+        "taskControlAll",    // Name of task
+        10240,               // Stack size (bytes in ESP32, words in FreeRTOS)
+        NULL,                // Parameter to pass
+        2,                   // Task priority (must be same to prevent lockup)
+        NULL,                // Task handle
+        1);                  // Run on one core for demo purposes (ESP32 only)
 
     xTaskCreatePinnedToCore(taskCommunicateToR485Master, "taskCommunicateToR485Master", 10240, NULL, 1, NULL, 1);
-    // xTaskCreatePinnedToCore(taskControlMotor, "taskControlMotor", 10240, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(taskControlMotor, "taskControlMotor", 10240, NULL, 1, NULL, 1);
 
-    // xTaskCreatePinnedToCore(taskDebug, "taskDebug", 2048, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(taskDebug, "taskDebug", 2048, NULL, 1, NULL, 1);
 
     // xTaskCreatePinnedToCore(taskTest, "taskTest", 10240, NULL, 1, NULL, 1);
 
     // Create an auto-reload timer
     auto_reload_timer = xTimerCreate(
         "Auto-reload timer",    // Name of timer
-        1 / portTICK_PERIOD_MS, // Period of timer (in ticks)
+        2 / portTICK_PERIOD_MS, // Period of timer (in ticks)
         pdTRUE,                 // Auto-reload
         (void *)1,              // Timer ID
         timerReadSensor);       // Callback function
@@ -86,12 +98,24 @@ void setup()
 
 void timerReadSensor(void *pvParameters)
 {
+    CB_Encoder.readDebounce(10);
+    CB_PhanLoai1_Trai.readDebounce(10);
+    CB_PhanLoai1_Phai.readDebounce(10);
+    CB_Rac1.readDebounce(2000);
+    CB_Rac2.readDebounce(2000);
 }
 
 void taskCommunicateToR485Master(void *pvParameters)
 {
     while (1)
     {
+
+        if (ui8_update_firmware == 1)
+        {
+            receiveFirmware();
+        }
+
+        blink(1000);
 
         if (ui8_phanhoi_TrangthaiLoi == 1 || ui8_phanhoi_firmware == 1)
             ui8_trangthaiRS485 = trangthaiRS485::DANGGUI;
@@ -142,7 +166,7 @@ void taskControlMotor(void *pvParameters)
     while (1)
     {
 
-#if 0
+#if 1
         for (CoCauMotorDC *Motor : MotorDCArray)
         {
             if ((*Motor).TrangThai == STOP && (*Motor).YeuCau == STOP)
@@ -201,9 +225,12 @@ void taskControlMotor(void *pvParameters)
         }
 #endif
 
-#if 0
+#if 1
         for (CoCauMotorServo *Motor : MotorServoArray)
         {
+            if ((*Motor).TrangThai == STOP)
+                (*Motor).Stop();
+
             if ((*Motor).TrangThai == (*Motor).YeuCau)
             {
                 continue;
@@ -235,8 +262,8 @@ void taskControlAll(void *pvParameters)
     {
         kiemtra_hoatdong_phanloai();
         kiemtra_hoatdong_nghienchai();
-        kiemtra_hoatdong_eplon();
-        // kiemtra_tatdongco();
+        kiemtra_thungrac();
+
         vTaskDelay(1 / portTICK_PERIOD_MS);
     }
     //
@@ -255,6 +282,15 @@ void taskTest(void *pvParameters)
 {
     while (1)
     {
+
+        for (Sensor *Sen : CB_Array)
+        {
+            SerialDebug.print((*Sen).state);
+            SerialDebug.print(" ");
+        }
+        SerialDebug.println();
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+
 #if 0
         MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::LEFT;
         vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -281,6 +317,22 @@ void taskTest(void *pvParameters)
         vTaskDelay(5000 / portTICK_PERIOD_MS);
 
 #endif
+    }
+}
+
+static void usbEventCallback(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
+{
+    if (event_base == ARDUINO_HW_CDC_EVENTS)
+    {
+        switch (event_id)
+        {
+        case ARDUINO_HW_CDC_RX_EVENT:
+            DebugSerial();
+            break;
+
+        default:
+            break;
+        }
     }
 }
 
@@ -339,51 +391,31 @@ void processRS485()
         case codeMaster::PHANLOAI:
         {
 
-            if (buffer_receive[0] - 4 != 1 || // Check size
-                (buffer_receive[5] != vitrithungracphanloai::CAN &&
-                 buffer_receive[5] != vitrithungracphanloai::OTHER &&
-                 buffer_receive[5] != vitrithungracphanloai::BOTTLE))
+            if (size != 1 || // Check size
+                (data[0] != vitrithungracphanloai::CAN &&
+                 data[0] != vitrithungracphanloai::OTHER &&
+                 data[0] != vitrithungracphanloai::BOTTLE))
             {
                 SerialDebug.println("Incorrect command phan loai");
                 break;
             }
             else
             {
-                if (buffer_receive[5] == vitrithungracphanloai::BOTTLE)
+                if (data[0] == vitrithungracphanloai::BOTTLE)
                 {
                     SerialDebug.println("Nhan dien BOTTLE");
                 }
-                else if (buffer_receive[5] == vitrithungracphanloai::CAN)
+                else if (data[0] == vitrithungracphanloai::CAN)
                 {
                     SerialDebug.println("Nhan dien CAN");
                 }
-                else if (buffer_receive[5] == vitrithungracphanloai::OTHER)
+                else if (data[0] == vitrithungracphanloai::OTHER)
                 {
                     SerialDebug.println("Nhan dien OTHER");
                 }
-                PhanLoai.vitriYeucau = buffer_receive[5];
+                PhanLoai.vitriYeucau = data[0];
                 // SerialDebug.println("correct command phan loai");
                 xuly_yeucau_phanloai();
-                break;
-            }
-        }
-
-        case codeMaster::EPLON:
-        {
-            if (buffer_receive[0] - 4 != 1 || // Check size
-                (buffer_receive[5] != TrangThaiMotor::STOP &&
-                 buffer_receive[5] != TrangThaiMotor::FORWARD &&
-                 buffer_receive[5] != TrangThaiMotor::REVERSE))
-            {
-
-                SerialDebug.println(" Incorrect command ep lon");
-                break;
-            }
-            else
-            {
-                EpLon.trangthaiYeuCau = buffer_receive[5];
-                xuly_yeucau_eplon();
-
                 break;
             }
         }
@@ -391,10 +423,10 @@ void processRS485()
         case codeMaster::NGHIENCHAI:
         {
 
-            if (buffer_receive[0] - 4 != 1 || // Check size
-                (buffer_receive[5] != TrangThaiMotor::STOP &&
-                 buffer_receive[5] != TrangThaiMotor::FORWARD &&
-                 buffer_receive[5] != TrangThaiMotor::REVERSE))
+            if (size != 1 || // Check size
+                (data[0] != TrangThaiMotor::STOP &&
+                 data[0] != TrangThaiMotor::FORWARD &&
+                 data[0] != TrangThaiMotor::REVERSE))
             {
 
                 SerialDebug.println(" Incorrect command nghien chai");
@@ -402,7 +434,7 @@ void processRS485()
             }
             else
             {
-                NghienChai.trangthaiYeuCau = buffer_receive[5];
+                NghienChai.trangthaiYeuCau = data[0];
                 xuly_yeucau_nghienchai();
                 break;
             }
@@ -410,8 +442,8 @@ void processRS485()
 
         case codeMaster::check_error:
         {
-            if (buffer_receive[0] - 4 != 1 || // Check size
-                buffer_receive[5] != 0x00)
+            if (size != 1 || // Check size
+                data[0] != 0x00)
             {
                 SerialDebug.println(" Incorrect command check error");
                 break;
@@ -426,8 +458,8 @@ void processRS485()
         case codeMaster::erase_error:
         {
 
-            if (buffer_receive[0] - 4 != 1 || // Check size
-                buffer_receive[5] != 0x00)
+            if (size != 1 || // Check size
+                data[0] != 0x00)
             {
                 SerialDebug.println(" Incorrect command erase error");
                 break;
@@ -435,28 +467,28 @@ void processRS485()
             else
             {
                 // ERASE_ERROR_EEPROM();
-                PhanLoai.trangthaiLoi = TrangThaiLoi::KHONGLOI;
-                NghienChai.trangthaiLoi = TrangThaiLoi::KHONGLOI;
-                EpLon.trangthaiLoi = TrangThaiLoi::KHONGLOI;
-                SerialDebug.println("Da xoa loi");
+                // PhanLoai.trangthaiLoi = TrangThaiLoi::KHONGLOI;
+                // NghienChai.trangthaiLoi = TrangThaiLoi::KHONGLOI;
+                // SerialDebug.println("Da xoa loi");
+                xuly_yeucau_xoaloi();
                 break;
             }
         }
 
         case codeMaster::admin_control_motor:
         {
-            if (buffer_receive[0] - 4 == 2 && // Check size
-                (buffer_receive[5] == 0xFF &&
-                 buffer_receive[6] == 0xFF))
+            if (size == 2 && // Check size
+                (data[0] == 0xFF &&
+                 data[1] == 0xFF))
             {
                 SerialDebug.println("Exit admin control motor");
                 ui8_admin_control_motor = false;
                 break;
             }
-            else if (buffer_receive[0] - 4 != 2 || // Check size
-                     (buffer_receive[6] != TrangThaiMotor::STOP &&
-                      buffer_receive[6] != TrangThaiMotor::FORWARD &&
-                      buffer_receive[6] != TrangThaiMotor::REVERSE))
+            else if (size != 2 || // Check size
+                     (data[1] != TrangThaiMotor::STOP &&
+                      data[1] != TrangThaiMotor::FORWARD &&
+                      data[1] != TrangThaiMotor::REVERSE))
             {
                 SerialDebug.println(" Incorrect command admin control motor");
                 break;
@@ -465,31 +497,24 @@ void processRS485()
             {
                 ui8_admin_control_motor = true;
                 SerialDebug.println("Correct command admin control motor");
-                switch (buffer_receive[5])
+                switch (data[0])
                 {
                 case admin_control_motor::PHANLOAI1:
                 {
                     // SerialDebug.println(" correct command admin control phanloai 1");
-                    MotorPhanLoai1.YeuCau = buffer_receive[6];
+                    MotorPhanLoai1.YeuCau = data[1];
                     break;
                 }
                 case admin_control_motor::PHANLOAI2:
                 {
                     // SerialDebug.println(" correct command admin control phanloai 2");
-                    MotorPhanLoai2.YeuCau = buffer_receive[6];
-                    break;
-                }
-                case admin_control_motor::EPLON:
-                {
-                    // SerialDebug.print(" correct command eplon ");
-                    SerialDebug.println(buffer_receive[6]);
-                    MotorEpLon.YeuCau = buffer_receive[6];
+                    MotorPhanLoai2.YeuCau = data[1];
                     break;
                 }
                 case admin_control_motor::NGHIENCHAI:
                 {
                     // SerialDebug.println(" correct command nghien chai");
-                    MotorNghienChai.YeuCau = buffer_receive[6];
+                    MotorNghienChai.YeuCau = data[1];
                     break;
                 }
                 default:
@@ -502,15 +527,44 @@ void processRS485()
 
         case codeMaster::check_firmware:
         {
-            if (buffer_receive[0] - 4 != 1 || // Check size
-                buffer_receive[5] != 0x00)
+            if (size != 1 || // Check size
+                data[0] != 0x00)
             {
-                SerialDebug.println("Incorrect command firmware");
+                SerialDebug.println("Incorrect command get firmware");
                 break;
             }
             else
             {
                 ui8_phanhoi_firmware = true;
+                break;
+            }
+        }
+
+        case codeMaster::reset:
+        {
+            if (size != 1 || // Check size
+                data[0] != 0x00)
+            {
+                SerialDebug.println("Incorrect command reset");
+                break;
+            }
+            else
+            {
+                ESP.restart();
+                break;
+            }
+        }
+        case codeMaster::update_firmware:
+        {
+            if (size != 1 || // Check size
+                data[0] != 0x00)
+            {
+                SerialDebug.println("Incorrect command update firmware");
+                break;
+            }
+            else
+            {
+                ui8_update_firmware = true;
                 break;
             }
         }
@@ -527,8 +581,6 @@ void goHome()
 {
     PhanLoai.vitriYeucau = vitrithungracphanloai::CAN;
     xuly_yeucau_phanloai();
-    EpLon.trangthaiYeuCau = TrangThaiMotor::FORWARD;
-    xuly_yeucau_eplon();
     NghienChai.trangthaiYeuCau = TrangThaiMotor::FORWARD;
     xuly_yeucau_nghienchai();
 }
@@ -539,6 +591,7 @@ void xuly_yeucau_phanloai()
     SerialDebug.println("Yeu Cau Phanloai");
     if (PhanLoai.trangthaiLoi == TrangThaiLoi::KHONGLOI)
     {
+        PhanLoai.beginTime = millis();
 
         if (PhanLoai.vitriYeucau == PhanLoai.vitriHientai)
         {
@@ -548,7 +601,6 @@ void xuly_yeucau_phanloai()
             return;
         }
 
-        PhanLoai.beginTime = millis();
         switch (PhanLoai.vitriYeucau)
         {
         // Nếu yêu cầu về thùng rác chai
@@ -626,21 +678,6 @@ void xuly_yeucau_phanloai()
     }
 }
 
-// Xử lý yêu cầu ép (Hàm chạy  1 lần)
-void xuly_yeucau_eplon()
-{
-    SerialDebug.println("Yeu Cau ep lon");
-    if (EpLon.trangthaiLoi == TrangThaiLoi::KHONGLOI)
-    {
-        EpLon.beginTime = millis();
-        EpLon.lastCBstate = CB_DauEp.state;
-        EpLon.chovatFlag = 1;
-        EpLon.dangxulyFlag = 1;
-
-        // MotorEpLon.YeuCau = EpLon.trangthaiYeuCau; //Phải đợi có vật mới bắt đầu chạy động cơ ép
-    }
-}
-
 // Xử lý yêu cầu nghiền chai (Hàm chạy  1 lần)
 void xuly_yeucau_nghienchai()
 {
@@ -652,20 +689,60 @@ void xuly_yeucau_nghienchai()
         // MotorNghienChai.YeuCau = NghienChai.trangthaiYeuCau;
         NghienChai.dangRunFlag = 1;
 
-        if (NghienChai.trangthaiYeuCau == TrangThaiMotorNghien::FORWARD)
+        if (NghienChai.trangthaiYeuCau == TrangThaiMotorNghien::FORWARD ||
+            NghienChai.trangthaiYeuCau == TrangThaiMotorNghien::REVERSE)
         {
-            SerialDebug.println("Yeu Cau Nghien Chai");
+            SerialDebug.print("Yeu Cau Nghien Chai :");
+            SerialDebug.println(NghienChai.trangthaiYeuCau);
+
             NghienChai.yeucauStopFlag = 0;
             NghienChai.lastChangeTime = millis();
-            MotorNghienChai.YeuCau = TrangThaiMotorNghien::FORWARD;
+            MotorNghienChai.YeuCau = NghienChai.trangthaiYeuCau;
         }
         else if (NghienChai.trangthaiYeuCau == TrangThaiMotorNghien::STOP)
         {
+            if (MotorNghienChai.TrangThai == STOP)
+            {
+                NghienChai.yeucauStopFlag = 0;
+                NghienChai.dangRunFlag = 0;
+                MotorNghienChai.TrangThai = STOP;
+                MotorNghienChai.YeuCau = STOP;
+                MotorNghienChai.Stop();
+                return;
+            }
+            if (NghienChai.yeucauStopFlag == 1)
+            {
+                return;
+            }
             SerialDebug.println("Yeu Cau Stop Nghien Chai");
             NghienChai.yeucauStopFlag = 1;
+            NghienChai.lastChangeTime = millis();
             NghienChai.beginStopTime = millis();
         }
     }
+}
+
+// Xử lý yêu cầu ép (Hàm chạy  1 lần)
+void xuly_yeucau_xoaloi()
+{
+    // ERASE_ERROR_EEPROM();
+    ui2_trangthaiRac1 = 0;
+    ui2_trangthaiRac2 = 0;
+    PhanLoai.trangthaiLoi = TrangThaiLoi::KHONGLOI;
+    PhanLoai.vitriHientai = vitrithungracphanloai::NOWHERE;
+    PhanLoai.vitriYeucau = vitrithungracphanloai::NOWHERE;
+    PhanLoai.vitriPhanloai1 = vitricocauphanloai::NOWHERE;
+    PhanLoai.vitriPhanloai2 = vitricocauphanloai::NOWHERE;
+    PhanLoai.dangxulyFlag = 0;
+    PhanLoai.phanloai1_doneFlag = 1;
+    PhanLoai.phanloai2_doneFlag = 1;
+
+    NghienChai.trangthaiLoi = TrangThaiLoi::KHONGLOI;
+    NghienChai.trangthaiYeuCau = TrangThaiMotorNghien::STOP;
+    NghienChai.yeucauStopFlag = 0;
+    NghienChai.dangRunFlag = 0;
+
+    SerialDebug.println("Da xoa loi");
 }
 
 // Kiểm tra hoàn thành phân loại (Hàm để trong loop)
@@ -745,111 +822,17 @@ void kiemtra_hoatdong_phanloai()
     }
 }
 
-// Kiểm tra hoàn thành ép lon (Hàm để trong loop)
-void kiemtra_hoatdong_eplon()
-{
-    if (ui8_admin_control_motor)
-        return;
-
-    if (EpLon.trangthaiLoi == 1 && MotorEpLon.TrangThai == STOP && MotorEpLon.YeuCau == STOP)
-        return;
-
-    if (EpLon.trangthaiLoi == 1 && (MotorEpLon.TrangThai != STOP || MotorEpLon.YeuCau != STOP))
-    {
-        EpLon.count = 0;
-        MotorEpLon.TrangThai = STOP;
-        MotorEpLon.YeuCau = STOP;
-        MotorEpLon.Stop();
-        return;
-    }
-
-    if (EpLon.dangxulyFlag == 1)
-    {
-        if (EpLon.chovatFlag == 1) // Nếu có cờ chờ vật thì phải có vật mới bắt đầu chạy
-        {
-            if (millis() - EpLon.beginTime > EpLon.timeWait) // Nếu quá thời gian chờ vật thì báo bình thường hoặc báo lỗi
-            {
-                EpLon.dangxulyFlag = 0;
-            }
-
-            if (CB_LongEp1.state == 1 || CB_LongEp2.state == 1) // đã có vật trong lồng thì không chờ nữa
-            {
-                EpLon.lastChangeTime = millis();
-                MotorEpLon.YeuCau = EpLon.trangthaiYeuCau;
-                EpLon.chovatFlag = 0;
-            }
-        }
-        else if (EpLon.chovatFlag == 0) // Nếu không có cờ chờ vật thì cứ chạy lồng ép bình thường
-        {
-            if (EpLon.count > 10) // Nếu ép 10 lần mà CB vẫn có vật
-            {
-                EpLon.trangthaiLoi = TrangThaiLoi::COLOI;
-                MotorEpLon.YeuCau = TrangThaiMotorEp::STOP;
-                EpLon.dangxulyFlag = 0;
-                SET_ERROR_EEPROM();
-                EpLon.count = 0;
-                return;
-            }
-
-            if (EpLon.lastCBstate == 1)
-            {
-                if (millis() - EpLon.lastChangeTime > EpLon.timeErrorGoAway) // Nếu quá thời gian chạy ra mà cảm biến vẫn bắt được đầu ép
-                {
-                    MotorEpLon.YeuCau = TrangThaiMotorEp::STOP;
-                    EpLon.count = 0;
-                    EpLon.trangthaiLoi = TrangThaiLoi::COLOI;
-                    EpLon.dangxulyFlag = 0;
-                    SET_ERROR_EEPROM();
-                    return;
-                }
-                if (CB_DauEp.state == 0)
-                {
-                    EpLon.lastCBstate = 0;
-                    EpLon.lastChangeTime = millis();
-                }
-            }
-            if (EpLon.lastCBstate == 0)
-            {
-
-                if (CB_DauEp.state == 1 && (CB_LongEp1.state == 1 || CB_LongEp2.state == 1))
-                {
-                    EpLon.count++;
-                    SerialDebug.print(EpLon.count);
-                    EpLon.lastCBstate = 1;
-                    EpLon.lastChangeTime = millis();
-                }
-
-                // Hoàn thành chu trình ép
-                if (CB_DauEp.state == 1 && CB_LongEp1.state == 0 && CB_LongEp2.state == 0)
-                {
-                    MotorEpLon.YeuCau = TrangThaiMotorEp::STOP;
-                    EpLon.count = 0;
-                    EpLon.dangxulyFlag = 0;
-                    return;
-                }
-
-                if (millis() - EpLon.lastChangeTime > EpLon.timeErrorGoBack)
-                {
-                    MotorEpLon.YeuCau = TrangThaiMotorEp::STOP;
-                    EpLon.trangthaiLoi = TrangThaiLoi::COLOI;
-                    EpLon.dangxulyFlag = 0;
-                    EpLon.count = 0;
-                    SET_ERROR_EEPROM();
-                    return;
-                }
-            }
-        }
-    }
-}
-
 // Kiểm tra hoàn thành nghiền chai (Hàm để trong loop)
 void kiemtra_hoatdong_nghienchai()
 {
-    if (ui8_admin_control_motor)
+    if (ui8_admin_control_motor == 1)
         return;
 
     if (NghienChai.trangthaiLoi == 1 && MotorNghienChai.TrangThai == STOP && MotorNghienChai.YeuCau == STOP)
+    {
+        SerialDebug.print("Loi nghien chai");
         return;
+    }
 
     if (NghienChai.trangthaiLoi == 1 && (MotorNghienChai.TrangThai != STOP || MotorNghienChai.YeuCau != STOP))
     {
@@ -861,26 +844,6 @@ void kiemtra_hoatdong_nghienchai()
 
     if (NghienChai.dangRunFlag == 1)
     {
-        // Kiểm tra dừng nghiền chai
-        if (NghienChai.yeucauStopFlag == 1 &&
-            millis() - NghienChai.beginStopTime > NghienChai.timeWaitStop)
-        {
-            NghienChai.dangRunFlag = 0;
-            MotorNghienChai.YeuCau = TrangThaiMotorNghien::STOP;
-            NghienChai.yeucauStopFlag = 0;
-            return;
-        }
-
-        if (NghienChai.yeucauStopFlag == 1 &&
-            (MotorNghienChai.TrangThai == TrangThaiMotorNghien::STOP ||
-             MotorNghienChai.YeuCau == TrangThaiMotorNghien::STOP))
-        {
-            MotorNghienChai.YeuCau = TrangThaiMotorNghien::STOP;
-            NghienChai.trangthaiYeuCau = TrangThaiMotorNghien::STOP;
-            NghienChai.dangRunFlag = 0;
-            NghienChai.yeucauStopFlag = 0;
-            return;
-        }
 
         // Kiểm tra lỗi nghiền chai
         if (NghienChai.lastCBstate != CB_Encoder.state)
@@ -897,13 +860,51 @@ void kiemtra_hoatdong_nghienchai()
             return;
         }
 
+        // Kiểm tra dừng nghiền chai
+        if (NghienChai.yeucauStopFlag == 1 &&
+            millis() - NghienChai.beginStopTime > NghienChai.timeWaitStop)
+        {
+            NghienChai.dangRunFlag = 0;
+            MotorNghienChai.YeuCau = TrangThaiMotorNghien::STOP;
+            NghienChai.yeucauStopFlag = 0;
+            return;
+        }
+
+        if (NghienChai.yeucauStopFlag == 1 &&
+            (MotorNghienChai.TrangThai == TrangThaiMotorNghien::STOP ||
+             MotorNghienChai.YeuCau == TrangThaiMotorNghien::STOP))
+        {
+            NghienChai.dangRunFlag = 0;
+            MotorNghienChai.YeuCau = TrangThaiMotorNghien::STOP;
+            NghienChai.trangthaiYeuCau = TrangThaiMotorNghien::STOP;
+            NghienChai.yeucauStopFlag = 0;
+            return;
+        }
+
         // Nếu quá thời gian mà không thấy tín hiệu phân loại thì tắt để tránh trường hợp không gửi lệnh stop xuống
         if (millis() - PhanLoai.beginTime > NghienChai.timeAutoStop &&
             millis() - NghienChai.beginTime > NghienChai.timeAutoStop)
         {
             NghienChai.dangRunFlag = 0;
+            NghienChai.yeucauStopFlag = 0;
             MotorNghienChai.YeuCau = TrangThaiMotorNghien::STOP;
+            SerialDebug.print("\nAuto stop nghien chai\n");
         }
+    }
+}
+
+// Kiểm tra thùng rác 3 (Hàm để trong loop)
+void kiemtra_thungrac()
+{
+    if (ui2_trangthaiRac1 == false &&
+        CB_Rac1.state == 1)
+    {
+        ui2_trangthaiRac1 = true;
+    }
+    if (ui2_trangthaiRac2 == false &&
+        CB_Rac2.state == 1)
+    {
+        ui2_trangthaiRac2 = true;
     }
 }
 
@@ -925,7 +926,6 @@ void kiemtra_tatdongco()
         MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::STOP;
         MotorPhanLoai2.YeuCau = TrangThaiMotorPhanLoai2::STOP;
         MotorNghienChai.YeuCau = TrangThaiMotorNghien::STOP;
-        MotorEpLon.YeuCau = TrangThaiMotorEp::STOP;
         NghienChai.dangRunFlag = 0;
         PhanLoai.dangxulyFlag = 0;
         EpLon.dangxulyFlag = 0;
@@ -934,11 +934,11 @@ void kiemtra_tatdongco()
 
 void phanhoi_trangthailoi()
 {
+
     uint8_t trangthai_Phanloai = ((PhanLoai.dangxulyFlag == 1) ? 0x02 : PhanLoai.trangthaiLoi);
     uint8_t trangthai_Nghien = (NghienChai.trangthaiLoi);
-    uint8_t trangthai_Ep = ((EpLon.dangxulyFlag == 1) ? 0x02 : EpLon.trangthaiLoi);
 
-    uint8_t bytecount = 3;
+    uint8_t bytecount = 4;
     uint8_t datasize = bytecount + 4;
     raiseOrderCommand(self_order_command);
 
@@ -949,19 +949,22 @@ void phanhoi_trangthailoi()
                                   bytecount,
                                   trangthai_Phanloai,
                                   trangthai_Nghien,
-                                  trangthai_Ep};
+                                  ui2_trangthaiRac1,
+                                  ui2_trangthaiRac2};
 
     memcpy(buffer_send, data, datasize + 1);
     RS485.send(buffer_send);
 #ifdef ShowSerial
 
-    SerialDebug.printf("\nguiphanhoichoMaster: %D %D %D\n", trangthai_Phanloai, trangthai_Nghien, trangthai_Ep);
+    SerialDebug.printf("\nguiphanhoichoMaster: %D %D %D %D\n",
+                       trangthai_Phanloai, trangthai_Nghien, ui2_trangthaiRac1, ui2_trangthaiRac2);
+    // SerialDebug.printf("cam bien :%d %d %d %d %d \n", CB_PhanLoai1_Trai.state, CB_PhanLoai1_Trai.state, CB_PhanLoai1_Trai.state, CB_Encoder.state, CB_Rac1.state, CB_Rac2.state);
 #endif
 }
 
 void phanhoi_firmware()
 {
-    uint8_t bytecount = 3;
+    uint8_t bytecount = 4;
     uint8_t datasize = bytecount + 4;
     raiseOrderCommand(self_order_command);
 
@@ -972,7 +975,8 @@ void phanhoi_firmware()
                                   bytecount,
                                   firmware[0],
                                   firmware[1],
-                                  firmware[2]};
+                                  firmware[2],
+                                  firmware[3]};
 
     memcpy(buffer_send, data, datasize + 1);
     RS485.send(buffer_send);
@@ -1044,19 +1048,19 @@ void serialDebugProcess()
         xuly_yeucau_phanloai();
     }
 
-    else if (inputString == "eplon_fw")
-    {
-        SerialDebug.println("Eplon fw");
-
-        EpLon.trangthaiYeuCau = TrangThaiMotorEp::FORWARD;
-        xuly_yeucau_eplon();
-    }
-
     else if (inputString == "nghienchai_fw")
     {
         SerialDebug.println("Nghien chai fw");
 
         NghienChai.trangthaiYeuCau = TrangThaiMotorNghien::FORWARD;
+        xuly_yeucau_nghienchai();
+    }
+
+    else if (inputString == "nghienchai_rv")
+    {
+        SerialDebug.println("Nghien chai rv");
+
+        NghienChai.trangthaiYeuCau = TrangThaiMotorNghien::REVERSE;
         xuly_yeucau_nghienchai();
     }
 
@@ -1070,18 +1074,15 @@ void serialDebugProcess()
 
     else if (inputString == "xoaloi")
     {
-        PhanLoai.trangthaiLoi = TrangThaiLoi::KHONGLOI;
-        NghienChai.trangthaiLoi = TrangThaiLoi::KHONGLOI;
-        EpLon.trangthaiLoi = TrangThaiLoi::KHONGLOI;
-        PhanLoai.vitriHientai = vitrithungracphanloai::NOWHERE;
-        PhanLoai.vitriYeucau = vitrithungracphanloai::NOWHERE;
-        PhanLoai.vitriPhanloai1 = vitricocauphanloai::NOWHERE;
-        PhanLoai.vitriPhanloai2 = vitricocauphanloai::NOWHERE;
-
+        xuly_yeucau_xoaloi();
         SerialDebug.println("Xoaloi");
-        // ERASE_ERROR_EEPROM();
     }
 
+    else if (inputString == "reset")
+    {
+        SerialDebug.println("Reset");
+        ESP.restart();
+    }
     else if (inputString == "pl1_trai")
     {
         ui8_admin_control_motor = true;
@@ -1121,6 +1122,20 @@ void serialDebugProcess()
         MotorPhanLoai2.YeuCau = TrangThaiMotorPhanLoai2::STOP;
     }
 
+    else if (inputString == "admin_nghien_fw")
+    {
+        ui8_admin_control_motor = true;
+        SerialDebug.println("admin_nghien_fw ");
+        MotorNghienChai.YeuCau = TrangThaiMotorNghien::FORWARD;
+    }
+
+    else if (inputString == "admin_nghien_stop")
+    {
+        ui8_admin_control_motor = true;
+        SerialDebug.println("admin_nghien_stop ");
+        MotorNghienChai.YeuCau = TrangThaiMotorNghien::STOP;
+    }
+
     else if (inputString == "end_admin")
     {
         ui8_admin_control_motor = false;
@@ -1128,6 +1143,198 @@ void serialDebugProcess()
     }
 }
 
+// Nhận firmware qua UART và cập nhật
+void receiveFirmware()
+{
+
+    uint8_t buffer[BUFFER_SIZE + 1024]; // DATA_SIZE + HEADER_SIZE
+    size_t totalReceived = 0;
+    bool updateStarted = false;
+    uint32_t expectedSize = 0;
+    bool firmwareInvalid = false;
+    bool firmwareWrongSize = false;
+    bool timeoutReceive = false;
+
+    bool receivedEOP = false;
+    bool receivedEOF = false;
+    uint8_t counter = 0;
+
+    /* Nhận thông tin tổng số byte */
+    Serial1.readBytes((uint8_t *)&expectedSize, sizeof(expectedSize));
+    Serial.printf("Expected firmware size: %u bytes\n", expectedSize);
+
+    // Bắt đầu cập nhật
+    if (!updateStarted)
+    {
+        if (expectedSize == 0)
+        {
+            Serial.println(" No firmware to update.");
+            ui8_update_firmware = false;
+            return;
+        }
+        if (!Update.begin(expectedSize))
+        {
+            Serial.println("Not enough space for firmware update.");
+            ui8_update_firmware = false;
+            return;
+        }
+        updateStarted = true;
+        Serial.println("Firmware update started...");
+    }
+    uint32_t timer0 = millis();
+    uint32_t timer1 = millis();
+
+    while (true)
+    {
+        /* Kiểm tra thời gian không có dữ liệu để break while */
+        if (millis() - timer1 > 5000)
+        {
+            timeoutReceive = true;
+            break;
+        }
+        /* Nếu có dữ liệu */
+        if (Serial1.available())
+        {
+            timer1 = millis();
+            int len = Serial1.readBytes(buffer, BUFFER_SIZE);
+
+            /* Kiểm tra checksum */
+            uint8_t checksum = calculateChecksum(buffer + 3, uint16_t(len - HEADER_SIZE));
+
+            Serial.printf("Checksum: %02X\n", checksum);
+            if (buffer[0] == 'B' && buffer[1] == 'O' && buffer[2] == 'P')
+            {
+                Serial.println("Received Begin Page Maker ");
+            }
+            if (buffer[len - 3] == 'E' && buffer[len - 2] == 'O' && buffer[len - 1] == 'P')
+            {
+                Serial.println("Received End Page Maker ");
+            }
+
+            /*Kiểm tra Begin và End Maker*/
+            if (buffer[0] == 'B' && buffer[1] == 'O' && buffer[2] == 'P' &&
+                buffer[len - 3] == 'E' && buffer[len - 2] == 'O' && buffer[len - 1] == 'P')
+            {
+                receivedEOP = true;
+            }
+            else if (buffer[0] == 'B' && buffer[1] == 'O' && buffer[2] == 'P' &&
+                     buffer[len - 3] == 'E' && buffer[len - 2] == 'O' && buffer[len - 1] == 'F')
+            {
+                receivedEOF = true;
+            }
+
+            /*Nếu nhận được dữ liệu hợp lệ*/
+            if ((receivedEOP || receivedEOF) &&
+                checksum == buffer[len - 4])
+            {
+                receivedEOP = false; /* Reset EOP để nhận trong while tiếp theo , EOF thì không không reset để ngắt while*/
+                counter = 0;
+                /*Ghi dữ liệu vào Update */
+                size_t written = Update.write(buffer + 3, len - HEADER_SIZE);
+
+                /*Kiểm tra ghi dữ liệu thành công*/
+                if (written == len - HEADER_SIZE) /*Nếu thành công thì gửi phản hồi về*/
+                {
+                    // digitalWrite(RS485_DE_PIN, HIGH);
+                    uint8_t code[3] = {'R', 'O', 'K'};
+                    Serial1.write(code, sizeof(code));
+                    Serial1.flush();
+                    // digitalWrite(RS485_DE_PIN, LOW);
+                    Serial.println("Sent respond OK");
+                }
+                else /* Nếu không thành công thì không phản hồi*/
+                {
+                    Serial.println("Error writing firmware data!");
+                    break;
+                    firmwareInvalid = true;
+                }
+            }
+            else if (counter <= 3) /* Nếu dữ liệu không hợp lệ*/
+            {
+                Serial.printf("Received error %d bytes \n", len - HEADER_SIZE);
+                counter++;
+                // digitalWrite(RS485_DE_PIN, HIGH);
+                uint8_t code[3] = {'E', 'R', 'R'};
+                Serial1.write(code, sizeof(code));
+                Serial1.flush();
+                // digitalWrite(RS485_DE_PIN, LOW);
+                Serial.println("Request resend -------------------------------------------------------------------------------------------------------------");
+                continue;
+            }
+            else if (counter > 3)
+            {
+                firmwareInvalid = true;
+                break;
+            }
+
+            totalReceived += len - HEADER_SIZE;
+            Serial.printf("Received %d bytes|| Total received: %d \n", len - HEADER_SIZE, totalReceived);
+
+            /*Kiểm tra khi nhận tất cả dữ liệu thì break while*/
+            if (receivedEOF)
+            {
+                /* Nếu không nhận được đúng size như ban đầu gửi thì báo lỗi*/
+                if (totalReceived != expectedSize)
+                    firmwareWrongSize = true;
+
+                Serial.println("Received End File Maker ");
+                break;
+            }
+
+            Serial.printf("Time: %d ms\n", millis() - timer1);
+        }
+    }
+
+    Serial.printf("Total time: %d ms\n", millis() - timer0);
+
+    /*Kiểm tra các lỗi để không tiến hành cập nhật*/
+    if (timeoutReceive || firmwareInvalid || firmwareWrongSize)
+    {
+        Serial.println("Firmware update failed.");
+        Serial.printf("timeoutReceive: %d\n", timeoutReceive);
+        Serial.printf("firmwareInvalid: %d\n", firmwareInvalid);
+        Serial.printf("firmwareWrongSize: %d\n", firmwareWrongSize);
+        Update.abort();
+    }
+    /*Tiến hành cập nhật và khởi động lại*/
+    else if (updateStarted)
+    {
+        Serial.println("Firmware transfer completed.");
+        Update.end();
+        Serial.println("Firmware update completed! Restarting...");
+        ESP.restart();
+        Serial.println("Error");
+    }
+
+    ui8_update_firmware = false;
+}
+
+uint8_t calculateChecksum(const uint8_t *data, uint16_t length)
+{
+    if (data == NULL || length == 0) // Kiểm tra con trỏ NULL hoặc độ dài bằng 0
+    {
+        return 0; // Trả về 0 để tránh lỗi
+    }
+
+    uint8_t checksum = 0;
+    for (int i = 0; i < length; i++)
+    {
+        checksum += data[i]; // Tổng tất cả các byte
+    }
+    return checksum; // Trả về checksum (mod 256 tự động do kiểu uint8_t)
+}
+
 void loop()
 {
+}
+
+void blink(int time)
+{
+    static uint32_t ui32_time_blink = 0;
+    static bool led_status = 0;
+    if (millis() - ui32_time_blink > time)
+    {
+        ui32_time_blink = millis();
+        digitalWrite(LED_ONBOARD, led_status = !led_status);
+    }
 }

@@ -1,17 +1,16 @@
 
 #include "RVM_V3_slave.h"
 
-uint8_t selfSlave1ID = 0x01; // Đặt Slave ID
-RS485_Slave RS485(Serial1, selfSlave1ID, RS485_TX_PIN, RS485_RX_PIN);
+uint8_t selfSlave2ID = 0x02; // Đặt Slave ID
+RS485_Slave RS485(Serial1, selfSlave2ID, RS485_TX_PIN, RS485_RX_PIN);
 
 static TimerHandle_t auto_reload_timer = NULL;
 
 void setup()
 {
     SerialDebug.begin(115200);
-    RS485.begin(115200);
 
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    RS485.begin(115200);
 
     if (!EEPROM.begin(1024))
     {
@@ -25,20 +24,6 @@ void setup()
     EEPROM.write(EEPROM_ADD::ADD_COUNT_RESET0, value);
     EEPROM.write(EEPROM_ADD::ADD_COUNT_RESET1, (value >> 8) & 0xFF);
     EEPROM.commit();
-
-#if 0
-    Motor_M1.setup();
-    Motor_M2.setup();
-    Motor_M3.setup();
-    Motor_M4.setup();
-    Motor_M5.setup();
-
-    Relay1.setup();
-    Relay2.setup();
-    Relay3.setup();
-    Relay4.setup();
-    Relay5.setup();
-#endif
 
     SerialDebug.print("\nRVM_Slave [");
     for (uint8_t i = 0; i < 3; i++)
@@ -92,7 +77,6 @@ void taskCommunicateToR485Master(void *pvParameters)
 {
     while (1)
     {
-
         if (ui8_phanhoi_TrangthaiLoi == 1 || ui8_phanhoi_firmware == 1)
             ui8_trangthaiRS485 = trangthaiRS485::DANGGUI;
         else
@@ -101,7 +85,6 @@ void taskCommunicateToR485Master(void *pvParameters)
         // Xử lý khi ở trạng thái nhận dữ liệu đến master
         if (ui8_trangthaiRS485 == trangthaiRS485::DANGNHAN)
         {
-            // SerialDebug.println("\ndang nhan");
             RS485.receive(buffer_receive);
 #ifdef ShowSerial
             if (RS485.isReceived)
@@ -120,10 +103,11 @@ void taskCommunicateToR485Master(void *pvParameters)
         // Xử lý khi ở trạng thái gửi dữ liệu đến master
         else if (ui8_trangthaiRS485 == trangthaiRS485::DANGGUI)
         {
-            SerialDebug.println("\ndang gui");
             if (ui8_phanhoi_TrangthaiLoi == 1)
             {
+
                 phanhoi_trangthailoi();
+
                 ui8_phanhoi_TrangthaiLoi = 0;
             }
             if (ui8_phanhoi_firmware == 1)
@@ -897,13 +881,13 @@ void kiemtra_hoatdong_nghienchai()
             return;
         }
 
-        // Nếu quá thời gian mà không thấy tín hiệu phân loại thì tắt để tránh trường hợp không gửi lệnh stop xuống
-        if (millis() - PhanLoai.beginTime > NghienChai.timeAutoStop &&
-            millis() - NghienChai.beginTime > NghienChai.timeAutoStop)
-        {
-            NghienChai.dangRunFlag = 0;
-            MotorNghienChai.YeuCau = TrangThaiMotorNghien::STOP;
-        }
+        // // Nếu quá thời gian mà không thấy tín hiệu phân loại thì tắt để tránh trường hợp không gửi lệnh stop xuống
+        // if (millis() - PhanLoai.beginTime > NghienChai.timeAutoStop &&
+        //     millis() - NghienChai.beginTime > NghienChai.timeAutoStop)
+        // {
+        //     NghienChai.dangRunFlag = 0;
+        //     MotorNghienChai.YeuCau = TrangThaiMotorNghien::STOP;
+        // }
     }
 }
 
@@ -934,6 +918,7 @@ void kiemtra_tatdongco()
 
 void phanhoi_trangthailoi()
 {
+
     uint8_t trangthai_Phanloai = ((PhanLoai.dangxulyFlag == 1) ? 0x02 : PhanLoai.trangthaiLoi);
     uint8_t trangthai_Nghien = (NghienChai.trangthaiLoi);
     uint8_t trangthai_Ep = ((EpLon.dangxulyFlag == 1) ? 0x02 : EpLon.trangthaiLoi);

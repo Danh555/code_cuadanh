@@ -897,13 +897,13 @@ void kiemtra_hoatdong_nghienchai()
             return;
         }
 
-        // Nếu quá thời gian mà không thấy tín hiệu phân loại thì tắt để tránh trường hợp không gửi lệnh stop xuống
-        if (millis() - PhanLoai.beginTime > NghienChai.timeAutoStop &&
-            millis() - NghienChai.beginTime > NghienChai.timeAutoStop)
-        {
-            NghienChai.dangRunFlag = 0;
-            MotorNghienChai.YeuCau = TrangThaiMotorNghien::STOP;
-        }
+        // // Nếu quá thời gian mà không thấy tín hiệu phân loại thì tắt để tránh trường hợp không gửi lệnh stop xuống
+        // if (millis() - PhanLoai.beginTime > NghienChai.timeAutoStop &&
+        //     millis() - NghienChai.beginTime > NghienChai.timeAutoStop)
+        // {
+        //     NghienChai.dangRunFlag = 0;
+        //     MotorNghienChai.YeuCau = TrangThaiMotorNghien::STOP;
+        // }
     }
 }
 
@@ -934,6 +934,7 @@ void kiemtra_tatdongco()
 
 void phanhoi_trangthailoi()
 {
+
     uint8_t trangthai_Phanloai = ((PhanLoai.dangxulyFlag == 1) ? 0x02 : PhanLoai.trangthaiLoi);
     uint8_t trangthai_Nghien = (NghienChai.trangthaiLoi);
     uint8_t trangthai_Ep = ((EpLon.dangxulyFlag == 1) ? 0x02 : EpLon.trangthaiLoi);

@@ -1,17 +1,16 @@
 
 #include "RVM_V3_slave.h"
 
-uint8_t selfSlave1ID = 0x01; // Đặt Slave ID
-RS485_Slave RS485(Serial1, selfSlave1ID, RS485_TX_PIN, RS485_RX_PIN);
+uint8_t selfSlaveID = 0x09; // Đặt Slave ID
+RS485_Slave RS485(Serial1, selfSlaveID, RS485_TX_PIN, RS485_RX_PIN, RS485_DE_PIN);
 
 static TimerHandle_t auto_reload_timer = NULL;
 
 void setup()
 {
     SerialDebug.begin(115200);
-    RS485.begin(115200);
 
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    RS485.begin(115200);
 
     if (!EEPROM.begin(1024))
     {
@@ -26,7 +25,37 @@ void setup()
     EEPROM.write(EEPROM_ADD::ADD_COUNT_RESET1, (value >> 8) & 0xFF);
     EEPROM.commit();
 
-#if 0
+    if (!pcf_PortA.begin())
+    {
+        SerialDebug.println("KHONG BAT DAU VOI MODULE IO PORT A");
+    }
+    delay(50);
+
+    if (!pcf_PortB.begin())
+    {
+        SerialDebug.println("KHONG BAT DAU VOI MODULE IO PORT B");
+    }
+    delay(50);
+
+    if (!pcf_PortRelay.begin())
+    {
+        SerialDebug.println("KHONG BAT DAU VOI MODULE IO PORT RELAY");
+    }
+    delay(50);
+
+    if (!pcf_Motor.begin())
+    {
+
+        SerialDebug.println("KHONG BAT DAU VOI MODULE MOTOR");
+    }
+    delay(50);
+
+    for (Input_PCF8574 *Cambien : CB_Array)
+    {
+        (*Cambien).setup();
+    }
+
+#if 1
     Motor_M1.setup();
     Motor_M2.setup();
     Motor_M3.setup();
@@ -55,19 +84,19 @@ void setup()
 
     vTaskDelay(200 / portTICK_PERIOD_MS);
 
-    // xTaskCreatePinnedToCore( // Use xTaskCreate() in vanilla FreeRTOS
-    //     taskControlAll,      // Function to be called
-    //     "taskControlAll",    // Name of task
-    //     10240,               // Stack size (bytes in ESP32, words in FreeRTOS)
-    //     NULL,                // Parameter to pass
-    //     2,                   // Task priority (must be same to prevent lockup)
-    //     NULL,                // Task handle
-    //     1);                  // Run on one core for demo purposes (ESP32 only)
+    xTaskCreatePinnedToCore( // Use xTaskCreate() in vanilla FreeRTOS
+        taskControlAll,      // Function to be called
+        "taskControlAll",    // Name of task
+        10240,               // Stack size (bytes in ESP32, words in FreeRTOS)
+        NULL,                // Parameter to pass
+        2,                   // Task priority (must be same to prevent lockup)
+        NULL,                // Task handle
+        1);                  // Run on one core for demo purposes (ESP32 only)
 
     xTaskCreatePinnedToCore(taskCommunicateToR485Master, "taskCommunicateToR485Master", 10240, NULL, 1, NULL, 1);
-    // xTaskCreatePinnedToCore(taskControlMotor, "taskControlMotor", 10240, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(taskControlMotor, "taskControlMotor", 10240, NULL, 1, NULL, 1);
 
-    // xTaskCreatePinnedToCore(taskDebug, "taskDebug", 2048, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(taskDebug, "taskDebug", 2048, NULL, 1, NULL, 1);
 
     // xTaskCreatePinnedToCore(taskTest, "taskTest", 10240, NULL, 1, NULL, 1);
 
@@ -86,13 +115,20 @@ void setup()
 
 void timerReadSensor(void *pvParameters)
 {
+
+    CB_DauEp.readDebounce(10);
+    CB_Encoder.readDebounce(10);
+    CB_PhanLoai1_Trai.readDebounce(10);
+    CB_PhanLoai1_Phai.readDebounce(10);
+
+    CB_LongEp1.readDebounce(100);
+    CB_LongEp2.readDebounce(100);
 }
 
 void taskCommunicateToR485Master(void *pvParameters)
 {
     while (1)
     {
-
         if (ui8_phanhoi_TrangthaiLoi == 1 || ui8_phanhoi_firmware == 1)
             ui8_trangthaiRS485 = trangthaiRS485::DANGGUI;
         else
@@ -101,7 +137,6 @@ void taskCommunicateToR485Master(void *pvParameters)
         // Xử lý khi ở trạng thái nhận dữ liệu đến master
         if (ui8_trangthaiRS485 == trangthaiRS485::DANGNHAN)
         {
-            // SerialDebug.println("\ndang nhan");
             RS485.receive(buffer_receive);
 #ifdef ShowSerial
             if (RS485.isReceived)
@@ -120,10 +155,11 @@ void taskCommunicateToR485Master(void *pvParameters)
         // Xử lý khi ở trạng thái gửi dữ liệu đến master
         else if (ui8_trangthaiRS485 == trangthaiRS485::DANGGUI)
         {
-            SerialDebug.println("\ndang gui");
             if (ui8_phanhoi_TrangthaiLoi == 1)
             {
+
                 phanhoi_trangthailoi();
+
                 ui8_phanhoi_TrangthaiLoi = 0;
             }
             if (ui8_phanhoi_firmware == 1)
@@ -142,7 +178,7 @@ void taskControlMotor(void *pvParameters)
     while (1)
     {
 
-#if 0
+#if 1
         for (CoCauMotorDC *Motor : MotorDCArray)
         {
             if ((*Motor).TrangThai == STOP && (*Motor).YeuCau == STOP)
@@ -201,7 +237,7 @@ void taskControlMotor(void *pvParameters)
         }
 #endif
 
-#if 0
+#if 1
         for (CoCauMotorServo *Motor : MotorServoArray)
         {
             if ((*Motor).TrangThai == (*Motor).YeuCau)
@@ -249,38 +285,45 @@ void taskDebug(void *pvParameters)
         DebugSerial();
 
         vTaskDelay(2 / portTICK_PERIOD_MS);
+
+        // for (Input_PCF8574 *Cambien : CB_Array)
+        // {
+        //     SerialDebug.print((*Cambien).state);
+        //     SerialDebug.print(" ");
+        // }
+        // SerialDebug.println();
+
+        // vTaskDelay(2000 / portTICK_PERIOD_MS);
     }
 }
 void taskTest(void *pvParameters)
 {
     while (1)
     {
-#if 0
-        MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::LEFT;
+
+        MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::PHANLOAI1_LEFT;
         vTaskDelay(100 / portTICK_PERIOD_MS);
-        MotorPhanLoai2.YeuCau = TrangThaiMotorPhanLoai2::LEFT;
+        MotorPhanLoai2.YeuCau = TrangThaiMotorPhanLoai2::PHANLOAI2_LEFT;
         SerialDebug.println("FORWARD");
         vTaskDelay(10000 / portTICK_PERIOD_MS);
 
-        MotorPhanLoai2.YeuCau = TrangThaiMotorPhanLoai2::STOP;
+        MotorPhanLoai2.YeuCau = TrangThaiMotorPhanLoai2::PHANLOAI2_STOP;
         vTaskDelay(100 / portTICK_PERIOD_MS);
-        MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::STOP;
+        MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::PHANLOAI1_STOP;
         SerialDebug.println("Dung lai");
         vTaskDelay(1000 / portTICK_PERIOD_MS);
 
-        MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::RIGHT;
+        MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::PHANLOAI1_RIGHT;
         vTaskDelay(100 / portTICK_PERIOD_MS);
-        MotorPhanLoai2.YeuCau = TrangThaiMotorPhanLoai2::RIGHT;
+        MotorPhanLoai2.YeuCau = TrangThaiMotorPhanLoai2::PHANLOAI2_RIGHT;
         SerialDebug.println("REVERSE");
         vTaskDelay(10000 / portTICK_PERIOD_MS);
 
-        MotorPhanLoai2.YeuCau = TrangThaiMotorPhanLoai2::STOP;
+        MotorPhanLoai2.YeuCau = TrangThaiMotorPhanLoai2::PHANLOAI2_STOP;
         vTaskDelay(100 / portTICK_PERIOD_MS);
-        MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::STOP;
+        MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::PHANLOAI1_STOP;
         SerialDebug.println("Dung lai");
         vTaskDelay(5000 / portTICK_PERIOD_MS);
-
-#endif
     }
 }
 
@@ -434,11 +477,7 @@ void processRS485()
             }
             else
             {
-                // ERASE_ERROR_EEPROM();
-                PhanLoai.trangthaiLoi = TrangThaiLoi::KHONGLOI;
-                NghienChai.trangthaiLoi = TrangThaiLoi::KHONGLOI;
-                EpLon.trangthaiLoi = TrangThaiLoi::KHONGLOI;
-                SerialDebug.println("Da xoa loi");
+                xuly_yeucau_xoaloi();
                 break;
             }
         }
@@ -525,12 +564,18 @@ void processRS485()
 
 void goHome()
 {
-    PhanLoai.vitriYeucau = vitrithungracphanloai::CAN;
-    xuly_yeucau_phanloai();
+    SerialDebug.println("Yeu Cau Go Home");
     EpLon.trangthaiYeuCau = TrangThaiMotor::FORWARD;
-    xuly_yeucau_eplon();
-    NghienChai.trangthaiYeuCau = TrangThaiMotor::FORWARD;
-    xuly_yeucau_nghienchai();
+
+    if (EpLon.trangthaiLoi == TrangThaiLoi::KHONGLOI)
+    {
+        EpLon.beginTime = millis();
+        EpLon.lastCBstate = CB_DauEp.state;
+        EpLon.dangxulyFlag = 1;
+        EpLon.lastChangeTime = millis();
+        MotorEpLon.YeuCau = EpLon.trangthaiYeuCau;
+        EpLon.chovatFlag = 0;
+    }
 }
 
 // Xử lý yêu cầu phân loại từ board Master (Hàm chạy 1 lần)
@@ -558,7 +603,7 @@ void xuly_yeucau_phanloai()
             if (PhanLoai.vitriPhanloai1 != vitricocauphanloai::RIGHT)
             {
 
-                MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::RIGHT;
+                MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::PHANLOAI1_RIGHT;
                 PhanLoai.phanloai1_doneFlag = 0;
             }
             else if (PhanLoai.vitriPhanloai1 == vitricocauphanloai::RIGHT)
@@ -577,7 +622,7 @@ void xuly_yeucau_phanloai()
             // Nếu vị trí 1 hiện tại khác bên trái thì cho chạy
             if (PhanLoai.vitriPhanloai1 != vitricocauphanloai::LEFT)
             {
-                MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::LEFT;
+                MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::PHANLOAI1_LEFT;
                 PhanLoai.phanloai1_doneFlag = 0;
             }
             else
@@ -586,7 +631,7 @@ void xuly_yeucau_phanloai()
             // Nếu vị trí 2 hiện tại khác bên trái thì cho chạy
             if (PhanLoai.vitriPhanloai2 != vitricocauphanloai::LEFT)
             {
-                MotorPhanLoai2.YeuCau = TrangThaiMotorPhanLoai2::LEFT;
+                MotorPhanLoai2.YeuCau = TrangThaiMotorPhanLoai2::PHANLOAI2_LEFT;
                 PhanLoai.phanloai2_doneFlag = 0;
             }
             else
@@ -601,7 +646,7 @@ void xuly_yeucau_phanloai()
         {
             if (PhanLoai.vitriPhanloai1 != vitricocauphanloai::LEFT)
             {
-                MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::LEFT;
+                MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::PHANLOAI1_LEFT;
                 PhanLoai.phanloai1_doneFlag = 0;
             }
             else
@@ -609,7 +654,7 @@ void xuly_yeucau_phanloai()
 
             if (PhanLoai.vitriPhanloai2 != vitricocauphanloai::RIGHT)
             {
-                MotorPhanLoai2.YeuCau = TrangThaiMotorPhanLoai2::RIGHT;
+                MotorPhanLoai2.YeuCau = TrangThaiMotorPhanLoai2::PHANLOAI2_RIGHT;
                 PhanLoai.phanloai2_doneFlag = 0;
             }
             else
@@ -668,6 +713,31 @@ void xuly_yeucau_nghienchai()
     }
 }
 
+// Xử lý yêu cầu xóa lỗi (Hàm chạy  1 lần)
+void xuly_yeucau_xoaloi()
+{
+    ERASE_ERROR_EEPROM();
+
+    PhanLoai.trangthaiLoi = TrangThaiLoi::KHONGLOI;
+    PhanLoai.vitriHientai = vitrithungracphanloai::NOWHERE;
+    PhanLoai.vitriYeucau = vitrithungracphanloai::NOWHERE;
+    PhanLoai.vitriPhanloai1 = vitricocauphanloai::NOWHERE;
+    PhanLoai.vitriPhanloai2 = vitricocauphanloai::NOWHERE;
+    PhanLoai.dangxulyFlag = 0;
+    PhanLoai.phanloai1_doneFlag = 1;
+    PhanLoai.phanloai2_doneFlag = 1;
+
+    NghienChai.trangthaiLoi = TrangThaiLoi::KHONGLOI;
+    NghienChai.trangthaiYeuCau = TrangThaiMotorNghien::STOP;
+    NghienChai.yeucauStopFlag = 0;
+    NghienChai.dangRunFlag = 0;
+
+    PhanLoai.trangthaiLoi = TrangThaiLoi::KHONGLOI;
+    NghienChai.trangthaiLoi = TrangThaiLoi::KHONGLOI;
+    EpLon.trangthaiLoi = TrangThaiLoi::KHONGLOI;
+    SerialDebug.println("Da xoa loi");
+    goHome();
+}
 // Kiểm tra hoàn thành phân loại (Hàm để trong loop)
 void kiemtra_hoatdong_phanloai()
 {
@@ -708,22 +778,22 @@ void kiemtra_hoatdong_phanloai()
             PhanLoai.phanloai1_doneFlag = 1;
             PhanLoai.phanloai2_doneFlag = 1;
 
-            MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::STOP;
-            MotorPhanLoai2.YeuCau = TrangThaiMotorPhanLoai2::STOP;
+            MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::PHANLOAI1_STOP;
+            MotorPhanLoai2.YeuCau = TrangThaiMotorPhanLoai2::PHANLOAI2_STOP;
             PhanLoai.trangthaiLoi = TrangThaiLoi::COLOI;
             SET_ERROR_EEPROM();
         }
-        if (MotorPhanLoai1.YeuCau == TrangThaiMotorPhanLoai1::LEFT &&
+        if (MotorPhanLoai1.YeuCau == TrangThaiMotorPhanLoai1::PHANLOAI1_LEFT &&
             CB_PhanLoai1_Trai.state == 1)
         {
             PhanLoai.phanloai1_doneFlag = 1;
-            MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::STOP;
+            MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::PHANLOAI1_STOP;
         }
-        if (MotorPhanLoai1.YeuCau == TrangThaiMotorPhanLoai1::RIGHT &&
+        if (MotorPhanLoai1.YeuCau == TrangThaiMotorPhanLoai1::PHANLOAI1_RIGHT &&
             CB_PhanLoai1_Phai.state == 1)
         {
             PhanLoai.phanloai1_doneFlag = 1;
-            MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::STOP;
+            MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::PHANLOAI1_STOP;
         }
     }
 
@@ -733,7 +803,7 @@ void kiemtra_hoatdong_phanloai()
         if (millis() - PhanLoai.beginTime > PhanLoai.timeStop_phanloai2)
         {
             SerialDebug.print("Stop phanloai 2");
-            MotorPhanLoai2.YeuCau = TrangThaiMotorPhanLoai2::STOP;
+            MotorPhanLoai2.YeuCau = TrangThaiMotorPhanLoai2::PHANLOAI2_STOP;
             PhanLoai.phanloai2_doneFlag = 1;
         }
     }
@@ -769,19 +839,25 @@ void kiemtra_hoatdong_eplon()
         {
             if (millis() - EpLon.beginTime > EpLon.timeWait) // Nếu quá thời gian chờ vật thì báo bình thường hoặc báo lỗi
             {
+#if defined(CoVatMoiChayEpLon)
                 EpLon.dangxulyFlag = 0;
+#elif defined(GuiLenhLaEpLon)
+                EpLon.lastChangeTime = millis();
+                MotorEpLon.YeuCau = TrangThaiMotorEp::FORWARD;
+                EpLon.chovatFlag = 0;
+#endif
             }
 
             if (CB_LongEp1.state == 1 || CB_LongEp2.state == 1) // đã có vật trong lồng thì không chờ nữa
             {
                 EpLon.lastChangeTime = millis();
-                MotorEpLon.YeuCau = EpLon.trangthaiYeuCau;
+                MotorEpLon.YeuCau = TrangThaiMotorEp::FORWARD;
                 EpLon.chovatFlag = 0;
             }
         }
         else if (EpLon.chovatFlag == 0) // Nếu không có cờ chờ vật thì cứ chạy lồng ép bình thường
         {
-            if (EpLon.count > 10) // Nếu ép 10 lần mà CB vẫn có vật
+            if (EpLon.count >= 3) // Nếu ép 3 lần mà CB vẫn có vật
             {
                 EpLon.trangthaiLoi = TrangThaiLoi::COLOI;
                 MotorEpLon.YeuCau = TrangThaiMotorEp::STOP;
@@ -922,8 +998,8 @@ void kiemtra_tatdongco()
         ui2_tatDongCo_doLoi_flag == 0)
     {
         ui2_tatDongCo_doLoi_flag = 1;
-        MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::STOP;
-        MotorPhanLoai2.YeuCau = TrangThaiMotorPhanLoai2::STOP;
+        MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::PHANLOAI1_STOP;
+        MotorPhanLoai2.YeuCau = TrangThaiMotorPhanLoai2::PHANLOAI2_STOP;
         MotorNghienChai.YeuCau = TrangThaiMotorNghien::STOP;
         MotorEpLon.YeuCau = TrangThaiMotorEp::STOP;
         NghienChai.dangRunFlag = 0;
@@ -934,6 +1010,7 @@ void kiemtra_tatdongco()
 
 void phanhoi_trangthailoi()
 {
+
     uint8_t trangthai_Phanloai = ((PhanLoai.dangxulyFlag == 1) ? 0x02 : PhanLoai.trangthaiLoi);
     uint8_t trangthai_Nghien = (NghienChai.trangthaiLoi);
     uint8_t trangthai_Ep = ((EpLon.dangxulyFlag == 1) ? 0x02 : EpLon.trangthaiLoi);
@@ -1070,14 +1147,7 @@ void serialDebugProcess()
 
     else if (inputString == "xoaloi")
     {
-        PhanLoai.trangthaiLoi = TrangThaiLoi::KHONGLOI;
-        NghienChai.trangthaiLoi = TrangThaiLoi::KHONGLOI;
-        EpLon.trangthaiLoi = TrangThaiLoi::KHONGLOI;
-        PhanLoai.vitriHientai = vitrithungracphanloai::NOWHERE;
-        PhanLoai.vitriYeucau = vitrithungracphanloai::NOWHERE;
-        PhanLoai.vitriPhanloai1 = vitricocauphanloai::NOWHERE;
-        PhanLoai.vitriPhanloai2 = vitricocauphanloai::NOWHERE;
-
+        xuly_yeucau_xoaloi();
         SerialDebug.println("Xoaloi");
         // ERASE_ERROR_EEPROM();
     }
@@ -1086,45 +1156,57 @@ void serialDebugProcess()
     {
         ui8_admin_control_motor = true;
         SerialDebug.println("pl1 xoay trai");
-        MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::LEFT;
+        MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::PHANLOAI1_LEFT;
     }
 
     else if (inputString == "pl1_phai")
     {
         ui8_admin_control_motor = true;
         SerialDebug.println("pl1 xoay phai");
-        MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::RIGHT;
+        MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::PHANLOAI1_RIGHT;
     }
 
     else if (inputString == "pl1_stop")
     {
         ui8_admin_control_motor = true;
         SerialDebug.println("pl1 stop");
-        MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::STOP;
+        MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::PHANLOAI1_STOP;
     }
     else if (inputString == "pl2_trai")
     {
         ui8_admin_control_motor = true;
         SerialDebug.println("pl2 xoay trai");
-        MotorPhanLoai2.YeuCau = TrangThaiMotorPhanLoai2::LEFT;
+        MotorPhanLoai2.YeuCau = TrangThaiMotorPhanLoai2::PHANLOAI2_LEFT;
     }
     else if (inputString == "pl2_phai")
     {
         ui8_admin_control_motor = true;
         SerialDebug.println("pl2 xoay phai");
-        MotorPhanLoai2.YeuCau = TrangThaiMotorPhanLoai2::RIGHT;
+        MotorPhanLoai2.YeuCau = TrangThaiMotorPhanLoai2::PHANLOAI2_RIGHT;
     }
     else if (inputString == "pl2_stop")
     {
         ui8_admin_control_motor = true;
         SerialDebug.println("pl2 stop");
-        MotorPhanLoai2.YeuCau = TrangThaiMotorPhanLoai2::STOP;
+        MotorPhanLoai2.YeuCau = TrangThaiMotorPhanLoai2::PHANLOAI2_STOP;
+    }
+
+    else if (inputString == "admin_eplon_fw")
+    {
+        ui8_admin_control_motor = true;
+        SerialDebug.println("admin_eplon_fw");
+        MotorEpLon.YeuCau = TrangThaiMotorEp::FORWARD;
     }
 
     else if (inputString == "end_admin")
     {
+
         ui8_admin_control_motor = false;
         SerialDebug.println("end admin control");
+        MotorEpLon.YeuCau = TrangThaiMotorEp::STOP;
+        MotorPhanLoai1.YeuCau = TrangThaiMotorPhanLoai1::PHANLOAI1_STOP;
+        MotorPhanLoai2.YeuCau = TrangThaiMotorPhanLoai2::PHANLOAI2_STOP;
+        MotorNghienChai.YeuCau = TrangThaiMotorNghien::STOP;
     }
 }
 
