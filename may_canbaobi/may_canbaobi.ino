@@ -183,6 +183,8 @@ void setup() {
     Wire.begin();
     Serial_debug.begin(115200);
 
+    // EEPROM.begin(512); // Initialize EEPROM with size 512 bytes
+
     // inputString.reserve(200);
 
     scan_i2c();
@@ -206,19 +208,75 @@ void setup() {
 } 
 
 
-void serialEvent() {
-  while (Serial_debug.available()) 
-  {
-    // get the new byte:
-    char inChar = (char)Serial_debug.read();
-    // add it to the inputString:
-    inputString += inChar;
-    // if the incoming character is a newline, set a flag so the main loop can
-    // do something about it:
-    if (inChar == '\n') {
-      stringComplete = true;
-    }
-  }
+// void serialEvent() {
+//   while (Serial_debug.available()) 
+//   {
+//     // get the new byte:
+//     char inChar = (char)Serial_debug.read();
+//     // add it to the inputString:
+//     inputString += inChar;
+//     // if the incoming character is a newline, set a flag so the main loop can
+//     // do something about it:
+//     if (inChar == '\n') {
+//       stringComplete = true;
+//     }
+//   }
+// }
+
+void serialEvent()
+{
+	//inputString = "";
+	while (Serial.available()){
+		char inChar = (char)Serial.read();
+		//Serial.print(inChar);
+		if (inChar == '\n') {
+			stringComplete = true;
+			//Serial.print("Chuoi String: ");
+			//Serial.println(inputString);
+		}
+		if(first_char){
+			//Serial.print("Ki tu dau tien.");
+			
+			if((inChar == '+') || (inChar == '-')){
+				// Serial.print("First char: ");
+				// Serial.println(inChar);
+				isNum = true;
+			}
+			if(isDigit(inChar)){
+				// Serial.print("First char: ");
+				// Serial.println(inChar);
+				isKg = true;
+			}
+		}	
+		if(stringComplete == false){
+			if(calibLoadcell){
+				if(isNum){
+					inputNum += inChar;
+				}	
+				else if(isKg){
+					inputKg += inChar;
+					
+				}
+				else{
+					inputString += inChar;
+				}
+			}
+			else if(calibHight){
+				//if(isKg){
+					inputMet += inChar;
+				//}
+			}
+			else if(input_time){
+				
+				inputTime += inChar;
+				
+			}
+			else {
+				inputString += inChar;
+			}
+			first_char = false;	
+		}	
+	}
 }
 
 void Serial_process()
@@ -228,6 +286,44 @@ void Serial_process()
   if(inputString=="batdaucan\n")
   {
     Serial_debug.println("bat dau qua trinh can");
+  }
+
+  if(inputString=="calib\n")
+  {
+    Serial_debug.println("calib can");
+    scale_value_calib = array_scale[0];
+    Serial.print(F("Input text:  "));
+    Serial.println(inputString);
+    calibLoadcell = true;
+    Serial.print(F("Calib Loadcell:  "));
+    Serial.println(calibLoadcell);
+    Serial.print(F("scale_value_calib:  "));
+    Serial.println(scale_value_calib);
+    
+  }
+
+  if(inputString == "exitcalib\n")
+  {
+			if(calibLoadcell){
+				Serial.println(F("Thoat calib !"));
+				calibLoadcell = false;
+				doc_eeprom_w();
+				
+			}
+			Serial.print(F("Input text:  "));
+			Serial.println(inputString);
+			
+			Serial.print(F("Calib Loadcell:  "));
+			Serial.println(calibLoadcell);
+			
+		}
+
+  if (inputString == "w_reset"){
+				// buzzer_calib();
+				scale.power_up();
+				scale.tare();
+				ghi_eeprom_offsetloadcell();
+				// inputString = "";
   }
 
   else
@@ -261,6 +357,75 @@ void Serial_process()
     }
   }
 
+}
+
+/* ---------------------- Ghi giá trị offset loadcell vào Eeprom ----------------------------*/
+void ghi_eeprom_offsetloadcell() {
+	
+	long offset_value = scale.get_offset();
+	byte* z = (byte*)(void*)&offset_value;
+	for(unsigned int t = 0; t<sizeof(offset_value); t++){
+		add_eeprom = t+28;
+		EEPROM.write(add_eeprom, *z);
+		
+		//Serial.println(*q, HEX);
+		delay(5);
+		z++;
+		
+	}
+	Serial.print (F("Gia tri offset ghi vao EEPROM = "));
+	Serial.println (offset_value);
+}
+/* ---------------------- Đọc giá trị offset loadcell từ Eeprom ----------------------------*/
+void doc_eeprom_offsetloadcell() {
+	long offset_read ;
+	byte* w = (byte*)(void*)&offset_read;
+	for(unsigned int i = 0;i<sizeof(offset_read); i++){
+		add_eeprom = i+28;
+		*w = EEPROM.read(add_eeprom);
+		
+		delay(5);
+		//Serial.print(*p, HEX);
+		w++;
+	}
+	offset_scale = offset_read;
+	Serial.print (F("Gia tri offset doc EEPROM khi khoi dong = "));
+	Serial.println (offset_scale);
+	
+}
+
+void doc_eeprom_w(){
+	//Serial.println(F("Bat dau doc EEPROM !"));
+	struct myObject 
+{
+		double getvalue1;
+		float scalevalue1;
+		double getvalue2;
+		float scalevalue2;
+		double getvalue3;
+		float scalevalue3;
+	};
+	unsigned int address_doc = 0;
+	myObject data_eeprom;
+	EEPROM.get(address_doc, data_eeprom); // Doc du lieu tu EEPROM.
+	array_get [0] = data_eeprom.getvalue1;
+	array_scale [0] = data_eeprom.scalevalue1;
+	array_get [1] = data_eeprom.getvalue2;
+	array_scale [1] = data_eeprom.scalevalue2;
+	array_get [2] = data_eeprom.getvalue3;
+	array_scale [2] = data_eeprom.scalevalue3;
+	Serial.print(F("Get_value"));
+	Serial.print(F("\t \t"));
+	Serial.print(F("array_scale_calib"));
+	Serial.println();
+	for(byte i = 0; i<3; i++)
+  {
+		Serial.print(array_get [i]);
+		Serial.print(F("\t"));
+		Serial.print(array_scale [i]);
+		Serial.println();
+	}
+	// Serial.println("Da doc xong EEPROM !");
 }
 
 void hienthi_khoiluong(float ui8_kl)
@@ -300,7 +465,47 @@ void hienthi_moichao()
     // lcd.setCursor(0, 3);
     // lcd.print("AUTHOR DANHNGUYEN");
   }
+}
 
+void calib_can()
+{
+  if(calibLoadcell)
+  {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("DANG CALIB CAN");
+    if(isNum){
+			Serial.print(F("input = "));
+			Serial.println(inputNum);
+			Serial.print(F("Chuoi nhan duoc la so:"));
+			Serial.println(inputNum.toInt());
+			scale_value_calib += inputNum.toInt(); 	//Chuyển String thành số Int.
+			Serial.print(F("Gia tri sau thay doi: "));
+			Serial.println(scale_value_calib);
+			inputString = "";
+			inputNum = "";
+			isNum = false;
+			stringComplete = false;
+			//first_char = true;
+		}
+		else if(isKg){
+			float kg;
+			Serial.print(F("input = "));
+			Serial.println(inputKg);
+			Serial.print(F("Chuoi nhan duoc la khoi luong:"));
+			Serial.println(inputKg.toFloat());
+			kg =  inputKg.toFloat(); 	//Chuyển String thành số Int.
+			scale_value_calib = float(get_value_sub/kg);
+			Serial.print(F("Scale_value tinh duoc: "));
+			Serial.println(scale_value_calib);
+			inputString = "";
+			inputKg = "";
+			isKg = false;
+			stringComplete = false;
+			//first_char = true;
+		}
+    
+  }
 }
 
 void loop() {

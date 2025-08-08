@@ -28,10 +28,38 @@ int calib=0;
 bool ui2_detect = false;
 bool ui2_ena_scale = false;
 
-String inputString = "";         // a String to hold incoming data
-bool stringComplete = false;  // whether the string is complete
+// Khai bao bien xu ly data Serial.
+String inputString = "" , inputNum, inputKg, inputMet, inputTime;
+boolean stringComplete = false; 
+// boolean isNum = false;
+boolean isKg = false;
+boolean first_char = true;
+boolean input_time = false;
 
 uint32_t ui32_timeout_hienthi = 0; // Thời gian hiển thị
 uint8_t ui8_batdauhienthi=0;
 uint8_t ui8_moichao=0;
 float ui8_khoiluong=0;
+
+/* --------------------- Mang tam luu & doc eeprom ---------------------------*/
+float array_scale [3] = {};
+float array_get [3] = {};
+
+
+/* ------------------- Khai bao bien do can nang.------------------------ */
+float weights = 0.00; 
+float weightsTemp;
+float test;
+char byteWeights[4];
+boolean calibLoadcell = false;
+boolean calibHight = false;
+long doc_analog; 	//thông số đọc được trước trừ bì.
+float get_value_sub; 	//thông số đọc được sau trừ bì.
+float khoiluong;	//giá trị qui đổi ra khối lượng (kg).
+float scale_value;	//Hệ số để qui đổi ra khối lượng.
+float scale_value_calib;
+long offset_scale;
+const float tolerances = 0.35;
+byte lando = 45; //So lan lay gia tri do.
+unsigned int add_eeprom;
+boolean isNum = false;
