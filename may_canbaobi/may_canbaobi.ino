@@ -218,7 +218,7 @@ void serialEvent() {
     if (inChar == '\n') {
       stringComplete = true;
     }
-}
+  }
 }
 
 void Serial_process()
