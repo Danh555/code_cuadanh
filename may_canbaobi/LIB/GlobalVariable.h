@@ -34,7 +34,7 @@ boolean stringComplete = false;
 // boolean isNum = false;
 boolean isKg = false;
 boolean first_char = true;
-boolean input_time = false;
+// boolean input_time = false;
 
 uint32_t ui32_timeout_hienthi = 0; // Thời gian hiển thị
 uint8_t ui8_batdauhienthi=0;
@@ -44,6 +44,17 @@ float ui8_khoiluong=0;
 /* --------------------- Mang tam luu & doc eeprom ---------------------------*/
 float array_scale [3] = {};
 float array_get [3] = {};
+
+struct myObject {
+	float field1;
+	float field2;
+};
+unsigned int address;
+boolean request_h = false;		//Biến nhận lệnh xử lý chiều cao
+boolean request_w = false;		//Biến nhận lệnh xử lý cân nặng	
+boolean request_l = false;		//Biến nhận lệnh xử lý LED
+boolean h_measure_ser = false;   //Biến nhận lệnh đo từ serial, bằng 1 khi nhận lệnh từ Serial.
+boolean input_time = false;
 
 
 /* ------------------- Khai bao bien do can nang.------------------------ */

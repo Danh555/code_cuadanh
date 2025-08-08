@@ -205,6 +205,11 @@ void setup() {
     lcd.clear();
     ui8_moichao = 1;
     ui32_timeout_hienthi = millis() + 500; // Thời gian hiển thị là 5 giây
+
+    Serial.println(F("Can: nhap \"w_ok\""));
+    Serial_debug.println(F("Vao che do calib can: nhap \"calib\""));
+    Serial_debug.println(F("Khai bao khoi luong: \"nhap so\""));
+    Serial_debug.println(F("Tinh chinh gia tri Scale: nhap so co dau \"+\" hoac \"-\" phia truoc so"));
 } 
 
 
@@ -325,6 +330,14 @@ void Serial_process()
 				ghi_eeprom_offsetloadcell();
 				// inputString = "";
   }
+
+  if(inputString == "w_ok")
+  {
+				//buzzer();
+				measure_w();
+				// inputString = "";
+				// ok = true;
+  } 
 
   else
   {
@@ -504,8 +517,167 @@ void calib_can()
 			stringComplete = false;
 			//first_char = true;
 		}
+
+    else {
+			Serial.print(F("input = "));
+			Serial.println(inputString);
+			Serial.print(F("Chuoi nhan duoc la text:"));
+			Serial.println(inputString);
+			thuc_hien();
+			inputString = "";
+			stringComplete = false;
+			
+		}
+
+    scale.set_scale(scale_value_calib);
+
+		doc_analog = scale.read_average(5);
+		get_value_sub = scale.get_value(5);
+		
+		khoiluong = scale.get_units(5);
+		Serial.print(doc_analog);
+		Serial.print(F("\t\t"));
+		Serial.print(get_value_sub);
+		Serial.print(F("\t\t"));
+		
+		Serial.print(khoiluong, 2);	
+		Serial.print(F(" Kg \t"));
+		Serial.print (F("scale value = "));
+		Serial.println(scale_value_calib);
+		scale.power_down();			        // put the ADC in sleep mode
+		delay(1000);
+		scale.power_up();
     
   }
+}
+
+void measure_w()
+{
+  
+	unsigned long time_now = millis();
+	unsigned long time_do = millis();
+	unsigned long time_wait = millis();
+	const byte duration = 150;
+	boolean status_bip = true;
+	float a = 0, sub = 0, temp;
+	boolean first = false;
+	float scale_sample, get_sample;
+	// SimpleKalmanFilter bo_loc(2, 2, 0.1);
+	// bo_loc.deleteEstimate();
+	scale.power_up();
+	while(!first){
+		if((millis()-time_wait) >= 1000){
+			get_sample = scale.get_value(5);
+			// Serial.print(get_sample);
+			// Serial.print("\t");
+			if(get_sample <= array_get[0]){
+				scale_value = array_scale[0];
+				scale.set_scale(scale_value);
+			}
+			else if((array_get[0] < get_sample) && (get_sample<= array_get[1])){
+				scale_value = array_scale[1];
+				scale.set_scale(scale_value);
+			}
+			else if(((array_get[1] < get_sample) && (get_sample<= array_get[2])) || (get_sample > array_get[2]) ){
+				scale_value = array_scale[2];
+				scale.set_scale(scale_value);
+			}
+			else{
+			}
+			// Serial.print("gia tri scale value: ");
+			// Serial.println(scale_value);
+			temp = scale.get_units(2);
+			// bo_loc.update(temp);
+			first = true;
+		}
+	}
+	if(first){
+		for (byte i = 0; i<lando; i++){
+			if((millis() - time_now) >= duration){
+				status_bip =!status_bip;
+				// digitalWrite(bip, status_bip);
+				time_now = millis();
+			}
+			a = scale.get_units(1);
+			//Serial.print("lan do  ");
+			//Serial.print(i+1);
+			//Serial.print(": ");
+			//Serial.print(a,2);
+			//Serial.print(";\t");
+			// sub =  bo_loc.updateEstimate(a);
+			//Serial.print("Gtri loc Kalman: ");
+			//Serial.println(sub);
+			weights = a;
+			//delay(1);
+		}
+	}
+	Serial.print(F("Khoi luong: "));
+	Serial.print(weights);	
+	Serial.println(F(" Kg"));
+	// digitalWrite(bip, LOW);
+	// Serial.print("\t Thoi gia do: ");
+	// Serial.println(millis()-time_do);
+}
+
+void thuc_hien(){
+	if(inputString == "save 1"){
+		address = 0;
+		myObject Save1 = {get_value_sub, scale_value_calib};
+		EEPROM.put(address, Save1);
+		Serial.print(F("Dia chi bat dau: "));
+		Serial.println(address);
+		Serial.println(F("Da ghi du lieu thu 1 !"));
+	}
+	else if(inputString == "save 2"){
+		address = 8;
+		myObject Save2 = {get_value_sub, scale_value_calib};
+		EEPROM.put(address, Save2);
+		Serial.print(F("Dia chi bat dau: "));
+		Serial.println(address);
+		Serial.println(F("Da ghi du lieu thu 2 !"));
+	}
+	else if(inputString == "save 3"){
+		address = 16;
+		myObject Save3 = {get_value_sub, scale_value_calib};
+		EEPROM.put(address, Save3);
+		Serial.print(F("Dia chi bat dau: "));
+		Serial.println(address);
+		Serial.println(F("Da ghi du lieu thu 3 !"));
+	}
+	else if(inputString == "readAll"){
+		unsigned int getAddress = 0;
+		struct getAlldata {
+			float getValue1;
+			float getScale1;
+			float getValue2;
+			float getScale2;
+			float getValue3;
+			float getScale3;
+			
+		};
+		getAlldata Data;
+		EEPROM.get(getAddress, Data);
+		Serial.println(F("Du lieu doc duoc: "));
+		// Cap du lieu 1
+		Serial.print(F("Get value 1:  "));
+		Serial.print(Data.getValue1);
+		Serial.print(F("\t"));
+		Serial.print(F("Get Get scale 1:  "));
+		Serial.println(Data.getScale1);
+		// Cap du lieu 2
+		Serial.print(F("Get value 2:  "));
+		Serial.print(Data.getValue2);
+		Serial.print(F("\t"));
+		Serial.print(F("Get Get scale 2:  "));
+		Serial.println(Data.getScale2);
+		// // Cap du lieu 3
+		Serial.print(F("Get value 3:  "));
+		Serial.print(Data.getValue3);
+		Serial.print(F("\t"));
+		Serial.print(F("Get Get scale 3:  "));
+		Serial.println(Data.getScale3);
+		
+	}
 }
 
 void loop() {
@@ -519,7 +691,8 @@ void loop() {
     stringComplete = false;
   }
 
-  hienthi_khoiluong(ui8_khoiluong);
+  // hienthi_khoiluong(ui8_khoiluong);
+  hienthi_khoiluong(weights);
   hienthi_moichao();
 
 }

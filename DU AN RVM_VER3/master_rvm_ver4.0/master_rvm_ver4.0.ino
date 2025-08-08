@@ -392,6 +392,7 @@ static void usbEventCallback(void *arg, esp_event_base_t event_base, int32_t eve
             // control_BoNghien(0x01,ui8_slave[1]);
             ui8_control_BoNghien=0x01;
             ui8_xoaloi=0;
+            ui8_ketthucnghien=0;
           }
 
           if(input=="tatled")
@@ -1026,7 +1027,7 @@ void process()
 				ui8_hacuadi = 0;
         ui8_xoaloi=0;
         // control_BoNghien(0x01,ui8_slave[1]);
-        ui8_ketthucnghien=1;
+        ui8_ketthucnghien=0;
         ui8_control_BoNghien=0x01;
         ui8_status = 0x00;
         ui8_phanhoi_dungFunction=1;
@@ -1397,7 +1398,7 @@ void quatrinh_1()
 void quatrinh_2()
 {
   int phathien_chai = doccambien(cambien_vat1,20);
-  int tam = doccambien(cambien_vat2,50);
+  int tam = doccambien(cambien_vat2,10);
 
   if(tam==1)
   {
