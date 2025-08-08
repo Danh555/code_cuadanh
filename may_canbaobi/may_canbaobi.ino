@@ -91,9 +91,9 @@ void start_locadcell()
         if(ConfirmWeith > isDetected)
         {
           cnt++;
-          Serial_debug.print("cnt: ");
-          Serial_debug.println(cnt);
-          delay(200);
+          // Serial_debug.print("cnt: ");
+          // Serial_debug.println(cnt);
+          // delay(200);
         }
         else
         {
@@ -114,75 +114,75 @@ void start_locadcell()
         }
       }
     }
-    else if(fl_CurrentWeith > ScaleLimited)
-    {
-      float Weith_exceed_limit = scale.get_units();
-      while (Weith_exceed_limit > ScaleLimited)
-      {
-        /* 
-          not thing to do 
-          wait until the object is removed from the scale
-        */
-        Weith_exceed_limit = scale.get_units();
-        if(Weith_exceed_limit < 10) 
-        {
-          break;
-        }
-      }
-    }
-    /* 
-      Handle the pouring process, read the value continuously during the pouring process
-      If the weith is not enough, continue pouring, if it is enough, stop pouring
-      If the object is not detected, stop pouring
-    */
-    if(ui2_detect)  
-    {
-      float ConfirmWeith_object_detected = scale.get_units();
-      // Serial_debug.println("so 1");
-      while(ConfirmWeith_object_detected < ScaleLimited) //The weith is not enough
-      {
-        ConfirmWeith_object_detected = scale.get_units(); 
-        // Serial_debug.println("so 2");
-        // BlinkLed(); //blink led to show the status of the device
-        if(ConfirmWeith_object_detected > ScaleLimited) //The weith is enough
-        {
-          /* Stop pouring */
-          Serial_debug.println("so 3");
-          // Send_data_EspNow(SLAVE_ID, STOP_POURING, 4); 
-          // ui8_batdaucan=0;
-          // ui2_ena_scale = false;
-          ui2_detect = false; //reset the object detected flag
-          // Serial_debug.println("Stop pouring so 3...");
-          Serial_debug.println(ConfirmWeith_object_detected);
-          break;
-        }
-        if(ConfirmWeith_object_detected < isDetected) //There is no object on the scale
-        {
-          /* Stop pouring */
-          Serial_debug.println("so 4");
-          // Send_data_EspNow(SLAVE_ID, STOP_POURING, 4);
-          // ui8_batdaucan=0;
-          // ui2_ena_scale = false;
-          ui2_detect = false; //reset the object detected flag
-          // Serial_debug.println("Stop pouring so 4..."); 
-          Serial_debug.println(ConfirmWeith_object_detected);
-          break;
-        }
-        else 
-        {
-          Serial_debug.print("ConfirmWeith_object_detected: ");
-          Serial_debug.println(ConfirmWeith_object_detected);
-          ui2_detect = false; //reset the object detected flag 
-        }
-      }
-    }
+    // else if(fl_CurrentWeith > ScaleLimited)
+    // {
+    //   float Weith_exceed_limit = scale.get_units();
+    //   while (Weith_exceed_limit > ScaleLimited)
+    //   {
+    //     /* 
+    //       not thing to do 
+    //       wait until the object is removed from the scale
+    //     */
+    //     Weith_exceed_limit = scale.get_units();
+    //     if(Weith_exceed_limit < 10) 
+    //     {
+    //       break;
+    //     }
+    //   }
+    // }
+    // /* 
+    //   Handle the pouring process, read the value continuously during the pouring process
+    //   If the weith is not enough, continue pouring, if it is enough, stop pouring
+    //   If the object is not detected, stop pouring
+    // */
+    // if(ui2_detect)  
+    // {
+    //   float ConfirmWeith_object_detected = scale.get_units();
+    //   // Serial_debug.println("so 1");
+    //   while(ConfirmWeith_object_detected < ScaleLimited) //The weith is not enough
+    //   {
+    //     ConfirmWeith_object_detected = scale.get_units(); 
+    //     // Serial_debug.println("so 2");
+    //     // BlinkLed(); //blink led to show the status of the device
+    //     if(ConfirmWeith_object_detected > ScaleLimited) //The weith is enough
+    //     {
+    //       /* Stop pouring */
+    //       Serial_debug.println("so 3");
+    //       // Send_data_EspNow(SLAVE_ID, STOP_POURING, 4); 
+    //       // ui8_batdaucan=0;
+    //       // ui2_ena_scale = false;
+    //       ui2_detect = false; //reset the object detected flag
+    //       // Serial_debug.println("Stop pouring so 3...");
+    //       Serial_debug.println(ConfirmWeith_object_detected);
+    //       break;
+    //     }
+    //     if(ConfirmWeith_object_detected < isDetected) //There is no object on the scale
+    //     {
+    //       /* Stop pouring */
+    //       Serial_debug.println("so 4");
+    //       // Send_data_EspNow(SLAVE_ID, STOP_POURING, 4);
+    //       // ui8_batdaucan=0;
+    //       // ui2_ena_scale = false;
+    //       ui2_detect = false; //reset the object detected flag
+    //       // Serial_debug.println("Stop pouring so 4..."); 
+    //       Serial_debug.println(ConfirmWeith_object_detected);
+    //       break;
+    //     }
+    //     else 
+    //     {
+    //       Serial_debug.print("ConfirmWeith_object_detected: ");
+    //       Serial_debug.println(ConfirmWeith_object_detected);
+    //       ui2_detect = false; //reset the object detected flag 
+    //     }
+    //   }
+    // }
 }
 
 void setup() {
     // put your setup code here, to run once:
     Wire.begin();
     Serial_debug.begin(115200);
-
+    scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
     // EEPROM.begin(512); // Initialize EEPROM with size 512 bytes
 
     // inputString.reserve(200);
@@ -205,7 +205,10 @@ void setup() {
     lcd.clear();
     ui8_moichao = 1;
     ui32_timeout_hienthi = millis() + 500; // Thời gian hiển thị là 5 giây
-
+    scale.set_offset(offset_scale);
+    doc_eeprom_offsetloadcell();
+    doc_eeprom_w();
+    
     Serial.println(F("Can: nhap \"w_ok\""));
     Serial_debug.println(F("Vao che do calib can: nhap \"calib\""));
     Serial_debug.println(F("Khai bao khoi luong: \"nhap so\""));
@@ -553,7 +556,8 @@ void calib_can()
 
 void measure_w()
 {
-  
+  if(ui2_detect==false) return;
+
 	unsigned long time_now = millis();
 	unsigned long time_do = millis();
 	unsigned long time_wait = millis();
@@ -608,12 +612,15 @@ void measure_w()
 			//Serial.print("Gtri loc Kalman: ");
 			//Serial.println(sub);
 			weights = a;
+      ui2_detect = true; // Set the flag to true to indicate that the object is detected
+      ui8_batdauhienthi=1;
+      Serial.print(F("Khoi luong: "));
+      Serial.print(weights);	
+      Serial.println(F(" Kg"));
 			//delay(1);
 		}
 	}
-	Serial.print(F("Khoi luong: "));
-	Serial.print(weights);	
-	Serial.println(F(" Kg"));
+	
 	// digitalWrite(bip, LOW);
 	// Serial.print("\t Thoi gia do: ");
 	// Serial.println(millis()-time_do);
@@ -692,6 +699,8 @@ void loop() {
   }
 
   // hienthi_khoiluong(ui8_khoiluong);
+  start_locadcell();
+  measure_w();
   hienthi_khoiluong(weights);
   hienthi_moichao();
 
