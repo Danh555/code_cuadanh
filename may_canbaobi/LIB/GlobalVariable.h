@@ -2,11 +2,12 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 #include <EEPROM.h>
+#include <SimpleKalmanFilter.h>
 
 // define chân GPIO cho LoadCell
 #define LOADCELL_DOUT_PIN   4
 #define LOADCELL_SCK_PIN    3
-#define calibration_factor -742.6165198237885 //-742.72917232022  //-742.6165198237885
+#define calibration_factor 420 //-742.72917232022  //-742.6165198237885
 
 #define Serial_debug    Serial
 #define id_i2c 0x27
@@ -74,3 +75,7 @@ const float tolerances = 0.35;
 byte lando = 45; //So lan lay gia tri do.
 unsigned int add_eeprom;
 boolean isNum = false;
+
+int test_can=0;
+unsigned long timeEeprom = 0; 
+float ui8_prewest = 0; // Biến lưu giá trị trước đó của nút nhấn

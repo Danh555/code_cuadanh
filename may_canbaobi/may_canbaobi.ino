@@ -37,8 +37,7 @@ void scan_i2c()
 void init_scale()
 {
   scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
-  scale.set_scale(calibration_factor);
-  scale.tare();
+  scale.set_offset(offset_scale);
 }
 
 void calibrateOffset()
@@ -74,119 +73,37 @@ void hienthi_lcd_test()
 
 void start_locadcell()
 {
-    float fl_CurrentWeith = scale.get_units();
-    if(fl_CurrentWeith<10)
+    // if(test_can==0) return;
+    float weight = fabs(scale.get_units(5) / calibration_factor); // luôn dương
+    weights=weight/1000.0,1;
+    Serial.print("Khối lượng: ");
+    Serial.print(weights); // đổi ra gram
+    Serial.println(" kg");
+    
+    if(weights < 0.2)
     {
-      ui2_detect = false;
-    } 
-    else if((isDetected < fl_CurrentWeith) && (fl_CurrentWeith < ScaleLimited) && ui2_detect == false)  //The object is detected
-    {
-      //Send a signal to main board to start pouring 
-      //Check input of 10th time to confirm the object is detected if all times are the same
-      float ConfirmWeith;
-      uint8_t cnt = 0;
-      while(cnt < 10)
-      {
-        ConfirmWeith = scale.get_units();
-        if(ConfirmWeith > isDetected)
-        {
-          cnt++;
-          // Serial_debug.print("cnt: ");
-          // Serial_debug.println(cnt);
-          // delay(200);
-        }
-        else
-        {
-          cnt = 0;
-          break;
-        }
-      }
-      if(cnt >= 10)
-      {
-        ConfirmWeith = scale.get_units();
-        if((ConfirmWeith > isDetected) && (ui2_detect == false))
-        {
-          //Send command to slave to start pouring
-          // Send_data_EspNow(SLAVE_ID, OBJECT_DETECTED, 4);
-          Serial_debug.println("The object is detected...");
-          ui2_detect = true;
-          cnt = 0;
-        }
-      }
+      ui8_prewest=0;
+      ui8_moichao = 1;
+      return;
     }
-    // else if(fl_CurrentWeith > ScaleLimited)
-    // {
-    //   float Weith_exceed_limit = scale.get_units();
-    //   while (Weith_exceed_limit > ScaleLimited)
-    //   {
-    //     /* 
-    //       not thing to do 
-    //       wait until the object is removed from the scale
-    //     */
-    //     Weith_exceed_limit = scale.get_units();
-    //     if(Weith_exceed_limit < 10) 
-    //     {
-    //       break;
-    //     }
-    //   }
-    // }
-    // /* 
-    //   Handle the pouring process, read the value continuously during the pouring process
-    //   If the weith is not enough, continue pouring, if it is enough, stop pouring
-    //   If the object is not detected, stop pouring
-    // */
-    // if(ui2_detect)  
-    // {
-    //   float ConfirmWeith_object_detected = scale.get_units();
-    //   // Serial_debug.println("so 1");
-    //   while(ConfirmWeith_object_detected < ScaleLimited) //The weith is not enough
-    //   {
-    //     ConfirmWeith_object_detected = scale.get_units(); 
-    //     // Serial_debug.println("so 2");
-    //     // BlinkLed(); //blink led to show the status of the device
-    //     if(ConfirmWeith_object_detected > ScaleLimited) //The weith is enough
-    //     {
-    //       /* Stop pouring */
-    //       Serial_debug.println("so 3");
-    //       // Send_data_EspNow(SLAVE_ID, STOP_POURING, 4); 
-    //       // ui8_batdaucan=0;
-    //       // ui2_ena_scale = false;
-    //       ui2_detect = false; //reset the object detected flag
-    //       // Serial_debug.println("Stop pouring so 3...");
-    //       Serial_debug.println(ConfirmWeith_object_detected);
-    //       break;
-    //     }
-    //     if(ConfirmWeith_object_detected < isDetected) //There is no object on the scale
-    //     {
-    //       /* Stop pouring */
-    //       Serial_debug.println("so 4");
-    //       // Send_data_EspNow(SLAVE_ID, STOP_POURING, 4);
-    //       // ui8_batdaucan=0;
-    //       // ui2_ena_scale = false;
-    //       ui2_detect = false; //reset the object detected flag
-    //       // Serial_debug.println("Stop pouring so 4..."); 
-    //       Serial_debug.println(ConfirmWeith_object_detected);
-    //       break;
-    //     }
-    //     else 
-    //     {
-    //       Serial_debug.print("ConfirmWeith_object_detected: ");
-    //       Serial_debug.println(ConfirmWeith_object_detected);
-    //       ui2_detect = false; //reset the object detected flag 
-    //     }
-    //   }
-    // }
+
+    if(fabs(weights - ui8_prewest) > 1)
+    {
+      ui8_batdauhienthi = 1;
+      Serial_debug.println("nhay vao bat man hinh");
+      ui8_prewest=weights;
+    }
+
+   
+    // Serial.println(" kg");
+    // test_can=0;
+
 }
 
 void setup() {
     // put your setup code here, to run once:
     Wire.begin();
     Serial_debug.begin(115200);
-    scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
-    // EEPROM.begin(512); // Initialize EEPROM with size 512 bytes
-
-    // inputString.reserve(200);
-
     scan_i2c();
 
     // initialize LCD
@@ -205,14 +122,16 @@ void setup() {
     lcd.clear();
     ui8_moichao = 1;
     ui32_timeout_hienthi = millis() + 500; // Thời gian hiển thị là 5 giây
-    scale.set_offset(offset_scale);
-    doc_eeprom_offsetloadcell();
-    doc_eeprom_w();
-    
+
+
     Serial.println(F("Can: nhap \"w_ok\""));
     Serial_debug.println(F("Vao che do calib can: nhap \"calib\""));
     Serial_debug.println(F("Khai bao khoi luong: \"nhap so\""));
     Serial_debug.println(F("Tinh chinh gia tri Scale: nhap so co dau \"+\" hoac \"-\" phia truoc so"));
+
+	doc_eeprom_offsetloadcell();
+	init_scale(); // Khởi tạo cân
+	doc_eeprom_w();
 } 
 
 
@@ -231,8 +150,7 @@ void setup() {
 //   }
 // }
 
-void serialEvent()
-{
+void serialEvent(){
 	//inputString = "";
 	while (Serial.available()){
 		char inChar = (char)Serial.read();
@@ -293,10 +211,11 @@ void Serial_process()
 
   if(inputString=="batdaucan\n")
   {
-    Serial_debug.println("bat dau qua trinh can");
+    // Serial_debug.println("bat dau qua trinh can");
+    calibrateOffset();
   }
 
-  if(inputString=="calib\n")
+  if(inputString=="calib")
   {
     Serial_debug.println("calib can");
     scale_value_calib = array_scale[0];
@@ -310,7 +229,7 @@ void Serial_process()
     
   }
 
-  if(inputString == "exitcalib\n")
+  if(inputString == "exitcalib")
   {
 			if(calibLoadcell){
 				Serial.println(F("Thoat calib !"));
@@ -451,7 +370,7 @@ void hienthi_khoiluong(float ui8_kl)
   Serial_debug.println(sizeof(String(ui8_kl))-3);
   char kl[20];
   char kl_num[10];
-  dtostrf(ui8_kl, sizeof(String(ui8_kl))-3, 1, kl_num);   // 5: độ dài chuỗi, 2: số sau dấu thập phân
+  dtostrf(ui8_kl, sizeof(String(ui8_kl))-3, 2, kl_num);   // 5: độ dài chuỗi, 2: số sau dấu thập phân
   sprintf(kl, "%sKG", kl_num);
   Serial_debug.println(kl);
   lcd.clear();
@@ -554,10 +473,7 @@ void calib_can()
   }
 }
 
-void measure_w()
-{
-  if(ui2_detect==false) return;
-
+void measure_w(){
 	unsigned long time_now = millis();
 	unsigned long time_do = millis();
 	unsigned long time_wait = millis();
@@ -566,8 +482,8 @@ void measure_w()
 	float a = 0, sub = 0, temp;
 	boolean first = false;
 	float scale_sample, get_sample;
-	// SimpleKalmanFilter bo_loc(2, 2, 0.1);
-	// bo_loc.deleteEstimate();
+	SimpleKalmanFilter bo_loc(2, 2, 0.1);
+	bo_loc.deleteEstimate();
 	scale.power_up();
 	while(!first){
 		if((millis()-time_wait) >= 1000){
@@ -591,7 +507,7 @@ void measure_w()
 			// Serial.print("gia tri scale value: ");
 			// Serial.println(scale_value);
 			temp = scale.get_units(2);
-			// bo_loc.update(temp);
+			bo_loc.update(temp);
 			first = true;
 		}
 	}
@@ -599,7 +515,6 @@ void measure_w()
 		for (byte i = 0; i<lando; i++){
 			if((millis() - time_now) >= duration){
 				status_bip =!status_bip;
-				// digitalWrite(bip, status_bip);
 				time_now = millis();
 			}
 			a = scale.get_units(1);
@@ -608,20 +523,18 @@ void measure_w()
 			//Serial.print(": ");
 			//Serial.print(a,2);
 			//Serial.print(";\t");
-			// sub =  bo_loc.updateEstimate(a);
+			sub =  bo_loc.updateEstimate(a);
 			//Serial.print("Gtri loc Kalman: ");
 			//Serial.println(sub);
-			weights = a;
-      ui2_detect = true; // Set the flag to true to indicate that the object is detected
-      ui8_batdauhienthi=1;
-      Serial.print(F("Khoi luong: "));
-      Serial.print(weights);	
-      Serial.println(F(" Kg"));
+			weights = sub;
 			//delay(1);
 		}
 	}
-	
-	// digitalWrite(bip, LOW);
+	ui8_batdauhienthi = 1;
+	Serial.print(F("Khoi luong: "));
+	Serial.print(weights);	
+	Serial.println(F(" Kg"));
+
 	// Serial.print("\t Thoi gia do: ");
 	// Serial.println(millis()-time_do);
 }
@@ -690,18 +603,129 @@ void thuc_hien(){
 void loop() {
   // put your main code here, to run repeatedly:
     // serialEvent();
-   if (stringComplete) {
-    Serial.println(inputString);
-    // clear the string:
-    Serial_process();
-    inputString = "";
-    stringComplete = false;
-  }
+   if (stringComplete==true) 
+	{
+		Serial.print(F("stringComplete :"));
+		Serial.println(inputString);
 
-  // hienthi_khoiluong(ui8_khoiluong);
-  start_locadcell();
-  measure_w();
-  hienthi_khoiluong(weights);
-  hienthi_moichao();
+		if(inputString == "calib_can")
+		{
+			scale_value_calib = array_scale[0];
+			Serial.print(F("Input text:  "));
+			Serial.println(inputString);
+			calibLoadcell = true;
+			Serial.print(F("Calib Loadcell:  "));
+			Serial.println(calibLoadcell);
+			Serial.print(F("scale_value_calib:  "));
+			Serial.println(scale_value_calib);
+			inputString = "";
+			stringComplete = false;
+		}
 
-}
+		if(inputString == "exitcalib")
+		{
+			if(calibLoadcell){
+				Serial.println(F("Thoat calib !"));
+				calibLoadcell = false;
+				doc_eeprom_w();
+				
+			}
+			Serial.print(F("Input text:  "));
+			Serial.println(inputString);
+			
+			Serial.print(F("Calib Loadcell:  "));
+			Serial.println(calibLoadcell);
+			
+			
+			inputString = "";
+			stringComplete = false;
+		}
+
+		if(!calibLoadcell && !input_time)
+		{
+			if(inputString == "w_ok"){
+				//buzzer();
+				measure_w();
+			} 
+			inputString = "";	
+			stringComplete = false;
+		}
+		first_char = true;
+	}
+
+	if(calibLoadcell)
+	{
+		scale.power_up();
+		Serial.println(F("Dang calib can !"));
+		if(isNum){
+			Serial.print(F("input = "));
+			Serial.println(inputNum);
+			Serial.print(F("Chuoi nhan duoc la so:"));
+			Serial.println(inputNum.toInt());
+			scale_value_calib += inputNum.toInt(); 	//Chuyển String thành số Int.
+			Serial.print(F("Gia tri sau thay doi: "));
+			Serial.println(scale_value_calib);
+			inputString = "";
+			inputNum = "";
+			isNum = false;
+			stringComplete = false;
+			//first_char = true;
+		}
+		else if(isKg){
+			float kg;
+			Serial.print(F("input = "));
+			Serial.println(inputKg);
+			Serial.print(F("Chuoi nhan duoc la khoi luong:"));
+			Serial.println(inputKg.toFloat());
+			kg =  inputKg.toFloat(); 	//Chuyển String thành số Int.
+			scale_value_calib = float(get_value_sub/kg);
+			Serial.print(F("Scale_value tinh duoc: "));
+			Serial.println(scale_value_calib);
+			inputString = "";
+			inputKg = "";
+			isKg = false;
+			stringComplete = false;
+			//first_char = true;
+		}
+		else {
+			Serial.print(F("input = "));
+			Serial.println(inputString);
+			Serial.print(F("Chuoi nhan duoc la text:"));
+			Serial.println(inputString);
+			thuc_hien();
+			inputString = "";
+			stringComplete = false;
+			
+		}
+		
+		scale.set_scale(scale_value_calib);
+
+		doc_analog = scale.read_average(5);
+		get_value_sub = scale.get_value(5);
+		
+		khoiluong = scale.get_units(5);
+		Serial.print(doc_analog);
+		Serial.print(F("\t\t"));
+		Serial.print(get_value_sub);
+		Serial.print(F("\t\t"));
+		
+		Serial.print(khoiluong, 2);	
+		Serial.print(F(" Kg \t"));
+		Serial.print (F("scale value = "));
+		Serial.println(scale_value_calib);
+		scale.power_down();			        // put the ADC in sleep mode
+		delay(1000);
+		scale.power_up();
+	}
+	scale.power_down();			        // put the ADC in sleep mode
+	  // hienthi_khoiluong(ui8_khoiluong);
+  // measure_w();
+	hienthi_khoiluong(weights);
+	hienthi_moichao();
+	}
+
+    
+
+
+
+

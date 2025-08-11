@@ -2,6 +2,15 @@
     "C_Cpp.errorSquiggles": "disabled",
     "files.associations": {
         "*.ino": "arduino",
-        "ios": "c"
+        "ios": "c",
+        "istream": "c",
+        "ostream": "c",
+        "globalvariable.h": "c",
+        "associative_base": "c",
+        "deque": "c",
+        "initializer_list": "c",
+        "list": "c",
+        "serstream": "c",
+        "vector": "c"
     }
 }
