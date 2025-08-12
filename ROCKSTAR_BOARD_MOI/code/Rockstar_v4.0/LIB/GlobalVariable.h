@@ -12,7 +12,7 @@
 #else
 #define uart_debug Serial2
 #define uart_PC Serial
-#endif
+#endif 
 
 /*-------------DEFINE DRIVER DONG CO---------------------*/
 #define M1_DIR 1
@@ -266,6 +266,7 @@ uint16_t Vitrilaysanpham[6]={1100,2000,3000,3700,4400,5100};//A B C D E F may bi
 // uint16_t Vitrilaysanpham[6]={1300,2300,3400,4100,4900,5700};//A B C D E F may so 9
 // uint16_t Vitrilaysanpham[6] = {980, 1900, 3100, 4000, 4700, 5400}; // A B C D E F may so 9 moi sua ngay 21/7
 // uint16_t Vitrilaysanpham[6] = {980, 2400, 3500, 4500, 5200, 6000};
+// uint16_t Vitrilaysanpham[6] = {780, 1550, 2350, 3050, 3750, 4250}; // may so 1 DH NGUYEN TAT THANH
 //-----------------End Khay chua san pham-----------------------
 //----------------------------------------------------------
 // Variables will change:
