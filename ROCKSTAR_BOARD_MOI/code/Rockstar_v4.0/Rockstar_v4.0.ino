@@ -1083,7 +1083,7 @@ void gogo_dixuong(int vitri_)
   uart_debug.println(count);
   // motor_1_Down(50);
   EN_DONGCO(0);
-  Motor_thangmay_xuong(25);
+  Motor_thangmay_xuong(40);
   // int reading = doccambien(limDown_pin,0);
   int reading = doccambien(CTHT_THANG_GOC, 20, 0);
   int encoder_ = digitalRead(E_CHA);
@@ -1137,7 +1137,7 @@ void gogo_dixuong(int vitri_)
         timer_checkmotor = currentMillis + 5000;
         // uart_debug.println("check encoder");
         // uart_debug.println(count);
-        if (count <= 100)
+        if (count <= 20)
         {
           // for(int speed=50;speed<=30;speed--)
           // {
