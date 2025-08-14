@@ -84,7 +84,7 @@ void setup()
   pinMode(role_1,OUTPUT);
   pinMode(role_2,OUTPUT);
 
-  EN_DONGCO(1); // khong kich role la dong co khong chay
+  // EN_DONGCO(1); // khong kich role la dong co khong chay
 
   if (!MOTOR_COT.begin(addr_ExIO_Motor_COL, &Wire))
   {
@@ -1137,7 +1137,7 @@ void gogo_dixuong(int vitri_)
         timer_checkmotor = currentMillis + 5000;
         // uart_debug.println("check encoder");
         // uart_debug.println(count);
-        if (count <= 20)
+        if (count <= 50)
         {
           // for(int speed=50;speed<=30;speed--)
           // {

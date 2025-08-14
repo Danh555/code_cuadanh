@@ -150,7 +150,8 @@ void setup() {
 //   }
 // }
 
-void serialEvent(){
+void serialEvent()
+{
 	//inputString = "";
 	while (Serial.available()){
 		char inChar = (char)Serial.read();
@@ -624,11 +625,21 @@ void loop() {
 
 		if(inputString == "exitcalib")
 		{
-			if(calibLoadcell){
+			if(calibLoadcell)
+			{
 				Serial.println(F("Thoat calib !"));
 				calibLoadcell = false;
 				doc_eeprom_w();
-				
+				lcd.clear();
+				lcd.setCursor(4, 0);
+				lcd.print("CALIB DONE");
+				lcd.setCursor(0, 1);
+				lcd.print(F("SO KY CALIB: "));
+				lcd.print(khoiluong);
+				lcd.print(F(" Kg"));
+				scale.power_down();		
+				ui32_timeout_hienthi = millis() + 6000; // Thời gian hiển thị là 5 giây
+				ui8_moichao = 1;
 			}
 			Serial.print(F("Input text:  "));
 			Serial.println(inputString);
@@ -657,6 +668,9 @@ void loop() {
 	{
 		scale.power_up();
 		Serial.println(F("Dang calib can !"));
+		lcd.clear();
+		lcd.setCursor(0, 0);
+		lcd.print("DANG CALIB CAN.......");
 		if(isNum){
 			Serial.print(F("input = "));
 			Serial.println(inputNum);
@@ -713,6 +727,11 @@ void loop() {
 		Serial.print(F(" Kg \t"));
 		Serial.print (F("scale value = "));
 		Serial.println(scale_value_calib);
+		lcd.clear();
+		lcd.setCursor(0, 0);
+		lcd.print(F("SO KY CALIB: "));
+		lcd.print(khoiluong);
+		lcd.print(F(" Kg"));
 		scale.power_down();			        // put the ADC in sleep mode
 		delay(1000);
 		scale.power_up();
