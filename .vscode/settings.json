@@ -12,5 +12,6 @@
         "list": "c",
         "serstream": "c",
         "vector": "c"
-    }
+    },
+    "cmake.sourceDirectory": "D:/Alta/code_cuadanh/ROCKSTAR_BOARD_MOI/libraries/Adafruit_BusIO-master"
 }
