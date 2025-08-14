@@ -355,7 +355,7 @@ void doc_eeprom_w(){
 	Serial.print(F("array_scale_calib"));
 	Serial.println();
 	for(byte i = 0; i<3; i++)
-  {
+  	{
 		Serial.print(array_get [i]);
 		Serial.print(F("\t"));
 		Serial.print(array_scale [i]);
