@@ -689,6 +689,7 @@ void Motor_thangmay_len()
   vitrithangmay = 1;
   running = df_run_up;
   runMotor(Motor_thangmay, 80, chieuquay_thangmay_len, ui16_lastspeed);
+  
 }
 
 void Motor_thangmay_xuong(uint8_t ui8_tocdo)
@@ -1083,7 +1084,7 @@ void gogo_dixuong(int vitri_)
   uart_debug.println(count);
   // motor_1_Down(50);
   EN_DONGCO(0);
-  Motor_thangmay_xuong(40);
+  Motor_thangmay_xuong(70);
   // int reading = doccambien(limDown_pin,0);
   int reading = doccambien(CTHT_THANG_GOC, 20, 0);
   int encoder_ = digitalRead(E_CHA);
@@ -1183,7 +1184,7 @@ void gogo_dixuong(int vitri_)
         // // }
         // reading = doccambien(limDown_pin,0);
         // delay(500);
-        Motor_thangmay_xuong(20);
+        Motor_thangmay_xuong(40);
         reading = doccambien(CTHT_THANG_GOC, 20, 0);
         if (reading == 1)
         {
@@ -1860,8 +1861,8 @@ void Task2core(void *parameter)
     if (ui8_hoanthanh == 1 && ui32_timeout_comeback <= millis())
     {
       tatled();
-      // reset_khaychuasanpham(); // danh cho may so 2
-      move_thangmay_xuong();
+      reset_khaychuasanpham(); // danh cho may so 2
+      // move_thangmay_xuong();
       ui8_hoanthanh = 0;
     }
 

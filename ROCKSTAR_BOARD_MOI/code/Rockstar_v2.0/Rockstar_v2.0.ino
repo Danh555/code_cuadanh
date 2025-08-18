@@ -680,7 +680,7 @@ void Motor_thangmay_len()
 {
   vitrithangmay = 1;
   running = df_run_up;
-  runMotor(Motor_thangmay, 70, chieuquay_thangmay_len, ui16_lastspeed);
+  runMotor(Motor_thangmay, 80, chieuquay_thangmay_len, ui16_lastspeed);
 }
 
 void Motor_thangmay_xuong(uint8_t ui8_tocdo)
@@ -698,14 +698,14 @@ void Motor_thangmay_dung()
 
 void Motor_tamche_ra()
 {
-  // runMotor(Motor_tamche,100,chieuquay_tamche_ra,ui16_lastspeed);
-  runMotor(Motor_tamche, 50, chieuquay_tamche_ra, ui16_lastspeed); // dành cho máy số 9
+  runMotor(Motor_tamche,100,chieuquay_tamche_ra,ui16_lastspeed);
+  // runMotor(Motor_tamche, 50, chieuquay_tamche_ra, ui16_lastspeed); // dành cho máy số 9
 }
 
 void Motor_tamche_vao()
 {
-  // runMotor(Motor_tamche,100,chieuquay_tamche_vao,ui16_lastspeed);
-  runMotor(Motor_tamche, 50, chieuquay_tamche_vao, ui16_lastspeed); // dành cho máy số 9
+  runMotor(Motor_tamche,100,chieuquay_tamche_vao,ui16_lastspeed);
+  // runMotor(Motor_tamche, 50, chieuquay_tamche_vao, ui16_lastspeed); // dành cho máy số 9
 }
 
 void Motor_tamche_dung()
