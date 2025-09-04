@@ -688,7 +688,7 @@ void Motor_thangmay_len()
 {
   vitrithangmay = 1;
   running = df_run_up;
-  runMotor(Motor_thangmay, 80, chieuquay_thangmay_len, ui16_lastspeed);
+  runMotor(Motor_thangmay, 70, chieuquay_thangmay_len, ui16_lastspeed);
   
 }
 
@@ -707,14 +707,14 @@ void Motor_thangmay_dung()
 
 void Motor_tamche_ra()
 {
-  runMotor(Motor_tamche,100,chieuquay_tamche_ra,ui16_lastspeed);
-  // runMotor(Motor_tamche, 50, chieuquay_tamche_ra, ui16_lastspeed); // dành cho máy số 9
+  // runMotor(Motor_tamche,100,chieuquay_tamche_ra,ui16_lastspeed);
+  runMotor(Motor_tamche, 50, chieuquay_tamche_ra, ui16_lastspeed); // dành cho máy số 9
 }
 
 void Motor_tamche_vao()
 {
-  runMotor(Motor_tamche,100,chieuquay_tamche_vao,ui16_lastspeed);
-  // runMotor(Motor_tamche, 50, chieuquay_tamche_vao, ui16_lastspeed); // dành cho máy số 9
+  // runMotor(Motor_tamche,100,chieuquay_tamche_vao,ui16_lastspeed);
+  runMotor(Motor_tamche, 50, chieuquay_tamche_vao, ui16_lastspeed); // dành cho máy số 9
 }
 
 void Motor_tamche_dung()
@@ -1053,7 +1053,7 @@ void move_thangmay()
     if (ui8_vitridangchay < sensor && ui8_vitridangchay != 0)
     {
       uart_debug.println("chay xuong hang duoi do o moi nhan nho hon");
-      vitri_cuoi = sensor - ui8_vitridangchay;
+      vitri_cuoi = sensor - ui8_vitridangchay-150;
       ui8_vitridangchay = sensor;
       gogo(vitri_cuoi);
     }
@@ -1084,7 +1084,7 @@ void gogo_dixuong(int vitri_)
   uart_debug.println(count);
   // motor_1_Down(50);
   EN_DONGCO(0);
-  Motor_thangmay_xuong(70);
+  Motor_thangmay_xuong(20);
   // int reading = doccambien(limDown_pin,0);
   int reading = doccambien(CTHT_THANG_GOC, 20, 0);
   int encoder_ = digitalRead(E_CHA);
@@ -1138,7 +1138,7 @@ void gogo_dixuong(int vitri_)
         timer_checkmotor = currentMillis + 5000;
         // uart_debug.println("check encoder");
         // uart_debug.println(count);
-        if (count <= 50)
+        if (count <= 30)
         {
           // for(int speed=50;speed<=30;speed--)
           // {
@@ -1861,8 +1861,8 @@ void Task2core(void *parameter)
     if (ui8_hoanthanh == 1 && ui32_timeout_comeback <= millis())
     {
       tatled();
-      reset_khaychuasanpham(); // danh cho may so 2
-      // move_thangmay_xuong();
+      // reset_khaychuasanpham(); // danh cho may so 2
+      move_thangmay_xuong();
       ui8_hoanthanh = 0;
     }
 
