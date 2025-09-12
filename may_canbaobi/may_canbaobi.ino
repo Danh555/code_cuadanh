@@ -132,6 +132,12 @@ void setup() {
 	doc_eeprom_offsetloadcell();
 	init_scale(); // Khởi tạo cân
 	doc_eeprom_w();
+
+	lcd.setCursor(0,0);
+  	lcd.print("KHOI LUONG LA:");	
+	setup_pixel();
+
+	ui32_timeoutkl=millis()+500; // Biến thời gian khóa không cho đo liên tục
 } 
 
 
@@ -316,12 +322,12 @@ void ghi_eeprom_offsetloadcell() {
 void doc_eeprom_offsetloadcell() {
 	long offset_read ;
 	byte* w = (byte*)(void*)&offset_read;
-	for(unsigned int i = 0;i<sizeof(offset_read); i++){
-		add_eeprom = i+28;
+	for(uint16_t i = 0;i<sizeof(offset_read); i++){
+		add_eeprom = i+100;
 		*w = EEPROM.read(add_eeprom);
 		
 		delay(5);
-		//Serial.print(*p, HEX);
+		// Serial.print(*p, HEX);
 		w++;
 	}
 	offset_scale = offset_read;
@@ -333,13 +339,17 @@ void doc_eeprom_offsetloadcell() {
 void doc_eeprom_w(){
 	//Serial.println(F("Bat dau doc EEPROM !"));
 	struct myObject 
-{
+	{
 		double getvalue1;
 		float scalevalue1;
 		double getvalue2;
 		float scalevalue2;
 		double getvalue3;
 		float scalevalue3;
+		double getvalue4;
+		float scalevalue4;
+		double getvalue5;
+		float scalevalue5;
 	};
 	unsigned int address_doc = 0;
 	myObject data_eeprom;
@@ -350,23 +360,30 @@ void doc_eeprom_w(){
 	array_scale [1] = data_eeprom.scalevalue2;
 	array_get [2] = data_eeprom.getvalue3;
 	array_scale [2] = data_eeprom.scalevalue3;
+	array_get [3] = data_eeprom.getvalue4;
+	array_scale [3] = data_eeprom.scalevalue4;
+	array_get [4] = data_eeprom.getvalue5;
+	array_scale [4] = data_eeprom.scalevalue5;
 	Serial.print(F("Get_value"));
 	Serial.print(F("\t \t"));
 	Serial.print(F("array_scale_calib"));
 	Serial.println();
-	for(byte i = 0; i<3; i++)
+	for(byte i = 0; i<5; i++)
   {
 		Serial.print(array_get [i]);
 		Serial.print(F("\t"));
 		Serial.print(array_scale [i]);
 		Serial.println();
 	}
-	// Serial.println("Da doc xong EEPROM !");
+	Serial.println("Da doc xong EEPROM !");
 }
 
 void hienthi_khoiluong(float ui8_kl)
 {
   if(ui8_batdauhienthi==0) return;
+//   ui32_timeoutkl=millis();
+
+  Serial_debug.println("bat dau hien thi khoi luong");
   Serial_debug.println(ui8_kl);
   Serial_debug.println(sizeof(String(ui8_kl))-3);
   char kl[20];
@@ -376,13 +393,32 @@ void hienthi_khoiluong(float ui8_kl)
   Serial_debug.println(kl);
   lcd.clear();
   lcd.setCursor(0,0);
-  lcd.print("TIEN HANH DO");
-  lcd.setCursor(0,1);
   lcd.print("KHOI LUONG LA:");
-  lcd.setCursor(14,1);
-  lcd.print(kl);
-  ui32_timeout_hienthi = millis() + 5000; // Thời gian hiển thị là 5 giây
-  ui8_moichao = 1;
+  
+  if(ui8_kl>0 && ui8_kl<1)
+  {
+	lcd.setCursor(14,0);
+  	lcd.print(kl);	
+  }
+
+  else if(ui8_kl>=1)
+  {
+	lcd.setCursor(14,0);
+  	lcd.print(kl);	
+	lcd.setCursor(8,1);
+  	lcd.print("OVERLOAD");
+  }
+
+  else 
+  {
+	lcd.setCursor(14,0);
+  	lcd.print("      ");
+  }
+  
+
+//   ui32_timeout_hienthi = millis() + 5000; // Thời gian hiển thị là 5 giây
+//   ui8_moichao = 1;
+  ui32_timeoutkl=millis()+1000;
   ui8_batdauhienthi=0;
 }
 
@@ -391,8 +427,8 @@ void hienthi_moichao()
   if(ui8_moichao==1 && (millis() - ui32_timeout_hienthi < 5000))
   {
     lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("MOI BAN DAT BAO BI");
+    // lcd.setCursor(0, 0);
+    // lcd.print("MOI BAN DAT BAO BI");
     ui8_moichao=0;
     // lcd.setCursor(0, 1);
     // lcd.print("DU AN CAN BAO BI");
@@ -474,7 +510,10 @@ void calib_can()
   }
 }
 
-void measure_w(){
+void measure_w()
+{
+	if(ui32_timeoutkl > millis() || ui8_batdauhienthi==1 || ui8_calib==1) return;
+
 	unsigned long time_now = millis();
 	unsigned long time_do = millis();
 	unsigned long time_wait = millis();
@@ -486,11 +525,12 @@ void measure_w(){
 	SimpleKalmanFilter bo_loc(2, 2, 0.1);
 	bo_loc.deleteEstimate();
 	scale.power_up();
-	while(!first){
-		if((millis()-time_wait) >= 1000){
+	while(!first)
+	{
+		if((millis()-time_wait) >= 800){
 			get_sample = scale.get_value(5);
-			// Serial.print(get_sample);
-			// Serial.print("\t");
+			Serial.print(get_sample);
+			Serial.print("\t");
 			if(get_sample <= array_get[0]){
 				scale_value = array_scale[0];
 				scale.set_scale(scale_value);
@@ -499,25 +539,35 @@ void measure_w(){
 				scale_value = array_scale[1];
 				scale.set_scale(scale_value);
 			}
-			else if(((array_get[1] < get_sample) && (get_sample<= array_get[2])) || (get_sample > array_get[2]) ){
+			else if(((array_get[1] < get_sample) && (get_sample<= array_get[2])) || (get_sample > array_get[2])){
 				scale_value = array_scale[2];
 				scale.set_scale(scale_value);
 			}
-			else{
+			else if(((array_get[2] < get_sample) && (get_sample<= array_get[3])) || ((get_sample > array_get[3]) && (get_sample <= array_get[4])))
+			{
+				scale_value = array_scale[3];
+				scale.set_scale(scale_value);
 			}
-			// Serial.print("gia tri scale value: ");
-			// Serial.println(scale_value);
-			temp = scale.get_units(2);
+			// else if(((array_get[3] < get_sample) && (get_sample<= array_get[4])) || (get_sample > array_get[4]))
+			// {
+			// 	scale_value = array_scale[4];
+			// 	scale.set_scale(scale_value);
+			// }
+			Serial.print("gia tri scale value: ");
+			Serial.println(scale_value);
+			temp = scale.get_units(5);
 			bo_loc.update(temp);
 			first = true;
 		}
 	}
-	if(first){
-		for (byte i = 0; i<lando; i++){
-			if((millis() - time_now) >= duration){
-				status_bip =!status_bip;
-				time_now = millis();
-			}
+	if(first)
+	{
+		for (byte i = 0; i<lando; i++)
+		{
+			// if((millis() - time_now) >= duration){
+			// 	status_bip =!status_bip;
+			// 	time_now = millis();
+			// }
 			a = scale.get_units(1);
 			//Serial.print("lan do  ");
 			//Serial.print(i+1);
@@ -528,16 +578,53 @@ void measure_w(){
 			//Serial.print("Gtri loc Kalman: ");
 			//Serial.println(sub);
 			weights = sub;
+			// weightsTemp=sub;
 			//delay(1);
 		}
-	}
-	ui8_batdauhienthi = 1;
-	Serial.print(F("Khoi luong: "));
-	Serial.print(weights);	
-	Serial.println(F(" Kg"));
+		
 
-	// Serial.print("\t Thoi gia do: ");
-	// Serial.println(millis()-time_do);
+		if(weights<=0.1)
+		{
+			Serial.print(F("Khoi luong tam thoi: "));
+			Serial.print(weightsTemp);	
+			Serial.println(F(" Kg"));
+
+			weights=0;
+			if(fabs(weights - weightsTemp) > 0.01)
+			{
+				// weightsTemp=weights;
+				ui8_batdauhienthi = 1;
+			}
+			
+			Serial.print(F("Khoi luong: "));
+			Serial.print(weights);	
+			Serial.println(F(" Kg"));
+			weightsTemp=weights;
+			first = false;
+			ui32_timeoutkl=millis() + 1000; // Biến thời gian
+		}
+		if(weights>0.1)
+		{
+			Serial.print(F("Khoi luong tam thoi khi so ky lon hon 0: "));
+			Serial.print(weightsTemp);	
+			Serial.println(F(" Kg"));
+
+			if(fabs(weights - weightsTemp) > 0.01)
+			{
+				// weightsTemp=weights;
+				Serial_debug.println("phat hien so can khac");
+				ui8_batdauhienthi = 1;
+			}
+			Serial.print(F("Khoi luong: "));
+			Serial.print(weights);	
+			Serial.println(F(" Kg"));
+			weightsTemp=weights;
+			first = false;
+			ui32_timeoutkl=millis() + 1000; // Biến thời gian
+		}
+		
+	}
+	
 }
 
 void thuc_hien(){
@@ -565,6 +652,25 @@ void thuc_hien(){
 		Serial.println(address);
 		Serial.println(F("Da ghi du lieu thu 3 !"));
 	}
+
+	else if(inputString == "save 4"){
+		address = 24;
+		myObject Save4 = {get_value_sub, scale_value_calib};
+		EEPROM.put(address, Save4);
+		Serial.print(F("Dia chi bat dau: "));
+		Serial.println(address);
+		Serial.println(F("Da ghi du lieu thu 4 !"));
+	}
+
+	else if(inputString == "save 5"){
+		address = 32;
+		myObject Save5 = {get_value_sub, scale_value_calib};
+		EEPROM.put(address, Save5);
+		Serial.print(F("Dia chi bat dau: "));
+		Serial.println(address);
+		Serial.println(F("Da ghi du lieu thu 5 !"));
+	}
+
 	else if(inputString == "readAll"){
 		unsigned int getAddress = 0;
 		struct getAlldata {
@@ -574,6 +680,10 @@ void thuc_hien(){
 			float getScale2;
 			float getValue3;
 			float getScale3;
+			float getValue4;
+			float getScale4;
+			float getValue5;
+			float getScale5;
 			
 		};
 		getAlldata Data;
@@ -597,6 +707,18 @@ void thuc_hien(){
 		Serial.print(F("\t"));
 		Serial.print(F("Get Get scale 3:  "));
 		Serial.println(Data.getScale3);
+
+		Serial.print(F("Get value 4:  "));
+		Serial.print(Data.getValue4);
+		Serial.print(F("\t"));
+		Serial.print(F("Get Get scale 4:  "));
+		Serial.println(Data.getScale4);
+
+		Serial.print(F("Get value 5:  "));
+		Serial.print(Data.getValue5);
+		Serial.print(F("\t"));
+		Serial.print(F("Get Get scale 5:  "));
+		Serial.println(Data.getScale5);
 		
 	}
 }
@@ -619,6 +741,7 @@ void loop() {
 			Serial.println(calibLoadcell);
 			Serial.print(F("scale_value_calib:  "));
 			Serial.println(scale_value_calib);
+			ui8_calib=1;
 			inputString = "";
 			stringComplete = false;
 		}
@@ -628,17 +751,25 @@ void loop() {
 			if(calibLoadcell)
 			{
 				Serial.println(F("Thoat calib !"));
+				if(khoiluong<0.1)
+				{
+					khoiluong=0;
+				}
 				calibLoadcell = false;
 				doc_eeprom_w();
 				lcd.clear();
 				lcd.setCursor(4, 0);
 				lcd.print("CALIB DONE");
-				lcd.setCursor(0, 1);
-				lcd.print(F("SO KY CALIB: "));
-				lcd.print(khoiluong);
-				lcd.print(F(" Kg"));
+				// lcd.setCursor(0, 1);
+				// lcd.print(F("SO KY CALIB: "));
+				// lcd.print(khoiluong);
+				// lcd.print(F(" Kg"));
+				weights=0;
+				weightsTemp=0;
 				scale.power_down();		
 				ui32_timeout_hienthi = millis() + 6000; // Thời gian hiển thị là 5 giây
+				ui32_timeoutkl=millis()+5000; // Biến thời gian khóa không cho đo liên tục
+				ui8_calib=0;
 				ui8_moichao = 1;
 			}
 			Serial.print(F("Input text:  "));
@@ -737,13 +868,93 @@ void loop() {
 		scale.power_up();
 	}
 	scale.power_down();			        // put the ADC in sleep mode
-	  // hienthi_khoiluong(ui8_khoiluong);
-  // measure_w();
+	//   hienthi_khoiluong(ui8_khoiluong);
+	sangled();
+  	measure_w();
 	hienthi_khoiluong(weights);
-	hienthi_moichao();
+	// hienthi_moichao();
 	}
 
-    
+void setup_pixel()
+{
+	pixels1.begin();           // INITIALIZE NeoPixel strip object (REQUIRED)
+	pixels1.show();            // Turn OFF all pixels ASAP
+	pixels1.setBrightness(255); // Set BRIGHTNESS to about 1/5 (max = 255)
+}
+
+void tatled()
+{
+	for(int led1_chopchop=0;led1_chopchop<LED_COUNT;led1_chopchop++)
+	{
+		pixels1.setPixelColor(led1_chopchop,pixels1.Color(0,0,0));
+	}
+	pixels1.show();
+	// digitalWrite(LED_ONBOARD,0);
+}
+
+void ledred()
+{
+	for(int led1_chopchop=0;led1_chopchop<LED_COUNT;led1_chopchop++)
+	{
+		pixels1.setPixelColor(led1_chopchop,pixels1.Color(255,0,0));
+	}
+	pixels1.show();
+	// digitalWrite(LED_ONBOARD,0);
+}
+
+void ledgreen()
+{
+	for(int led1_chopchop=0;led1_chopchop<LED_COUNT;led1_chopchop++)
+	{
+		pixels1.setPixelColor(led1_chopchop,pixels1.Color(0,255,0));
+	}
+	pixels1.show();
+	// digitalWrite(LED_ONBOARD,1);
+}	
+
+void ledblue()
+{
+	for(int led1_chopchop=0;led1_chopchop<LED_COUNT;led1_chopchop++)
+	{
+		pixels1.setPixelColor(led1_chopchop,pixels1.Color(0,0,255));
+	}
+	pixels1.show();
+	// digitalWrite(LED_ONBOARD,1);
+}
+
+void sangled()
+{
+	if(weights>1)
+	{
+		// Serial_debug.println("sang led xanh");
+		ledred();	
+		// led_overload();
+		// ui32_timeoutkl=millis()+1000;
+	}
+	else 
+	{
+		// Serial_debug.println("tat led");
+		tatled();
+	}
+}
+
+void led_overload()
+{
+	if(millis()>=time_chopchop)
+	if(led_state==1)
+	{
+		ledred();
+		led_state=0;
+		time_chopchop=millis()+500;
+	}
+
+	else
+	{
+		tatled();
+		led_state=1;
+		time_chopchop=millis()+200;
+	}
+}
 
 
 

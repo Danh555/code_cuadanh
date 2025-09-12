@@ -3,10 +3,15 @@
 #include <LiquidCrystal_I2C.h>
 #include <EEPROM.h>
 #include <SimpleKalmanFilter.h>
+#include <Adafruit_NeoPixel.h>
+#ifdef __AVR__
+ #include <avr/power.h> // Required for 16 MHz Adafruit Trinket
+#endif
+
 
 // define chân GPIO cho LoadCell
-#define LOADCELL_DOUT_PIN   4
-#define LOADCELL_SCK_PIN    3
+#define LOADCELL_DOUT_PIN   2
+#define LOADCELL_SCK_PIN    A2
 #define calibration_factor 420 //-742.72917232022  //-742.6165198237885
 
 #define Serial_debug    Serial
@@ -14,6 +19,14 @@
 HX711 scale;
 
 
+
+#define LED_PIN    A1
+
+// How many NeoPixels are attached to the Arduino?
+#define LED_COUNT 6
+#define BUTTON_PIN A3
+
+Adafruit_NeoPixel pixels1(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 // set the LCD number of columns and rows
 int lcdColumns = 20;
 int lcdRows = 4;
@@ -43,8 +56,8 @@ uint8_t ui8_moichao=0;
 float ui8_khoiluong=0;
 
 /* --------------------- Mang tam luu & doc eeprom ---------------------------*/
-float array_scale [3] = {};
-float array_get [3] = {};
+float array_scale [5] = {};
+float array_get [5] = {};
 
 struct myObject {
 	float field1;
@@ -60,7 +73,7 @@ boolean input_time = false;
 
 /* ------------------- Khai bao bien do can nang.------------------------ */
 float weights = 0.00; 
-float weightsTemp;
+float weightsTemp = 0.00;
 float test;
 char byteWeights[4];
 boolean calibLoadcell = false;
@@ -72,10 +85,20 @@ float scale_value;	//Hệ số để qui đổi ra khối lượng.
 float scale_value_calib;
 long offset_scale;
 const float tolerances = 0.35;
-byte lando = 45; //So lan lay gia tri do.
+byte lando = 5; //So lan lay gia tri do.
 unsigned int add_eeprom;
 boolean isNum = false;
 
 int test_can=0;
 unsigned long timeEeprom = 0; 
 float ui8_prewest = 0; // Biến lưu giá trị trước đó của nút nhấn
+
+uint32_t ui32_timeoutkl=0; // Biến thời gian khóa không cho đo liên tục
+uint8_t ui8_calib=0; // Biến trạng thái calib cân
+uint8_t ui8_detect=0; // Biến trạng thái detect vật
+float get_sample=0; // Biến lưu giá trị đọc từ cân
+uint32_t time_chopchop=0;
+int led_state=0;
+uint8_t ui8_ledbaoloi=0;
+uint8_t ui8_trangthai_overload=0;
+uint8_t ui32_tg_baoled=0;
