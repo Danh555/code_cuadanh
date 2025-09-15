@@ -724,17 +724,17 @@ void Motor_tamche_dung()
 
 void Motor_khoacua_hocqua()
 {
-  runMotor(Motor_khoatu, 50, khoa_dong, ui16_lastspeed);
+  // runMotor(Motor_khoatu, 50, khoa_dong, ui16_lastspeed);
 }
 
 void Motor_mocua_hocqua()
 {
-  runMotor(Motor_khoatu, 50, khoa_mo, ui16_lastspeed);
+  // runMotor(Motor_khoatu, 50, khoa_mo, ui16_lastspeed);
 }
 
 void Motor_dungkich_hocqua()
 {
-  stopMotor(Motor_khoatu, ui16_lastspeed);
+  // stopMotor(Motor_khoatu, ui16_lastspeed);
 }
 
 int doccambien(int pin_cambien, uint32_t timeout, uint8_t muc_kiemtra)

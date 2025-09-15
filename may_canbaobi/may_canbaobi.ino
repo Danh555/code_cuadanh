@@ -46,13 +46,14 @@ void calibrateOffset()
   delay(10);
   
   scale.tare(); 
-  offset = scale.read_average(20);
-
+//   offset = scale.read_average(20);
+  offset = scale.get_offset();
   // EEPROM.put(OFFSET_ADDR, offset);
   // EEPROM.commit(); // Save the offset to EEPROM
   Serial_debug.println("Adjust done!");
+  ui8_calib=0;
 
-  scale.set_offset(offset);
+//   scale.set_offset(offset);
 }
 
 void hienthi_lcd_test()
@@ -104,6 +105,8 @@ void setup() {
     // put your setup code here, to run once:
     Wire.begin();
     Serial_debug.begin(115200);
+
+	pinMode(buttonPin, INPUT_PULLUP);
     scan_i2c();
 
     // initialize LCD
@@ -581,9 +584,10 @@ void measure_w()
 			// weightsTemp=sub;
 			//delay(1);
 		}
+		scale.power_down();
 		
 
-		if(weights<=0.1)
+		if(weights<=0.05)
 		{
 			Serial.print(F("Khoi luong tam thoi: "));
 			Serial.print(weightsTemp);	
@@ -603,7 +607,7 @@ void measure_w()
 			first = false;
 			ui32_timeoutkl=millis() + 1000; // Biến thời gian
 		}
-		if(weights>0.1)
+		if(weights>0.05)
 		{
 			Serial.print(F("Khoi luong tam thoi khi so ky lon hon 0: "));
 			Serial.print(weightsTemp);	
@@ -746,6 +750,16 @@ void loop() {
 			stringComplete = false;
 		}
 
+		if(inputString == "test calib")
+		{
+			// buzzer_calib();
+			calibrateOffset();
+			ui8_calib=1;
+			inputString = "";
+			stringComplete = false;
+
+		}
+
 		if(inputString == "exitcalib")
 		{
 			if(calibLoadcell)
@@ -869,6 +883,7 @@ void loop() {
 	}
 	scale.power_down();			        // put the ADC in sleep mode
 	//   hienthi_khoiluong(ui8_khoiluong);
+	// button_chucnang();
 	sangled();
   	measure_w();
 	hienthi_khoiluong(weights);
@@ -956,6 +971,45 @@ void led_overload()
 	}
 }
 
+
+void button_chucnang()
+{
+	int reading = digitalRead(buttonPin);
+
+	// Chống dội
+	if (reading != lastButtonState) {
+		lastDebounceTime = millis();
+	}
+
+	if ((millis() - lastDebounceTime) > debounceDelay) {
+		// Nếu nút được nhấn (LOW vì INPUT_PULLUP)
+		if (lastButtonState == HIGH && reading == LOW) {
+		unsigned long now = millis();
+
+		if (now - lastClickTime < doubleClickDelay) {
+			// Lần click thứ 2 trong khoảng doubleClickDelay
+			clickCount++;
+		} else {
+			// Click mới sau khi hết hạn double click
+			clickCount = 1;
+		}
+
+		lastClickTime = now;
+		}
+	}
+
+	// Xử lý sau khi đã xác định click
+	if (clickCount == 1 && (millis() - lastClickTime > doubleClickDelay)) {
+		Serial.println("A");   // Single click
+		clickCount = 0;
+	}
+	else if (clickCount == 2) {
+		Serial.println("B");   // Double click
+		clickCount = 0;
+	}
+
+	lastButtonState = reading;
+}
 
 
 

@@ -24,7 +24,7 @@ HX711 scale;
 
 // How many NeoPixels are attached to the Arduino?
 #define LED_COUNT 6
-#define BUTTON_PIN A3
+// #define BUTTON_PIN A3
 
 Adafruit_NeoPixel pixels1(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 // set the LCD number of columns and rows
@@ -102,3 +102,16 @@ int led_state=0;
 uint8_t ui8_ledbaoloi=0;
 uint8_t ui8_trangthai_overload=0;
 uint8_t ui32_tg_baoled=0;
+
+
+#define buttonPin A3     // chân nút bấm
+int buttonState;             
+int lastButtonState = HIGH;  // dùng pull-up nên trạng thái nghỉ là HIGH
+
+unsigned long lastDebounceTime = 0;
+unsigned long debounceDelay = 50;   // chống dội 50ms
+
+unsigned long lastClickTime = 0;
+unsigned long doubleClickDelay = 400; // khoảng thời gian phân biệt single/double click
+
+int clickCount = 0;
