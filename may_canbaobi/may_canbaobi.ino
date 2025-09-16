@@ -37,23 +37,33 @@ void scan_i2c()
 void init_scale()
 {
   scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
-  scale.set_offset(offset_scale);
+  EEPROM.get(64, offset);
+  Serial_debug.print("Offset read from EEPROM: ");
+  Serial_debug.println(offset);
+  scale.set_offset(offset);
+//   scale.tare();
 }
 
 void calibrateOffset()
 {
+	if(ui8_tienhanh_tare==0) return;
+	scale.power_up();
   Serial_debug.println("The software is adjusting offset...");
   delay(10);
   
-  scale.tare(); 
-//   offset = scale.read_average(20);
-  offset = scale.get_offset();
-  // EEPROM.put(OFFSET_ADDR, offset);
-  // EEPROM.commit(); // Save the offset to EEPROM
+//   scale.set_offset(0);
+  scale.tare(10); 
+  offset = scale.read_average(20);
+//   offset = scale.get_offset();
+  EEPROM.put(64, offset);
+//   EEPROM.commit(); // Save the offset to EEPROM
   Serial_debug.println("Adjust done!");
-  ui8_calib=0;
-
-//   scale.set_offset(offset);
+  scale.power_down();
+//   ui8_calib=0;
+  scale.set_offset(offset);
+  Serial_debug.print("New offset: ");
+  Serial_debug.println(offset);
+  ui8_tienhanh_tare=0;
 }
 
 void hienthi_lcd_test()
@@ -353,6 +363,7 @@ void doc_eeprom_w(){
 		float scalevalue4;
 		double getvalue5;
 		float scalevalue5;
+		float offsetvalue;
 	};
 	unsigned int address_doc = 0;
 	myObject data_eeprom;
@@ -515,7 +526,7 @@ void calib_can()
 
 void measure_w()
 {
-	if(ui32_timeoutkl > millis() || ui8_batdauhienthi==1 || ui8_calib==1) return;
+	if(ui32_timeoutkl > millis() || ui8_batdauhienthi==1 || ui8_calib==1 || ui8_tienhanh_tare==1) return;
 
 	unsigned long time_now = millis();
 	unsigned long time_do = millis();
@@ -530,30 +541,49 @@ void measure_w()
 	scale.power_up();
 	while(!first)
 	{
-		if((millis()-time_wait) >= 800){
+		if((millis()-time_wait) >= 1000){
 			get_sample = scale.get_value(5);
 			Serial.print(get_sample);
 			Serial.print("\t");
 			if(get_sample <= array_get[0]){
+				Serial_debug.println("lay gia tri scale 0");
 				scale_value = array_scale[0];
 				scale.set_scale(scale_value);
 			}
-			else if((array_get[0] < get_sample) && (get_sample<= array_get[1])){
+			else if((array_get[0] < get_sample) && (get_sample<= array_get[1]))
+			{
+				Serial_debug.println("lay gia tri scale 1");
 				scale_value = array_scale[1];
 				scale.set_scale(scale_value);
 			}
-			else if(((array_get[1] < get_sample) && (get_sample<= array_get[2])) || (get_sample > array_get[2])){
+			else if(((array_get[1] < get_sample) && (get_sample<= array_get[2])))
+			{
+				Serial_debug.println("lay gia tri scale 2");
 				scale_value = array_scale[2];
 				scale.set_scale(scale_value);
 			}
-			else if(((array_get[2] < get_sample) && (get_sample<= array_get[3])) || ((get_sample > array_get[3]) && (get_sample <= array_get[4])))
+			else if(((array_get[2] < get_sample) && (get_sample<= array_get[3])))
 			{
+				Serial_debug.println("lay gia tri scale 3");
 				scale_value = array_scale[3];
 				scale.set_scale(scale_value);
 			}
-			// else if(((array_get[3] < get_sample) && (get_sample<= array_get[4])) || (get_sample > array_get[4]))
+			else 
+			{
+				Serial_debug.println("lay gia tri scale 4");
+				scale_value = array_scale[4];
+				scale.set_scale(scale_value);	
+			}
+			// else if(((array_get[3] < get_sample) && (get_sample<= array_get[4])))
 			// {
+			// 	Serial_debug.println("lay gia tri scale 4");
 			// 	scale_value = array_scale[4];
+			// 	scale.set_scale(scale_value);
+			// }
+			// else 
+			// {
+			// 	Serial_debug.println("lay gia tri scale 5");
+			// 	scale_value = array_scale[5];
 			// 	scale.set_scale(scale_value);
 			// }
 			Serial.print("gia tri scale value: ");
@@ -753,8 +783,9 @@ void loop() {
 		if(inputString == "test calib")
 		{
 			// buzzer_calib();
-			calibrateOffset();
-			ui8_calib=1;
+			// calibrateOffset();
+			// ui8_calib=1;
+			ui8_tienhanh_tare=1;
 			inputString = "";
 			stringComplete = false;
 
@@ -883,7 +914,8 @@ void loop() {
 	}
 	scale.power_down();			        // put the ADC in sleep mode
 	//   hienthi_khoiluong(ui8_khoiluong);
-	// button_chucnang();
+	button_chucnang();
+	calibrateOffset();
 	sangled();
   	measure_w();
 	hienthi_khoiluong(weights);
@@ -974,6 +1006,7 @@ void led_overload()
 
 void button_chucnang()
 {
+	
 	int reading = digitalRead(buttonPin);
 
 	// Chống dội
@@ -982,32 +1015,15 @@ void button_chucnang()
 	}
 
 	if ((millis() - lastDebounceTime) > debounceDelay) {
-		// Nếu nút được nhấn (LOW vì INPUT_PULLUP)
-		if (lastButtonState == HIGH && reading == LOW) {
-		unsigned long now = millis();
-
-		if (now - lastClickTime < doubleClickDelay) {
-			// Lần click thứ 2 trong khoảng doubleClickDelay
-			clickCount++;
-		} else {
-			// Click mới sau khi hết hạn double click
-			clickCount = 1;
-		}
-
-		lastClickTime = now;
+		if (reading != buttonState) {
+			buttonState = reading;
+			if (buttonState == LOW) {
+				// Nút được nhấn
+				Serial_debug.println("Nút nhấn");
+				// ui8_tienhanh_tare=1;
+			}
 		}
 	}
-
-	// Xử lý sau khi đã xác định click
-	if (clickCount == 1 && (millis() - lastClickTime > doubleClickDelay)) {
-		Serial.println("A");   // Single click
-		clickCount = 0;
-	}
-	else if (clickCount == 2) {
-		Serial.println("B");   // Double click
-		clickCount = 0;
-	}
-
 	lastButtonState = reading;
 }
 

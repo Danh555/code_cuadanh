@@ -85,7 +85,7 @@ float scale_value;	//Hệ số để qui đổi ra khối lượng.
 float scale_value_calib;
 long offset_scale;
 const float tolerances = 0.35;
-byte lando = 5; //So lan lay gia tri do.
+byte lando = 25; //So lan lay gia tri do.
 unsigned int add_eeprom;
 boolean isNum = false;
 
@@ -115,3 +115,5 @@ unsigned long lastClickTime = 0;
 unsigned long doubleClickDelay = 400; // khoảng thời gian phân biệt single/double click
 
 int clickCount = 0;
+
+uint8_t ui8_tienhanh_tare=0; // Biến trạng thái thực hiện tare
