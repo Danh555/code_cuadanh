@@ -109,11 +109,22 @@ int buttonState;
 int lastButtonState = HIGH;  // dùng pull-up nên trạng thái nghỉ là HIGH
 
 unsigned long lastDebounceTime = 0;
-unsigned long debounceDelay = 50;   // chống dội 50ms
+unsigned long debounceDelay = 1000;   // chống dội 50ms
 
 unsigned long lastClickTime = 0;
-unsigned long doubleClickDelay = 400; // khoảng thời gian phân biệt single/double click
+unsigned long doubleClickDelay = 1000; // khoảng thời gian phân biệt single/double click
 
 int clickCount = 0;
 
 uint8_t ui8_tienhanh_tare=0; // Biến trạng thái thực hiện tare
+
+uint32_t ui32_tg_bamnut=0; // Biến thời gian bấm nút
+uint8_t ui8_solan_bamnut=0; // Biến đếm số lần bấm nút
+uint8_t ui8_bamnut=0; // Biến trạng thái bấm nút
+uint8_t ui8_modesetting=0; // Biến trạng thái chế độ setting
+uint8_t ui8_kiemtra_mode=0; // Biến kiểm tra chế độ setting
+
+uint32_t pressStartTime = 0; // Thời gian bắt đầu nhấn nút
+bool buttonPressed = 0;    // Trạng thái nút bấm
+
+uint8_t ui8_check_thoat=0; // Biến kiểm tra thoát chế độ setting

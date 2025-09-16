@@ -50,7 +50,9 @@ void calibrateOffset()
 	scale.power_up();
   Serial_debug.println("The software is adjusting offset...");
   delay(10);
-  
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("DANG CALIB CAN");
 //   scale.set_offset(0);
   scale.tare(10); 
   offset = scale.read_average(20);
@@ -58,11 +60,25 @@ void calibrateOffset()
   EEPROM.put(64, offset);
 //   EEPROM.commit(); // Save the offset to EEPROM
   Serial_debug.println("Adjust done!");
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("CALIB XONG");
+  delay(1000);
+  lcd.clear();
+lcd.setCursor(0,0);
+lcd.print("SETTING MODE:");
+lcd.setCursor(0,1);
+lcd.print("1: NOTHING");
+lcd.setCursor(0,2);
+lcd.print("2: CALIB LOADCELL");
+lcd.setCursor(0,3);
+lcd.print("3: EXIT SETTING MODE");
   scale.power_down();
 //   ui8_calib=0;
   scale.set_offset(offset);
   Serial_debug.print("New offset: ");
   Serial_debug.println(offset);
+
   ui8_tienhanh_tare=0;
 }
 
@@ -409,30 +425,24 @@ void hienthi_khoiluong(float ui8_kl)
   lcd.setCursor(0,0);
   lcd.print("KHOI LUONG LA:");
   
-  if(ui8_kl>0 && ui8_kl<1)
-  {
-	lcd.setCursor(14,0);
-  	lcd.print(kl);	
-  }
 
-  else if(ui8_kl>=1)
+  if(ui8_kl>=1)
   {
 	lcd.setCursor(14,0);
   	lcd.print(kl);	
 	lcd.setCursor(8,1);
   	lcd.print("OVERLOAD");
   }
-
   else 
   {
 	lcd.setCursor(14,0);
-  	lcd.print("      ");
+  	lcd.print(kl);	
   }
-  
 
 //   ui32_timeout_hienthi = millis() + 5000; // Thời gian hiển thị là 5 giây
 //   ui8_moichao = 1;
-  ui32_timeoutkl=millis()+1000;
+//   ui32_timeoutkl=millis()+1000;
+  ui32_tg_bamnut=millis() + 1000;
   ui8_batdauhienthi=0;
 }
 
@@ -526,7 +536,7 @@ void calib_can()
 
 void measure_w()
 {
-	if(ui32_timeoutkl > millis() || ui8_batdauhienthi==1 || ui8_calib==1 || ui8_tienhanh_tare==1) return;
+	if(ui32_timeoutkl > millis() || ui8_batdauhienthi==1 || ui8_calib==1 || ui8_tienhanh_tare==1 || ui8_bamnut==1) return;
 
 	unsigned long time_now = millis();
 	unsigned long time_do = millis();
@@ -541,7 +551,7 @@ void measure_w()
 	scale.power_up();
 	while(!first)
 	{
-		if((millis()-time_wait) >= 1000){
+		if((millis()-time_wait) >= 2000){
 			get_sample = scale.get_value(5);
 			Serial.print(get_sample);
 			Serial.print("\t");
@@ -588,7 +598,7 @@ void measure_w()
 			// }
 			Serial.print("gia tri scale value: ");
 			Serial.println(scale_value);
-			temp = scale.get_units(5);
+			temp = scale.get_units(2);
 			bo_loc.update(temp);
 			first = true;
 		}
@@ -635,7 +645,9 @@ void measure_w()
 			Serial.println(F(" Kg"));
 			weightsTemp=weights;
 			first = false;
-			ui32_timeoutkl=millis() + 1000; // Biến thời gian
+			ui32_timeoutkl=millis() + 3000; // Biến thời gian
+			// ui32_tg_bamnut=millis() + 2000;
+			ui8_bamnut=1;
 		}
 		if(weights>0.05)
 		{
@@ -654,7 +666,9 @@ void measure_w()
 			Serial.println(F(" Kg"));
 			weightsTemp=weights;
 			first = false;
-			ui32_timeoutkl=millis() + 1000; // Biến thời gian
+			ui32_timeoutkl=millis() + 3000; // Biến thời gian
+			// ui32_tg_bamnut=millis() + 2000;
+			ui8_bamnut=1;
 		}
 		
 	}
@@ -776,6 +790,7 @@ void loop() {
 			Serial.print(F("scale_value_calib:  "));
 			Serial.println(scale_value_calib);
 			ui8_calib=1;
+			ui8_bamnut=0;
 			inputString = "";
 			stringComplete = false;
 		}
@@ -809,6 +824,7 @@ void loop() {
 				// lcd.print(F("SO KY CALIB: "));
 				// lcd.print(khoiluong);
 				// lcd.print(F(" Kg"));
+				// ui8_bamnut=1;
 				weights=0;
 				weightsTemp=0;
 				scale.power_down();		
@@ -919,7 +935,42 @@ void loop() {
 	sangled();
   	measure_w();
 	hienthi_khoiluong(weights);
+
+	if(ui8_solan_bamnut>0 && pressStartTime<=millis())
+	{
+		if(ui8_solan_bamnut==1)
+		{
+			Serial.println("Ban bam nut 1 lan");
+			ui8_solan_bamnut=0;
+		}
+
+		if(ui8_solan_bamnut==2)
+		{
+			Serial.println("Ban bam nut 2 lan");
+			lcd.clear();
+			lcd.setCursor(0,0);
+			lcd.print("MODE CALIB");
+			ui8_tienhanh_tare=1;
+			ui8_solan_bamnut=0;
+		}
+
+		if(ui8_solan_bamnut==3)
+		{
+			Serial.println("Ban bam nut 3 lan");
+			Serial_debug.println("thoat chế độ settings");
+			lcd.clear();
+			lcd.setCursor(0,0);
+			lcd.print("EXIT SETTING MODE");
+			// ui8_solan_bamnut++;
+			ui8_modesetting=0;
+			ui8_calib=0;
+			ui8_bamnut=0;
+			ui8_solan_bamnut=0;
+		}
+	}
+	// button_chucnang_TEST();
 	// hienthi_moichao();
+
 	}
 
 void setup_pixel()
@@ -1006,26 +1057,92 @@ void led_overload()
 
 void button_chucnang()
 {
-	
+	if(ui8_bamnut==0 && ui32_tg_bamnut<=millis()) return;
+	// ui8_solan_bamnut=0;
 	int reading = digitalRead(buttonPin);
 
 	// Chống dội
-	if (reading != lastButtonState) {
-		lastDebounceTime = millis();
+	if(ui8_modesetting==0)
+	{
+		if (reading != lastButtonState) 
+		{
+			lastDebounceTime = millis();
+		}
+		
+			if ((millis() - lastDebounceTime) > debounceDelay+1000) 
+			{
+				if (reading != buttonState) {
+					buttonState = reading;
+					if (buttonState == LOW) 
+					{
+						// Nút được nhấn
+						weights=0;
+						weightsTemp=0;
+						Serial_debug.println("Nút nhấn bấm vào chế độ settings");
+						lcd.clear();
+						lcd.setCursor(0,0);
+						lcd.print("SETTING MODE:");
+						lcd.setCursor(0,1);
+						lcd.print("1: NOTHING");
+						lcd.setCursor(0,2);
+						lcd.print("2: CALIB LOADCELL");
+						lcd.setCursor(0,3);
+						lcd.print("3: EXIT SETTING MODE");
+						// ui8_solan_bamnut++;
+						ui8_modesetting=1;
+						ui8_calib=1;
+						// ui8_tienhanh_tare=1;
+					}
+					
+				}
+				else 
+				{
+					// lcd.clear();
+					// lcd.setCursor(0,0);
+					// lcd.print("KHONG CO AI BAM SETTINGS MODE");
+					// Serial_debug.println("Nút nhấn bấm vào chế độ settings KHONG DUOC BAM THOAT");
+					ui32_timeoutkl=millis()+200;
+					ui8_modesetting=0;
+					ui8_calib=0;
+					ui8_bamnut=0;
+				}
+			}
 	}
+	
 
-	if ((millis() - lastDebounceTime) > debounceDelay) {
-		if (reading != buttonState) {
-			buttonState = reading;
-			if (buttonState == LOW) {
-				// Nút được nhấn
-				Serial_debug.println("Nút nhấn");
-				// ui8_tienhanh_tare=1;
+	if(ui8_modesetting==1)
+	{
+		int reading = digitalRead(buttonPin);
+
+		if (reading != lastButtonState) 
+		{
+			lastClickTime = millis();
+		}
+
+		if((millis() - lastClickTime) > 50)
+		{	
+			if (reading != buttonState) 
+			{
+				buttonState = reading;
+				if(buttonState == LOW) 
+				{
+					// Nút được nhấn
+					ui8_solan_bamnut++;
+					lastClickTime = millis();
+					pressStartTime=millis()+2000;
+					Serial_debug.print("So lan bam nut: ");
+					Serial_debug.println(ui8_solan_bamnut);
+				}
 			}
 		}
+	
+		lastButtonState = reading;
+
 	}
+
 	lastButtonState = reading;
 }
+
 
 
 
