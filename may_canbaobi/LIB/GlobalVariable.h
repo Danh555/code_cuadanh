@@ -85,7 +85,7 @@ float scale_value;	//Hệ số để qui đổi ra khối lượng.
 float scale_value_calib;
 long offset_scale;
 const float tolerances = 0.35;
-byte lando = 25; //So lan lay gia tri do.
+byte lando = 10; //So lan lay gia tri do.
 unsigned int add_eeprom;
 boolean isNum = false;
 
@@ -114,6 +114,9 @@ unsigned long debounceDelay = 1000;   // chống dội 50ms
 unsigned long lastClickTime = 0;
 unsigned long doubleClickDelay = 1000; // khoảng thời gian phân biệt single/double click
 
+unsigned long lastClickTime_nut1 = 0;
+unsigned long doubleClickDelay_nut1 = 1000;
+
 int clickCount = 0;
 
 uint8_t ui8_tienhanh_tare=0; // Biến trạng thái thực hiện tare
@@ -128,3 +131,11 @@ uint32_t pressStartTime = 0; // Thời gian bắt đầu nhấn nút
 bool buttonPressed = 0;    // Trạng thái nút bấm
 
 uint8_t ui8_check_thoat=0; // Biến kiểm tra thoát chế độ setting
+uint8_t ui8_nut1_bam=0; // Biến trạng thái nút 1 đã bấm	
+uint32_t ui32_lasttime_bamnut1=0; // Biến thời gian nút 1 đã bấm
+uint8_t ui8_solan_bamnut_nut1=0; // Biến đếm số lần bấm nút 1
+uint8_t ui8_landau=0; // Biến trạng thái lần đầu hiển thị
+uint8_t ui8_bienluumau=0; // Biến lưu màu led
+uint32_t ui8_doichopled=0;
+
+uint32_t ui32_timeout_modesetting=0; // Biến thời gian thoát chế độ setting
