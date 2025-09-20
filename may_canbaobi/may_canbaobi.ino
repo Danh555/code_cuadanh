@@ -73,7 +73,7 @@ lcd.print("1: CHOOSE COLOR");
 lcd.setCursor(0,2);
 lcd.print("2: CALIB LOADCELL");
 lcd.setCursor(0,3);
-lcd.print("3: EXIT SETTING MODE");
+lcd.print("HOLD BUTTON: EXIT");
   scale.power_down();
 //   ui8_calib=0;
   scale.set_offset(offset);
@@ -141,9 +141,7 @@ void setup() {
     // turn on LCD backlight                      
     lcd.backlight();
     lcd.setCursor(0,0);
-    lcd.print("DU AN CAN BAO BI ");
-    // lcd.setCursor(2,1);
-    // lcd.print("BAO BI");
+    lcd.print("WELCOME TO USE");
     lcd.setCursor(0,1);
     lcd.print("ALTA MEDIA COMPANY");
     lcd.setCursor(0,2);
@@ -924,35 +922,10 @@ void loop() {
 
 	if(ui8_solan_bamnut>0 && pressStartTime<=millis())
 	{
-		if(ui8_solan_bamnut==1)
-		{
-			Serial.println("Ban bam nut 1 lan");
-			lcd.clear();
-			lcd.setCursor(0,0);
-			lcd.print("CHOOSE COLLOR");
-			lcd.setCursor(0,1);
-			lcd.print("1: RED 2: GREEN");
-			lcd.setCursor(0,2);
-			lcd.print("3: BLUE 4: BACK");
-			ui8_nut1_bam=1;
-			ui32_lasttime_bamnut1=millis()+10000;
-			ui8_solan_bamnut=0;
-		}
-
-		if(ui8_solan_bamnut==2)
-		{
-			Serial.println("Ban bam nut 2 lan");
-			lcd.clear();
-			lcd.setCursor(0,0);
-			lcd.print("MODE CALIB");
-			ui8_tienhanh_tare=1;
-			ui8_solan_bamnut=0;
-		}
-
-		if(ui8_solan_bamnut==3)
-		{
-			Serial.println("Ban bam nut 3 lan");
-			Serial_debug.println("thoat chế độ settings");
+		int reading = digitalRead(buttonPin);
+		if (reading == LOW) 
+		{ // Button is pressed
+			Serial_debug.println("THOAT");
 			lcd.clear();
 			lcd.setCursor(0,0);
 			lcd.print("EXIT SETTING MODE");
@@ -964,7 +937,59 @@ void loop() {
 			ui8_calib=0;
 			ui8_bamnut=0;
 			ui8_solan_bamnut=0;
+			check_nutthoat=0;
+
 		}
+		else
+		{
+			if(ui8_solan_bamnut==1)
+			{
+				Serial.println("Ban bam nut 1 lan");
+				lcd.clear();
+				lcd.setCursor(0,0);
+				lcd.print("CHOOSE COLLOR");
+				lcd.setCursor(0,1);
+				lcd.print("1: RED 2: GREEN");
+				lcd.setCursor(0,2);
+				lcd.print("3: BLUE 4: BACK");
+				ui8_nut1_bam=1;
+				ui32_lasttime_bamnut1=millis()+10000;
+				ui8_solan_bamnut=0;
+				check_nutthoat=0;
+			}
+
+			if(ui8_solan_bamnut==2)
+			{
+				Serial.println("Ban bam nut 2 lan");
+				lcd.clear();
+				lcd.setCursor(0,0);
+				lcd.print("MODE CALIB");
+				ui8_tienhanh_tare=1;
+				ui8_solan_bamnut=0;
+				check_nutthoat=0;
+			}
+
+			if(ui8_solan_bamnut==3)
+			{
+				Serial.println("Ban bam nut 3 lan");
+				Serial_debug.println("thoat chế độ settings");
+				lcd.clear();
+				lcd.setCursor(0,0);
+				lcd.print("EXIT SETTING MODE");
+				ui8_landau=1;
+				// ui8_solan_bamnut++;
+				weights=0;
+				weightsTemp=0;
+				ui8_modesetting=0;
+				ui8_calib=0;
+				ui8_bamnut=0;
+				ui8_solan_bamnut=0;
+				check_nutthoat=0;
+			}
+		}
+
+		
+		
 	}
 	// button_chucnang_TEST();
 	// hienthi_moichao();
@@ -983,58 +1008,72 @@ void loop() {
 		lcd.setCursor(0,2);
 		lcd.print("2: CALIB LOADCELL");
 		lcd.setCursor(0,3);
-		lcd.print("3: EXIT SETTING MODE");
+		lcd.print("HOLD BUTTON: EXIT");
 		ui8_nut1_bam=0;
 	}
 
 	if(ui8_solan_bamnut_nut1>0 && pressStartTime<=millis())
 	{
-		if(ui8_solan_bamnut_nut1==1)
-		{
-			Serial.println("Sang led do");
-			ui8_bienluumau=1;
-			EEPROM.put(128,ui8_bienluumau);
-			lcd.clear();
-			lcd.setCursor(0,0);
-			lcd.print("CHOOSE LED RED");
-			ui32_lasttime_bamnut1=millis()+2000;
-			ui8_solan_bamnut_nut1=0;
-		}
-
-		if(ui8_solan_bamnut_nut1==2)
-		{
-			Serial.println("Sang led xanh");
-			ui8_bienluumau=2;
-			EEPROM.put(128,ui8_bienluumau);
-			lcd.clear();
-			lcd.setCursor(0,0);
-			lcd.print("CHOOSE LED GREEN");
-			ui32_lasttime_bamnut1=millis()+2000;
-			ui8_solan_bamnut_nut1=0;
-		}
-
-		if(ui8_solan_bamnut_nut1==3)
-		{
-			Serial.println("Sang led xanh");
-			ui8_bienluumau=3;
-			EEPROM.put(128,ui8_bienluumau);
-			lcd.clear();
-			lcd.setCursor(0,0);
-			lcd.print("CHOOSE LED BLUE");
-			ui32_lasttime_bamnut1=millis()+2000;
-			ui8_solan_bamnut_nut1=0;
-		}
-
-		if(ui8_solan_bamnut_nut1==4)
-		{
-			Serial.println("ve lai che do settings");
+		int reading = digitalRead(buttonPin);
+		if (reading == LOW) 
+		{ // Button is pressed
+			Serial_debug.println("THOAT CHON MAU");
 			// lcd.clear();
 			// lcd.setCursor(0,0);
-			// lcd.print("BACK SETTING MODE");
+			// lcd.print("EXIT SETTING MODE");
 			ui32_lasttime_bamnut1=millis()+100;
 			ui8_solan_bamnut_nut1=0;
-		}
 
+		}
+		else
+		{
+			if(ui8_solan_bamnut_nut1==1)
+			{
+				Serial.println("Sang led do");
+				ui8_bienluumau=1;
+				EEPROM.put(128,ui8_bienluumau);
+				lcd.clear();
+				lcd.setCursor(0,0);
+				lcd.print("CHOOSE LED RED");
+				ui32_lasttime_bamnut1=millis()+2000;
+				ui8_solan_bamnut_nut1=0;
+			}
+
+			if(ui8_solan_bamnut_nut1==2)
+			{
+				Serial.println("Sang led xanh");
+				ui8_bienluumau=2;
+				EEPROM.put(128,ui8_bienluumau);
+				lcd.clear();
+				lcd.setCursor(0,0);
+				lcd.print("CHOOSE LED GREEN");
+				ui32_lasttime_bamnut1=millis()+2000;
+				ui8_solan_bamnut_nut1=0;
+			}
+
+			if(ui8_solan_bamnut_nut1==3)
+			{
+				Serial.println("Sang led xanh");
+				ui8_bienluumau=3;
+				EEPROM.put(128,ui8_bienluumau);
+				lcd.clear();
+				lcd.setCursor(0,0);
+				lcd.print("CHOOSE LED BLUE");
+				ui32_lasttime_bamnut1=millis()+2000;
+				ui8_solan_bamnut_nut1=0;
+			}
+
+			if(ui8_solan_bamnut_nut1==4)
+			{
+				Serial.println("ve lai che do settings");
+				// lcd.clear();
+				// lcd.setCursor(0,0);
+				// lcd.print("BACK SETTING MODE");
+				ui32_lasttime_bamnut1=millis()+100;
+				ui8_solan_bamnut_nut1=0;
+			}
+		}
+		
 	}
 
 	if(ui8_modesetting==1 && ui32_timeout_modesetting<=millis())
@@ -1162,7 +1201,7 @@ void button_chucnang()
 		{
 			lastDebounceTime = millis();
 		}
-			if((millis() - lastDebounceTime) > debounceDelay+1000) 
+			if((millis() - lastDebounceTime) > debounceDelay-200) 
 			{
 				if (reading != buttonState) {
 					buttonState = reading;
@@ -1180,7 +1219,7 @@ void button_chucnang()
 						lcd.setCursor(0,2);
 						lcd.print("2: CALIB LOADCELL");
 						lcd.setCursor(0,3);
-						lcd.print("3: EXIT SETTING MODE");
+						lcd.print("HOLD BUTTON: EXIT");
 						ui32_timeout_modesetting=millis()+60000; // Thời gian chờ vào chế độ settings
 						// ui8_solan_bamnut++;
 						ui8_modesetting=1;
@@ -1222,6 +1261,10 @@ void button_chucnang()
 				{
 					// Nút được nhấn
 					ui8_solan_bamnut++;
+					if(ui8_solan_bamnut>3)
+					{
+						ui8_solan_bamnut=0;
+					}
 					lastClickTime = millis();
 					pressStartTime=millis()+1500;
 					ui32_timeout_modesetting=millis()+60000; // Thời gian chờ vào chế độ settings
@@ -1251,6 +1294,10 @@ void button_chucnang()
 				{
 					// Nút được nhấn
 					ui8_solan_bamnut_nut1++;
+					if(ui8_solan_bamnut_nut1>4)
+					{
+						ui8_solan_bamnut_nut1=0;
+					}
 					lastClickTime = millis();
 					pressStartTime=millis()+1500;
 					ui32_timeout_modesetting=millis()+60000; // Thời gian chờ vào chế độ settings
@@ -1269,6 +1316,49 @@ void button_chucnang()
 // {
 
 // }
+
+void hienthi_chaychu()
+{
+	 unsigned long currentMillis = millis();
+
+	if (!isPaused) {
+		if (currentMillis - previousMillis >= scrollInterval) 
+		{
+			previousMillis = currentMillis;
+
+			// Lấy 16 ký tự để in ra LCD
+			String window = buffer.substring(position, position + 16);
+			lcd.setCursor(0, 0);
+			lcd.print("               ");
+			lcd.setCursor(0, 0);
+			lcd.print(window);
+
+			// Khi tới chính giữa thì pause
+			if (position == 13) 
+			{  // chỉnh số này để canh vị trí dừng
+				isPaused = true;
+				pauseStart = currentMillis;
+			} 
+			else 
+			{
+				position++;
+				if (position > buffer.length() - 16) 
+				{
+					position = 0;
+				}
+			}
+		}
+	} 
+	else 
+	{
+		// Nếu đang pause
+		if (currentMillis - pauseStart >= pauseTime) 
+		{
+			isPaused = false;   // hết pause, tiếp tục chạy
+			position++;
+		}
+	}
+}
 
 
 

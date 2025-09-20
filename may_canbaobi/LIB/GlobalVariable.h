@@ -107,6 +107,7 @@ uint8_t ui32_tg_baoled=0;
 #define buttonPin A3     // chân nút bấm
 int buttonState;             
 int lastButtonState = HIGH;  // dùng pull-up nên trạng thái nghỉ là HIGH
+int lastReading = HIGH;     // trạng thái nút bấm lần trước
 
 unsigned long lastDebounceTime = 0;
 unsigned long debounceDelay = 1000;   // chống dội 50ms
@@ -139,3 +140,16 @@ uint8_t ui8_bienluumau=0; // Biến lưu màu led
 uint32_t ui8_doichopled=0;
 
 uint32_t ui32_timeout_modesetting=0; // Biến thời gian thoát chế độ setting
+uint8_t check_nutthoat=0;
+uint8_t ui8_ktnutthoat=0;
+
+String kitu_test="PUT YOUR ITEM";
+String buffer;
+int position=0;	
+
+unsigned long previousMillis = 0;
+const long scrollInterval = 500;   // tốc độ chạy
+const long pauseTime = 5000;       // dừng giữa (ms)
+
+bool isPaused = false;
+unsigned long pauseStart = 0;
