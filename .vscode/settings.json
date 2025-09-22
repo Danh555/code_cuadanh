@@ -11,7 +11,8 @@
         "initializer_list": "c",
         "list": "c",
         "serstream": "c",
-        "vector": "c"
+        "vector": "c",
+        "button_danh.h": "c"
     },
     "cmake.sourceDirectory": "D:/Alta/code_cuadanh/ROCKSTAR_BOARD_MOI/libraries/Adafruit_BusIO-master"
 }
