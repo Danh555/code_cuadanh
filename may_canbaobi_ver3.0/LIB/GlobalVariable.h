@@ -23,7 +23,7 @@ HX711 scale;
 #define LED_PIN    A1
 
 // How many NeoPixels are attached to the Arduino?
-#define LED_COUNT 40
+#define LED_COUNT 80
 // #define BUTTON_PIN A3
 
 Adafruit_NeoPixel pixels1(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
@@ -153,3 +153,7 @@ const long pauseTime = 5000;       // dừng giữa (ms)
 
 bool isPaused = false;
 unsigned long pauseStart = 0;
+uint8_t ui8_gioihan_do=0;
+uint8_t ui8_setting_gioihan=0;
+uint8_t ui8_hienthiled=0;
+uint8_t ui8_mode_calib=0;

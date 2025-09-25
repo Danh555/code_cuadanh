@@ -688,7 +688,7 @@ void Motor_thangmay_len()
 {
   vitrithangmay = 1;
   running = df_run_up;
-  runMotor(Motor_thangmay, 70, chieuquay_thangmay_len, ui16_lastspeed);
+  runMotor(Motor_thangmay, 80, chieuquay_thangmay_len, ui16_lastspeed);
   
 }
 
@@ -707,14 +707,14 @@ void Motor_thangmay_dung()
 
 void Motor_tamche_ra()
 {
-  // runMotor(Motor_tamche,100,chieuquay_tamche_ra,ui16_lastspeed);
-  runMotor(Motor_tamche, 50, chieuquay_tamche_ra, ui16_lastspeed); // dành cho máy số 9
+  runMotor(Motor_tamche,100,chieuquay_tamche_ra,ui16_lastspeed);
+  // runMotor(Motor_tamche, 50, chieuquay_tamche_ra, ui16_lastspeed); // dành cho máy số 9
 }
 
 void Motor_tamche_vao()
 {
-  // runMotor(Motor_tamche,100,chieuquay_tamche_vao,ui16_lastspeed);
-  runMotor(Motor_tamche, 50, chieuquay_tamche_vao, ui16_lastspeed); // dành cho máy số 9
+  runMotor(Motor_tamche,100,chieuquay_tamche_vao,ui16_lastspeed);
+  // runMotor(Motor_tamche, 50, chieuquay_tamche_vao, ui16_lastspeed); // dành cho máy số 9
 }
 
 void Motor_tamche_dung()
@@ -780,7 +780,8 @@ void reset_khaychuasanpham()
   int count = 0;
   EN_DONGCO(0);
   delay(50);
-  Motor_thangmay_xuong(70);
+  Motor_thangmay_xuong(50);
+  ui32_tiemout_rskhay = millis() + 60000;
   int reading = doccambien(CTHT_THANG_GOC, 20, 0);
   int encoder_ = digitalRead(E_CHA);
 
@@ -1084,7 +1085,8 @@ void gogo_dixuong(int vitri_)
   uart_debug.println(count);
   // motor_1_Down(50);
   EN_DONGCO(0);
-  Motor_thangmay_xuong(20);
+  Motor_thangmay_xuong(70);
+  ui32_tiemout_rskhay = millis() + 60000;
   // int reading = doccambien(limDown_pin,0);
   int reading = doccambien(CTHT_THANG_GOC, 20, 0);
   int encoder_ = digitalRead(E_CHA);
