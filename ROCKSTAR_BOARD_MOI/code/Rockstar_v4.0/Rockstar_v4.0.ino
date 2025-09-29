@@ -707,14 +707,14 @@ void Motor_thangmay_dung()
 
 void Motor_tamche_ra()
 {
-  // runMotor(Motor_tamche,100,chieuquay_tamche_ra,ui16_lastspeed);
-  runMotor(Motor_tamche, 50, chieuquay_tamche_ra, ui16_lastspeed); // dành cho máy số 9
+  runMotor(Motor_tamche,100,chieuquay_tamche_ra,ui16_lastspeed);
+  // runMotor(Motor_tamche, 50, chieuquay_tamche_ra, ui16_lastspeed); // dành cho máy số 9
 }
 
 void Motor_tamche_vao()
 {
-  // runMotor(Motor_tamche,100,chieuquay_tamche_vao,ui16_lastspeed);
-  runMotor(Motor_tamche, 50, chieuquay_tamche_vao, ui16_lastspeed); // dành cho máy số 9
+  runMotor(Motor_tamche,100,chieuquay_tamche_vao,ui16_lastspeed);
+  // runMotor(Motor_tamche, 50, chieuquay_tamche_vao, ui16_lastspeed); // dành cho máy số 9
 }
 
 void Motor_tamche_dung()
