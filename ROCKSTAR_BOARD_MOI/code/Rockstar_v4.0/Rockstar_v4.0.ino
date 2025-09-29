@@ -1085,7 +1085,7 @@ void gogo_dixuong(int vitri_)
   uart_debug.println(count);
   // motor_1_Down(50);
   EN_DONGCO(0);
-  Motor_thangmay_xuong(70);
+  Motor_thangmay_xuong(30);
   ui32_tiemout_rskhay = millis() + 60000;
   // int reading = doccambien(limDown_pin,0);
   int reading = doccambien(CTHT_THANG_GOC, 20, 0);

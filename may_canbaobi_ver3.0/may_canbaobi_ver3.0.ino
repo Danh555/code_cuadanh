@@ -66,15 +66,24 @@ void calibrateOffset()
   lcd.setCursor(0,0);
   lcd.print("CALIB DONE!");
   delay(1000);
+//   lcd.clear();
+// lcd.setCursor(0,0);
+// lcd.print("SETTING MODE:");
+// lcd.setCursor(0,1);
+// lcd.print("1: CHOOSE COLOR");
+// lcd.setCursor(0,2);
+// lcd.print("2: CALIB LOADCELL");
+// lcd.setCursor(0,3);
+// lcd.print("HOLD BUTTON: EXIT");
   lcd.clear();
-lcd.setCursor(0,0);
-lcd.print("SETTING MODE:");
-lcd.setCursor(0,1);
-lcd.print("1: CHOOSE COLOR");
-lcd.setCursor(0,2);
-lcd.print("2: CALIB LOADCELL");
-lcd.setCursor(0,3);
-lcd.print("HOLD BUTTON: EXIT");
+	lcd.setCursor(0,0);
+	lcd.print("SETTING (HOLD->EXIT)");
+	lcd.setCursor(0,1);
+	lcd.print("1: CHOOSE COLOR");
+	lcd.setCursor(0,2);
+	lcd.print("2: TARE WEIGHT");
+	lcd.setCursor(0,3);
+	lcd.print("3: CALIB LOADCELL");
   scale.power_down();
 //   ui8_calib=0;
   scale.set_offset(offset);
@@ -136,7 +145,6 @@ void setup() {
 
 	pinMode(buttonPin, INPUT_PULLUP);
     scan_i2c();
-
     // initialize LCD
     lcd.init();
     // turn on LCD backlight                      
@@ -162,12 +170,14 @@ void setup() {
 	init_scale(); // Khởi tạo cân
 	doc_eeprom_w();
 	// tatled();
+	ui8_modedebug=0;
 
 	// lcd.setCursor(0,0);
   	// lcd.print("KHOI LUONG LA:");	
-	setup_pixel();
 
+	setup_pixel();
 	ui32_timeoutkl=millis()+500; // Biến thời gian khóa không cho đo liên tục
+	 buffer = String(' ', 20) + test_chu + String(' ', 20);
 } 
 
 
@@ -189,7 +199,7 @@ void setup() {
 void serialEvent()
 {
 	//inputString = "";
-	if(ui8_mode_calib==0) return;
+	if(ui8_modedebug==0) return;
 	while(Serial.available()){
 		char inChar = (char)Serial.read();
 		//Serial.print(inChar);
@@ -415,9 +425,9 @@ void hienthi_khoiluong(float ui8_kl)
   if(ui8_batdauhienthi==0) return;
 //   ui32_timeoutkl=millis();
 
-  Serial_debug.println("bat dau hien thi khoi luong");
-  Serial_debug.println(ui8_kl);
-  Serial_debug.println(sizeof(String(ui8_kl))-3);
+//   Serial_debug.println("bat dau hien thi khoi luong");
+//   Serial_debug.println(ui8_kl);
+//   Serial_debug.println(sizeof(String(ui8_kl))-3);
   char kl[20];
   char kl_num[10];
   dtostrf(ui8_kl, sizeof(String(ui8_kl))-3, 2, kl_num);   // 5: độ dài chuỗi, 2: số sau dấu thập phân
@@ -557,31 +567,31 @@ void measure_w()
 			// Serial.print(get_sample);
 			// Serial.print("\t");
 			if(get_sample <= array_get[0]){
-				Serial_debug.println("lay gia tri scale 0");
+				// Serial_debug.println("lay gia tri scale 0");
 				scale_value = array_scale[0];
 				scale.set_scale(scale_value);
 			}
 			else if((array_get[0] < get_sample) && (get_sample<= array_get[1]))
 			{
-				Serial_debug.println("lay gia tri scale 1");
+				// Serial_debug.println("lay gia tri scale 1");
 				scale_value = array_scale[1];
 				scale.set_scale(scale_value);
 			}
 			else if(((array_get[1] < get_sample) && (get_sample<= array_get[2])))
 			{
-				Serial_debug.println("lay gia tri scale 2");
+				// Serial_debug.println("lay gia tri scale 2");
 				scale_value = array_scale[2];
 				scale.set_scale(scale_value);
 			}
 			else if(((array_get[2] < get_sample) && (get_sample<= array_get[3])))
 			{
-				Serial_debug.println("lay gia tri scale 3");
+				// Serial_debug.println("lay gia tri scale 3");
 				scale_value = array_scale[3];
 				scale.set_scale(scale_value);
 			}
 			else 
 			{
-				Serial_debug.println("lay gia tri scale 4");
+				// Serial_debug.println("lay gia tri scale 4");
 				scale_value = array_scale[4];
 				scale.set_scale(scale_value);	
 			}
@@ -628,9 +638,9 @@ void measure_w()
 				ui8_landau=0;
 			}
 			
-			Serial.print(F("Khoi luong: "));
-			Serial.print(weights);	
-			Serial.println(F(" Kg"));
+			// Serial.print(F("Khoi luong: "));
+			// Serial.print(weights);	
+			// Serial.println(F(" Kg"));
 			weightsTemp=weights;
 			first = false;
 			ui32_timeoutkl=millis() + 3000; // Biến thời gian
@@ -647,12 +657,12 @@ void measure_w()
 			{
 				// weightsTemp=weights;
 				ui8_hienthiled=1;
-				Serial_debug.println("phat hien so can khac");
+				// Serial_debug.println("phat hien so can khac");
 				ui8_batdauhienthi = 1;
 			}
-			Serial.print(F("Khoi luong: "));
-			Serial.print(weights);	
-			Serial.println(F(" Kg"));
+			// Serial.print(F("Khoi luong: "));
+			// Serial.print(weights);	
+			// Serial.println(F(" Kg"));
 			weightsTemp=weights;
 			first = false;
 			ui32_timeoutkl=millis() + 3000; // Biến thời gian
@@ -773,12 +783,14 @@ int serial_printf(const char *fmt, ...) {
 
 void Serial_test()
 {
-
+	// Serial_debug.println("nhay vao debug");
+	if(ui8_modedebug==0) return;
 	if (stringComplete==true) 
 	{
 		Serial.print(F("stringComplete :"));
 		Serial.println(inputString);
 		// serial_printf("stringComplete : %s", inputString.c_str());
+		ui32_timeout_modesetting=millis()+30000;
 
 		if(inputString == "calib_can")
 		{
@@ -820,27 +832,51 @@ void Serial_test()
 				doc_eeprom_w();
 				lcd.clear();
 				lcd.setCursor(4, 0);
-				lcd.print("CALIB DONE");
+				lcd.print("CALIB DONE DEBUG");
 				// lcd.setCursor(0, 1);
 				// lcd.print(F("SO KY CALIB: "));
 				// lcd.print(khoiluong);
 				// lcd.print(F(" Kg"));
 				// ui8_bamnut=1;
-				weights=0;
-				weightsTemp=0;
-				scale.power_down();		
-				ui32_timeout_hienthi = millis() + 6000; // Thời gian hiển thị là 5 giây
-				ui32_timeoutkl=millis()+5000; // Biến thời gian khóa không cho đo liên tục
-				ui8_calib=0;
-				ui8_landau=1;
-				ui8_moichao = 1;
-				
+				// weights=0;
+				// weightsTemp=0;
+				// scale.power_down();		
+				// ui32_timeout_hienthi = millis() + 6000; // Thời gian hiển thị là 5 giây
+				// ui32_timeoutkl=millis()+5000; // Biến thời gian khóa không cho đo liên tục
+				// ui8_calib=0;
+				// ui8_landau=1;
+				// ui8_moichao = 1;
+				// ui8_modedebug=0;
+				// delay(2000);
+				// lcd.clear();
+				// lcd.setCursor(0,0);
+				// lcd.print("SETTING MODE:");
+				// lcd.setCursor(0,1);
+				// lcd.print("1: CHOOSE COLOR");
+				// lcd.setCursor(0,2);
+				// lcd.print("2: CALIB LOADCELL");
+				// lcd.setCursor(0,3);
+				// lcd.print("HOLD BUTTON: EXIT");
+
 			}
 			Serial.print(F("Input text:  "));
 			Serial.println(inputString);
 			
 			Serial.print(F("Calib Loadcell:  "));
 			Serial.println(calibLoadcell);
+
+			ui8_bamnut=1;
+			ui8_modedebug=0;
+			delay(2000);
+			lcd.clear();
+			lcd.setCursor(0,0);
+			lcd.print("SETTING (HOLD->EXIT)");
+			lcd.setCursor(0,1);
+			lcd.print("1: CHOOSE COLOR");
+			lcd.setCursor(0,2);
+			lcd.print("2: TARE WEIGHT");
+			lcd.setCursor(0,3);
+			lcd.print("3: CALIB LOADCELL");
 			
 			
 			inputString = "";
@@ -934,28 +970,14 @@ void Serial_test()
 	scale.power_down();			        // put the ADC in sleep mode
 }
 
-void loop() {
-  // put your main code here, to run repeatedly:
-	if(ui8_mode_calib==1)
-	{
-		Serial_test();
-	}
-
-	if(ui8_mode_calib==0)
-	{
-		sangled(ui8_bienluumau);
-		measure_w();
-		hienthi_khoiluong(weights);	
-	}
-
-	calibrateOffset();
-	button_chucnang();
+void xuly_button()
+{
 	if(ui8_solan_bamnut>0 && pressStartTime<=millis())
 	{
 		int reading = digitalRead(buttonPin);
 		if (reading == LOW) 
 		{ // Button is pressed
-			Serial_debug.println("THOAT");
+			// Serial_debug.println("THOAT");
 			lcd.clear();
 			lcd.setCursor(0,0);
 			lcd.print("EXIT SETTING MODE");
@@ -968,21 +990,22 @@ void loop() {
 			ui8_bamnut=0;
 			ui8_solan_bamnut=0;
 			check_nutthoat=0;
-			ui8_mode_calib=0;
+			// ui8_mode_calib=0;
+			ui8_modedebug=0;
 
 		}
 		else
 		{
 			if(ui8_solan_bamnut==1)
 			{
-				Serial.println("Ban bam nut 1 lan");
+				// Serial.println("Ban bam nut 1 lan");
 				lcd.clear();
 				lcd.setCursor(0,0);
 				lcd.print("CHOOSE COLLOR");
 				lcd.setCursor(0,1);
 				lcd.print("1: RED 2: GREEN");
 				lcd.setCursor(0,2);
-				lcd.print("3: BLUE 4: LIMIT");
+				lcd.print("3: BLUE 4: SET LIMIT");
 				ui8_nut1_bam=1;
 				ui32_lasttime_bamnut1=millis()+10000;
 				ui8_solan_bamnut=0;
@@ -1003,7 +1026,6 @@ void loop() {
 			if(ui8_solan_bamnut==3)
 			{
 				Serial.println("Ban bam nut 3 lan");
-				Serial_debug.println("thoat chế độ settings");
 				lcd.clear();
 				lcd.setCursor(0,0);
 				lcd.print("MODE CALIB");
@@ -1015,9 +1037,9 @@ void loop() {
 				// ui8_calib=0;
 				// ui8_bamnut=0;
 				ui8_solan_bamnut=0;
-				// check_nutthoat=0;
+				check_nutthoat=0;
 				// ui8_mode_calib=0;
-				ui8_mode_calib=1;
+				ui8_modedebug=1;
 			}
 		}
 
@@ -1031,15 +1053,25 @@ void loop() {
 		lcd.setCursor(0,0);		
 		lcd.print("BACK SETTING MODE");
 		delay(2000);
+		// lcd.clear();
+		// lcd.setCursor(0,0);
+		// lcd.print("SETTING MODE:");
+		// lcd.setCursor(0,1);
+		// lcd.print("1: CHOOSE COLOR");
+		// lcd.setCursor(0,2);
+		// lcd.print("2: CALIB LOADCELL");
+		// lcd.setCursor(0,3);
+		// lcd.print("HOLD BUTTON: EXIT");
+
 		lcd.clear();
 		lcd.setCursor(0,0);
-		lcd.print("SETTING MODE:");
+		lcd.print("SETTING (HOLD->EXIT)");
 		lcd.setCursor(0,1);
 		lcd.print("1: CHOOSE COLOR");
 		lcd.setCursor(0,2);
-		lcd.print("2: CALIB LOADCELL");
+		lcd.print("2: TARE WEIGHT");
 		lcd.setCursor(0,3);
-		lcd.print("HOLD BUTTON: EXIT");
+		lcd.print("3: CALIB LOADCELL");
 		ui8_nut1_bam=0;
 	}
 
@@ -1048,20 +1080,20 @@ void loop() {
 		int reading = digitalRead(buttonPin);
 		if (reading == LOW) 
 		{ // Button is pressed
-			Serial_debug.println("THOAT CHON MAU");
+			// Serial_debug.println("THOAT CHON MAU");
 			// lcd.clear();
 			// lcd.setCursor(0,0);
 			// lcd.print("EXIT SETTING MODE");
 			ui32_lasttime_bamnut1=millis()+100;
 			ui8_solan_bamnut_nut1=0;
 			// ui8_mode_calib=0;
-
+			// ui8_modedebug
 		}
 		else
 		{
 			if(ui8_solan_bamnut_nut1==1)
 			{
-				Serial.println("Sang led do");
+				// Serial.println("Sang led do");
 				ui8_bienluumau=1;
 				EEPROM.put(128,ui8_bienluumau);
 				lcd.clear();
@@ -1073,7 +1105,7 @@ void loop() {
 
 			if(ui8_solan_bamnut_nut1==2)
 			{
-				Serial.println("Sang led xanh");
+				// Serial.println("Sang led xanh");
 				ui8_bienluumau=2;
 				EEPROM.put(128,ui8_bienluumau);
 				lcd.clear();
@@ -1085,7 +1117,7 @@ void loop() {
 
 			if(ui8_solan_bamnut_nut1==3)
 			{
-				Serial.println("Sang led xanh");
+				// Serial.println("Sang led xanh");
 				ui8_bienluumau=3;
 				EEPROM.put(128,ui8_bienluumau);
 				lcd.clear();
@@ -1097,7 +1129,7 @@ void loop() {
 
 			if(ui8_solan_bamnut_nut1==4)
 			{
-				Serial.println("setting overload");
+				// Serial.println("setting overload");
 				lcd.clear();
 				lcd.setCursor(0,0);
 				lcd.print("LIMITED WEIGHT: ");		
@@ -1122,7 +1154,7 @@ void loop() {
 		// if (reading == LOW) 
 		// { // Button is pressed
 			EEPROM.put(138,ui8_gioihan_do);
-			Serial_debug.println("THOAT CHON MAU");
+			// Serial_debug.println("THOAT CHON MAU");
 			ui32_lasttime_bamnut1=millis()+100;
 			ui8_setting_gioihan=0;
 			// ui8_gioihan_do=0;
@@ -1145,8 +1177,29 @@ void loop() {
 		ui8_solan_bamnut=0;
 		ui8_nut1_bam=0;
 		ui8_solan_bamnut_nut1=0;
-		ui8_mode_calib=0;
+		// ui8_mode_calib=0;
+		ui8_modedebug=0;
 	}
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+	if(ui8_modedebug==1 && ui8_modesetting==1)
+	{
+		Serial_test();
+	}
+
+
+	// hienthi_chaychu();
+	sangled(ui8_bienluumau);
+	measure_w();
+	hienthi_khoiluong(weights);	
+
+	calibrateOffset();
+	button_chucnang();
+	xuly_button();
+	
+	
 }
 
 
@@ -1155,6 +1208,7 @@ void setup_pixel()
 	pixels1.begin();           // INITIALIZE NeoPixel strip object (REQUIRED)
 	pixels1.show();            // Turn OFF all pixels ASAP
 	pixels1.setBrightness(155); // Set BRIGHTNESS to about 1/5 (max = 255)
+	tatled();
 }
 
 void tatled()
@@ -1188,7 +1242,7 @@ void ledgreen()
 	for(uint16_t led1_chopchop=0;led1_chopchop<LED_COUNT;led1_chopchop++)
 	{
 		pixels1.setPixelColor(led1_chopchop,pixels1.Color(0,255,0));
-		delay(10);
+		// delay(10);
 	}
 	pixels1.show();
 	// digitalWrite(LED_ONBOARD,1);
@@ -1199,7 +1253,7 @@ void ledblue()
 	for(uint16_t led1_chopchop=0;led1_chopchop<LED_COUNT;led1_chopchop++)
 	{
 		pixels1.setPixelColor(led1_chopchop,pixels1.Color(0,0,255));
-		delay(10);
+		// delay(10);
 	}
 	pixels1.show();
 	// digitalWrite(LED_ONBOARD,1);
@@ -1207,8 +1261,11 @@ void ledblue()
 
 void sangled(uint8_t collor)
 {
-	// if(ui8_mode_calib==1) return;
-	if(weights>ui8_gioihan_do)
+	if(ui8_modedebug==1 && ui8_modesetting==1)
+	 return;
+
+	// Serial_debug.println("nhay vao sang led");
+	if(weights>ui8_gioihan_do && ui8_hienthiled==1)
 	{
 		if(collor==1)
 		{
@@ -1226,13 +1283,13 @@ void sangled(uint8_t collor)
 			ledblue();	
 		}
 
-		// ui8_hienthiled=0;
+		ui8_hienthiled=0;
 	}
-	else if(weights<=ui8_gioihan_do)
+	else if(weights<=ui8_gioihan_do && ui8_hienthiled==1)
 	{
 		// Serial_debug.println("tat led");
 		tatled();
-		// ui8_hienthiled=0;
+		ui8_hienthiled=0;
 		// ledblue();
 	}
 }
@@ -1279,15 +1336,25 @@ void button_chucnang()
 						weights=0;
 						weightsTemp=0;
 						Serial_debug.println("Nút nhấn bấm vào chế độ settings");
+						// lcd.clear();
+						// lcd.setCursor(0,0);
+						// lcd.print("SETTING MODE:");
+						// lcd.setCursor(0,1);
+						// lcd.print("1: CHOOSE COLOR");
+						// lcd.setCursor(0,2);
+						// lcd.print("2: CALIB LOADCELL");
+						// lcd.setCursor(0,3);
+						// lcd.print("HOLD BUTTON: EXIT");
+
 						lcd.clear();
 						lcd.setCursor(0,0);
-						lcd.print("SETTING MODE:");
+						lcd.print("SETTING (HOLD->EXIT)");
 						lcd.setCursor(0,1);
 						lcd.print("1: CHOOSE COLOR");
 						lcd.setCursor(0,2);
-						lcd.print("2: CALIB LOADCELL");
+						lcd.print("2: TARE WEIGHT");
 						lcd.setCursor(0,3);
-						lcd.print("HOLD BUTTON: EXIT");
+						lcd.print("3: CALIB LOADCELL");
 						ui32_timeout_modesetting=millis()+60000; // Thời gian chờ vào chế độ settings
 						// ui8_solan_bamnut++;
 						ui8_modesetting=1;
@@ -1395,7 +1462,7 @@ void button_chucnang()
 				if(buttonState == LOW) 
 				{
 					// Nút được nhấn
-					ui8_gioihan_do=ui8_gioihan_do+2;
+					ui8_gioihan_do=ui8_gioihan_do+1;
 					lcd.clear();
 					lcd.setCursor(0,0);
 					lcd.print("LIMITED WEIGHT: ");
@@ -1426,46 +1493,27 @@ void button_chucnang()
 
 void hienthi_chaychu()
 {
-	 unsigned long currentMillis = millis();
+	unsigned long currentMillis = millis();
+    if (currentMillis - previousMillis >= interval_cuonchu) {
+      previousMillis = currentMillis;
+	  Serial_debug.println("chay chu");
+      lcd.setCursor(0, 1);
+      lcd.print(buffer.substring(pos, pos + 20));
 
-	if (!isPaused) {
-		if (currentMillis - previousMillis >= scrollInterval) 
-		{
-			previousMillis = currentMillis;
+      pos++;
+      if (pos > buffer.length() - 20) {
+        // scrolling = false; // kết thúc cuộn
 
-			// Lấy 16 ký tự để in ra LCD
-			String window = buffer.substring(position, position + 16);
-			lcd.setCursor(0, 0);
-			lcd.print("               ");
-			lcd.setCursor(0, 0);
-			lcd.print(window);
-
-			// Khi tới chính giữa thì pause
-			if (position == 13) 
-			{  // chỉnh số này để canh vị trí dừng
-				isPaused = true;
-				pauseStart = currentMillis;
-			} 
-			else 
-			{
-				position++;
-				if (position > buffer.length() - 16) 
-				{
-					position = 0;
-				}
-			}
-		}
-	} 
-	else 
-	{
-		// Nếu đang pause
-		if (currentMillis - pauseStart >= pauseTime) 
-		{
-			isPaused = false;   // hết pause, tiếp tục chạy
-			position++;
-		}
-	}
+        // Xóa dòng 1 rồi in lại thông báo
+        lcd.setCursor(0, 1);
+        lcd.print("                    ");
+        lcd.setCursor(0, 1);
+        // lcd.print("Nhan nut de chay");
+      }
+    }
 }
+
+
 
 
 

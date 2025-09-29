@@ -121,7 +121,8 @@ enum PortN_Pin
 #define COLLUM_12 PIN_P3
 
 unsigned char COL[12] = {COLLUM_1, COLLUM_2, COLLUM_3, COLLUM_4, COLLUM_5, COLLUM_6, COLLUM_7, COLLUM_8, COLLUM_9, COLLUM_10, COLLUM_11, COLLUM_12};
-unsigned char ROW[12] = {ROW_1, ROW_5, ROW_3, ROW_4, ROW_2, ROW_6, ROW_7, ROW_8, ROW_9, ROW_10, ROW_11, ROW_12};
+// unsigned char ROW[12] = {ROW_1, ROW_5, ROW_3, ROW_4, ROW_2, ROW_6, ROW_7, ROW_8, ROW_9, ROW_10, ROW_11, ROW_12};//may so 9
+unsigned char ROW[12] = {ROW_1, ROW_2, ROW_3, ROW_4, ROW_5, ROW_6, ROW_7, ROW_8, ROW_9, ROW_10, ROW_11, ROW_12};//may so 9
 unsigned char DIR_PIN[3] = {M1_DIR, M2_DIR, K_DIR};
 unsigned char PWM_PIN[3] = {M1_PWM, M2_PWM, K_PWM};
 

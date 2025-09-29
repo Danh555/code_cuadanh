@@ -85,7 +85,7 @@ float scale_value;	//Hệ số để qui đổi ra khối lượng.
 float scale_value_calib;
 long offset_scale;
 const float tolerances = 0.35;
-byte lando = 10; //So lan lay gia tri do.
+byte lando = 5; //So lan lay gia tri do.
 unsigned int add_eeprom;
 boolean isNum = false;
 
@@ -157,3 +157,11 @@ uint8_t ui8_gioihan_do=0;
 uint8_t ui8_setting_gioihan=0;
 uint8_t ui8_hienthiled=0;
 uint8_t ui8_mode_calib=0;
+uint8_t ui8_modedebug=0;
+uint8_t ui8_modeset_bat=0;
+
+int pos = 0;
+
+unsigned long previousMillis_cuonchu = 0;
+const long interval_cuonchu = 2000; // tốc độ cuộn (ms)
+String test_chu="SETTING MODE (PRESS BUTTON IF YOU WANT EXIT SETTING MODE)";
