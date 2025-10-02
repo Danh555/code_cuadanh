@@ -1189,7 +1189,6 @@ void loop() {
 		Serial_test();
 	}
 
-
 	// hienthi_chaychu();
 	sangled(ui8_bienluumau);
 	measure_w();
