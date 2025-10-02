@@ -808,6 +808,7 @@ void reset_khaychuasanpham()
       uart_debug.print("count=");
       uart_debug.println(count);
       ui8_check_doilenh = 0;
+      ui8_trangthai_thangmay = 0;
       err_ = 0;
       // delay(50);
       break;
@@ -903,12 +904,12 @@ void reset_khaychuasanpham()
   // ui32_timeout_rsqua=millis()+20000;
   // ui8_every_ok=1;
   // Motor_khoacua_hocqua(255);
-  delay(200);
+  delay(500);
   Motor_dungkich_hocqua();
   EN_DONGCO(1);
 
-  // if (ui8_trangthai_thangmay == 0 && err_ == 0)
-  // {
+  if (ui8_trangthai_thangmay == 0 && err_ == 0)
+  {
     uart_debug.println("done!\n\r");
     // Motor_mocua_hocqua();
     // // if(ui8_goilenh_xuong==1)
@@ -918,7 +919,6 @@ void reset_khaychuasanpham()
     // // Motor_khoacua_hocqua(255);
     // delay(200);
     // Motor_dungkich_hocqua();
-
     Motor_tamche_ra();
     ui8_solangoilenh = 0;
     chay_tamche = 0;
@@ -926,7 +926,7 @@ void reset_khaychuasanpham()
     ui8_dungtamche = 1;
     ui8_dakhoa_cua = 0;
     // ui8_hoanthanh=0;
-  // }
+  }
 }
 
 int get_vitri()
@@ -1863,8 +1863,8 @@ void Task2core(void *parameter)
     if (ui8_hoanthanh == 1 && ui32_timeout_comeback <= millis())
     {
       tatled();
-      // reset_khaychuasanpham(); // danh cho may so 2
-      move_thangmay_xuong();
+      reset_khaychuasanpham(); // danh cho may so 2
+      // move_thangmay_xuong();
       ui8_hoanthanh = 0;
     }
 

@@ -261,14 +261,14 @@ int chongnhieu = 0;
 // int Vitrilaysanpham[6]={35,55,75,110,125,145};//A B C D E F
 // uint16_t Vitrilaysanpham[6]={350,550,750,1100,1250,1450};//A B C D E F
 // uint16_t Vitrilaysanpham[6]={1500,20,35,45,55,65};//A B C D E F
-// uint16_t Vitrilaysanpham[6]={1100,2000,3000,3700,4400,5100};//A B C D E F may binh thuongh
+uint16_t Vitrilaysanpham[6]={1100,2000,3000,3700,4400,5100};//A B C D E F may binh thuongh
 // uint16_t Vitrilaysanpham[6]={4200,7300,10800,12800,15500,18000};//A B C D E F
 // uint16_t Vitrilaysanpham[6]={7000,10800,15500,19800,25000,28000};//A B C D E F danh cho may so 2
 // uint16_t Vitrilaysanpham[6]={1300,2300,3400,4100,4900,5700};//A B C D E F may so 9
 // uint16_t Vitrilaysanpham[6] = {980, 1900, 3100, 4000, 4700, 5400}; // A B C D E F may so 9 moi sua ngay 21/7
 // uint16_t Vitrilaysanpham[6] = {980, 2400, 3500, 4500, 5200, 6000};
 // uint16_t Vitrilaysanpham[6] = {780, 1550, 2350, 3050, 3730, 4250}; // may so 1 DH NGUYEN TAT THANH
-uint16_t Vitrilaysanpham[6] = {750, 1530, 2330, 3030, 3710, 4230}; // may so 9
+// uint16_t Vitrilaysanpham[6] = {750, 1530, 2330, 3030, 3710, 4230}; // may so 9
 //-----------------End Khay chua san pham-----------------------
 //----------------------------------------------------------
 // Variables will change:
