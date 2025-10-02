@@ -1,3 +1,5 @@
+//ver 6.0
+
 #include "LIB/CRC16.h"
 #include "LIB/GlobalVariable.h"
 #include <EEPROM.h>
@@ -987,8 +989,6 @@ void gogo(int vitri_)
         if (count > vitri_)
         {
           Motor_thangmay_dung();
-          // delay(50);
-          // EN_DONGCO(1);
           uart_debug.print("Da toi vi tri");
           uart_debug.print(" count=");
           uart_debug.println(count);
@@ -1016,16 +1016,9 @@ void gogo(int vitri_)
     if (currentMillis > timer_checkmotor)
     {
       uart_debug.println("Elevator motor not running up\n\r");
-      // ui8_phanhoi_huthangmay=1;
-      // ui8_trangthai_thangmay=1;
-      // // erro_status=thangmay;
-      // err_=2;
-      // EEPROM.put(0,ui8_trangthai_thangmay);
-      // EEPROM.commit();
       break;
     }
 
-    // flash_led_red();
   }
   Motor_thangmay_dung();
   delay(50);
