@@ -780,7 +780,7 @@ void reset_khaychuasanpham()
   int count = 0;
   EN_DONGCO(0);
   delay(50);
-  Motor_thangmay_xuong(30);
+  Motor_thangmay_xuong(60);
   ui32_tiemout_rskhay = millis() + 60000;
   int reading = doccambien(CTHT_THANG_GOC, 20, 0);
   int encoder_ = digitalRead(E_CHA);
