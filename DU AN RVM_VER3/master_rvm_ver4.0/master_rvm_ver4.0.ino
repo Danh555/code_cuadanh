@@ -1405,7 +1405,7 @@ void quatrinh_2()
     Serial_Debug.printf("co vat\n");
     ui8_trangthaivat=TrangThaiVat::COVAT;
     stop_Motor_bangtai();
-    run_Motor_nangha();
+    run_Motor_nangha(); 
 		delay(500);
 		stop_Motor_nangha();
     run_Motor_Xoaychai();
