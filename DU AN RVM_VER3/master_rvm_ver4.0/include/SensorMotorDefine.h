@@ -103,3 +103,79 @@
 // DONGCO Motor_bangtai(DIR_MOTOR2,PWM_MOTOR2);
 // DONGCO Motor_xoaychai(DIR_MOTOR3,PWM_MOTOR3);
 // DONGCO Motor_nangha(DIR_MOTOR4,PWM_MOTOR4);
+
+
+void checkpulse()
+{
+	int reading = digitalRead(pinA);
+	if (reading != lastButtonState[0])
+	{
+		lastDebounceTime[0] = millis();	
+	} 
+
+	if ((millis() - lastDebounceTime[0]) > 200) 
+	{
+		if(reading == 1)
+		{
+			int reading2= digitalRead(pinB);
+			if(reading2 != lastButtonState[1])
+			{
+				lastDebounceTime[1] = millis();	
+			}	
+
+			if(millis() - lastDebounceTime[1] > 200)
+			{
+				if(reading2 == 1)
+				{
+					// xu ly tang
+					encoderPos++;
+				}
+			}
+			lastButtonState[1] = reading2;
+		}
+
+		if(reading==0)
+		{
+			encoderPos--;
+		}
+
+		if (encoderPos < 0) 
+          {
+          flag_encoderPos = 3;
+          encoderPos=0;
+          //Serial.println("encode < 0");
+          }
+      if (encoderPos > 8) 
+          {
+            flag_encoderPos = 0;
+            encoderPos = 0;
+            //Serial.println("encode > 8");
+          }
+      if(encoderPos >=0 && encoderPos < 2) 
+          {
+            flag_encoderPos= 0;
+          //  Serial.println(" 0< encode<2");
+          }
+      if(encoderPos >=2 && encoderPos < 4)
+          { flag_encoderPos= 1;
+        //  Serial.println(" 2< encode<4");
+          }
+      if(encoderPos >=4 && encoderPos < 6) 
+          {
+            flag_encoderPos= 2;
+          //  Serial.println(" 4< encode<6");
+          }
+      if(encoderPos >=6 && encoderPos < 8) 
+          {
+            flag_encoderPos= 3;
+          //  Serial.println(" 6< encode<8");
+          }
+
+		   Serial.print("so xung hien tai: ");
+		   Serial.println(encoderPos);
+       		lastReadMs = millis()+ 500; 
+	}
+	  lastButtonState[0] = reading;
+
+	   
+}
