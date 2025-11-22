@@ -20,7 +20,8 @@
 			"list": "c",
 			"serstream": "c",
 			"vector": "c",
-			"button_danh.h": "c"
+			"button_danh.h": "c",
+			"hx711.h": "c"
 		}
 	}
 }

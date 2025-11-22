@@ -161,8 +161,8 @@ void setup() {
     ui32_timeout_hienthi = millis() + 500; // Thời gian hiển thị là 5 giây
 	ui8_landau=1;
 
-    Serial.println(F("Can: nhap \"w_ok\""));
-    Serial_debug.println(F("Vao che do calib can: nhap \"calib\""));
+    Serial_debug.println(F("Vao che do calib can: nhap \"calib_can\""));
+	Serial_debug.println(F("Thoat che do calib can: nhap \"exitcalib\""));
     Serial_debug.println(F("Khai bao khoi luong: \"nhap so\""));
     Serial_debug.println(F("Tinh chinh gia tri Scale: nhap so co dau \"+\" hoac \"-\" phia truoc so"));
 
@@ -253,94 +253,7 @@ void serialEvent()
 	}
 }
 
-void Serial_process()
-{
-  // Serial_debug.println(inputString);
 
-  if(inputString=="batdaucan\n")
-  {
-    // Serial_debug.println("bat dau qua trinh can");
-    calibrateOffset();
-  }
-
-  if(inputString=="calib")
-  {
-    Serial_debug.println("calib can");
-    scale_value_calib = array_scale[0];
-    Serial.print(F("Input text:  "));
-    Serial.println(inputString);
-    calibLoadcell = true;
-    Serial.print(F("Calib Loadcell:  "));
-    Serial.println(calibLoadcell);
-    Serial.print(F("scale_value_calib:  "));
-    Serial.println(scale_value_calib);
-    
-  }
-
-  if(inputString == "exitcalib")
-  {
-			if(calibLoadcell){
-				Serial.println(F("Thoat calib !"));
-				calibLoadcell = false;
-				doc_eeprom_w();
-				
-			}
-			Serial.print(F("Input text:  "));
-			Serial.println(inputString);
-			
-			Serial.print(F("Calib Loadcell:  "));
-			Serial.println(calibLoadcell);
-			
-		}
-
-  if (inputString == "w_reset"){
-				// buzzer_calib();
-				scale.power_up();
-				scale.tare();
-				ghi_eeprom_offsetloadcell();
-				// inputString = "";
-  }
-
-  if(inputString == "w_ok")
-  {
-				//buzzer();
-				measure_w();
-				// inputString = "";
-				// ok = true;
-  } 
-
-  else
-  {
-    char stChar;
-    char stChar1;
-    String a;
-    String danh;
-    int b;
-    int c;
-    String StringValue = inputString;
-    String StringValue1 = inputString;
-    stChar = inputString.charAt(0);
-    stChar1 = inputString.charAt(3);
-    if (stChar == 'C') // K0C2
-    {
-      a = StringValue.substring(1,sizeof(inputString));
-      Serial_debug.print("so can nang nhan duoc la: ");
-      // Serial_debug.println(a);   
-      ui8_khoiluong=a.toFloat();
-       Serial_debug.println(ui8_khoiluong);
-      // Serial_debug.print("so can nang nhan duoc la: ");
-      // Serial_debug.println(a);
-      // lcd.clear();
-      // lcd.setCursor(3,1);
-      // lcd.print("KHOI LUONG LA:");
-      // lcd.setCursor(17,1);
-      // lcd.print(a);
-      ui8_batdauhienthi=1;
-
-    }
-  }
-
-}
 
 /* ---------------------- Ghi giá trị offset loadcell vào Eeprom ----------------------------*/
 void ghi_eeprom_offsetloadcell() {
@@ -1017,7 +930,7 @@ void xuly_button()
 				Serial.println("Ban bam nut 2 lan");
 				lcd.clear();
 				lcd.setCursor(0,0);
-				lcd.print("MODE CALIB");
+				lcd.print("CALIB TARE");
 				ui8_tienhanh_tare=1;
 				ui8_solan_bamnut=0;
 				check_nutthoat=0;
@@ -1150,7 +1063,7 @@ void xuly_button()
 
 	if(ui8_setting_gioihan>0 && pressStartTime<=millis())
 	{
-		// int reading = digitalRead(buttonPin);
+		// int reading = digitalRead(buttonPin);   
 		// if (reading == LOW) 
 		// { // Button is pressed
 			EEPROM.put(138,ui8_gioihan_do);

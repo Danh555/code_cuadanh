@@ -10,8 +10,8 @@
 
 
 // define chân GPIO cho LoadCell
-#define LOADCELL_DOUT_PIN   2
-#define LOADCELL_SCK_PIN    A2
+#define LOADCELL_DOUT_PIN   A0
+#define LOADCELL_SCK_PIN    A1
 #define calibration_factor 420 //-742.72917232022  //-742.6165198237885
 
 #define Serial_debug    Serial
@@ -20,7 +20,7 @@ HX711 scale;
 
 
 
-#define LED_PIN    A1
+#define LED_PIN    A2
 
 // How many NeoPixels are attached to the Arduino?
 #define LED_COUNT 80
