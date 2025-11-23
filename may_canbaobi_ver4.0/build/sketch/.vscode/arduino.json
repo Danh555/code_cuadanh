@@ -1,0 +1,23 @@
+#line 1 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\.vscode\\arduino.json"
+{
+  "port": "COM3",
+  "configuration": "cpu=atmega328old",
+  "output": "build",
+  "board": "arduino:avr:nano",
+  "programmer": "arduinoasisp",
+  "useProgrammer": false,
+  "optimize_for_debug": false,
+  "configurationRequired": true,
+  "compile_profile": "",
+  "monitorPortSettings": {
+    "settings": {
+      "port": "COM3",
+      "baudRate": 115200,
+      "lineEnding": "\r\n",
+      "dataBits": 8,
+      "parity": "none",
+      "stopBits": "one"
+    },
+    "profile_name": ""
+  }
+}
