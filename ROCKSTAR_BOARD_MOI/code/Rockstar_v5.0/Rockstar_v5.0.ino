@@ -708,33 +708,33 @@ void Motor_thangmay_dung()
 void Motor_tamche_ra()
 {
   // runMotor(Motor_tamche,100,chieuquay_tamche_ra,ui16_lastspeed);
-  // runMotor(Motor_tamche, 50, chieuquay_tamche_ra, ui16_lastspeed); // dành cho máy số 9
+  runMotor(Motor_tamche, 50, chieuquay_tamche_ra, ui16_lastspeed); // dành cho máy số 9
 }
 
 void Motor_tamche_vao()
 {
   // runMotor(Motor_tamche,100,chieuquay_tamche_vao,ui16_lastspeed);
-  // runMotor(Motor_tamche, 50, chieuquay_tamche_vao, ui16_lastspeed); // dành cho máy số 9
+  runMotor(Motor_tamche, 50, chieuquay_tamche_vao, ui16_lastspeed); // dành cho máy số 9
 }
 
 void Motor_tamche_dung()
 {
-  // stopMotor(Motor_tamche, ui16_lastspeed);
+  stopMotor(Motor_tamche, ui16_lastspeed);
 }
 
 void Motor_khoacua_hocqua()
 {
-  // runMotor(Motor_khoatu, 50, khoa_dong, ui16_lastspeed);
+  runMotor(Motor_khoatu, 50, khoa_dong, ui16_lastspeed);
 }
 
 void Motor_mocua_hocqua()
 {
-  // runMotor(Motor_khoatu, 50, khoa_mo, ui16_lastspeed);
+  runMotor(Motor_khoatu, 50, khoa_mo, ui16_lastspeed);
 }
 
 void Motor_dungkich_hocqua()
 {
-  // stopMotor(Motor_khoatu, ui16_lastspeed);
+  stopMotor(Motor_khoatu, ui16_lastspeed);
 }
 
 int doccambien(int pin_cambien, uint32_t timeout, uint8_t muc_kiemtra)
@@ -812,41 +812,41 @@ void reset_khaychuasanpham()
       break;
     }
 
-    encoder_ = digitalRead(E_CHA);
-    // uart_debug.println(encoder_);
-    if (encoder_ != buttonState)
-    {
-      buttonState = encoder_;
-      if (buttonState == HIGH)
-      {
+    // encoder_ = digitalRead(E_CHA);
+    // // uart_debug.println(encoder_);
+    // if (encoder_ != buttonState)
+    // {
+    //   buttonState = encoder_;
+    //   if (buttonState == HIGH)
+    //   {
 
-        count++;
-        // reset counter
-        timer_checkmotor = currentMillis + 5000; // sua cho nay
-        if (count > 10000)
-        { // sua cho nay
-          Motor_thangmay_dung();
-          delay(50);
-          EN_DONGCO(1);
-          uart_debug.println("ERR: max limit encoder\n\r");
-          uart_debug.print("count=");
-          uart_debug.println(count);
-          err_ = 1;
-          break;
-        }
-        // if(count<=30)
-        // {
-        //   uart_debug.println("giam toc do");
-        //   Motor_thangmay_dung();
-        //   err_=0;
-        //   break;
-        // }
-      }
-      else
-      {
-      }
-      //   digitalWrite(ledPin, buttonState);
-    }
+    //     count++;
+    //     // reset counter
+    //     timer_checkmotor = currentMillis + 5000; // sua cho nay
+    //     if (count > 10000)
+    //     { // sua cho nay
+    //       Motor_thangmay_dung();
+    //       delay(50);
+    //       EN_DONGCO(1);
+    //       uart_debug.println("ERR: max limit encoder\n\r");
+    //       uart_debug.print("count=");
+    //       uart_debug.println(count);
+    //       err_ = 1;
+    //       break;
+    //     }
+    //     // if(count<=30)
+    //     // {
+    //     //   uart_debug.println("giam toc do");
+    //     //   Motor_thangmay_dung();
+    //     //   err_=0;
+    //     //   break;
+    //     // }
+    //   }
+    //   else
+    //   {
+    //   }
+    //   //   digitalWrite(ledPin, buttonState);
+    // }
     // check timer out
     currentMillis = millis();
     if (currentMillis - previousMillis >= 1000) // sua day
@@ -908,6 +908,9 @@ void reset_khaychuasanpham()
 
   // if (ui8_trangthai_thangmay == 0 && err_ == 0)
   // {
+
+  if(err_==0)
+  {
     uart_debug.println("done!\n\r");
     // Motor_mocua_hocqua();
     // // if(ui8_goilenh_xuong==1)
@@ -924,8 +927,11 @@ void reset_khaychuasanpham()
     ui32_timeout_chaytamngan = millis() + 5000;
     ui8_dungtamche = 1;
     ui8_dakhoa_cua = 0;
+    // err_=1;
     // ui8_hoanthanh=0;
   // }
+  }
+    
 }
 
 int get_vitri()
@@ -1210,34 +1216,6 @@ void gogo_dixuong(int vitri_)
           uart_debug.println(count);
           ui8_check_doilenh = 0;
           err_ = 0;
-          // if(ui8_goilenh_xuong==1)
-          // {
-          //       ui32_timeout_rsqua=millis()+20000;
-          //       ui8_toivitri_antoan=0;
-          //       ui8_every_ok=1;
-          //       // motor_2_MO(255);
-          //       // delay(100);
-          //       // motor_2_dung();
-
-          //       // motor_3_RA(255);
-          //       Motor_mocua_hocqua();
-          // // if(ui8_goilenh_xuong==1)
-          // // {
-          // // ui32_timeout_rsqua=millis()+20000;
-          // // ui8_every_ok=1;
-          // // Motor_khoacua_hocqua(255);
-          //       delay(200);
-          //       Motor_dungkich_hocqua();
-          //       Motor_tamche_ra();
-          //       ui8_solangoilenh=0;
-          //       chay_tamche=0;
-          //       ui8_dungtamche=1;
-          //       ui32_timeout_chaytamngan=millis()+5000;
-          //       ui8_dakhoa_cua=0;
-
-          //       // uart_debug.println(digitalRead(NUT_RF));
-          //       ui8_goilenh_xuong=0;
-          // }
           break;
         }
       }
@@ -1424,14 +1402,14 @@ void drop_sku_process()
     if (ui8_solangoilenh <= 1 && chay_tamche == 0)
     {
       uart_debug.println("doi khoa cua chay vo");
-      // Motor_tamche_vao();
+      Motor_tamche_vao();
       ui32_timeout_chaytamngan = millis() + 3500;
       chay_tamche = 1;
     }
 
     if (chay_tamche == 1 && ui32_timeout_chaytamngan <= millis())
     {
-      // Motor_tamche_dung();
+      Motor_tamche_dung();
       EN_DONGCO(0);//kich role cho thang len
       delay(100);
       uart_debug.print("Drop product at ");
@@ -1836,7 +1814,7 @@ void Task2core(void *parameter)
     {
       uart_debug.println("dung dong co tam che");
       // motor_3_Dung();
-      // Motor_tamche_dung();
+      Motor_tamche_dung();
       // EN_DONGCO(1);
       ui8_dungtamche = 0;
     }
@@ -1861,8 +1839,8 @@ void Task2core(void *parameter)
     if (ui8_hoanthanh == 1 && ui32_timeout_comeback <= millis())
     {
       tatled();
-      // reset_khaychuasanpham(); // danh cho may so 2
-      move_thangmay_xuong();
+      reset_khaychuasanpham(); // danh cho may so 2
+      // move_thangmay_xuong();
       ui8_hoanthanh = 0;
     }
 
