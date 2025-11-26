@@ -908,7 +908,7 @@ void reset_khaychuasanpham()
   // if (ui8_trangthai_thangmay == 0 && err_ == 0)
   // {
 
-  if(err_==0)
+  if(err_ == 0)
   {
     uart_debug.println("done!\n\r");
     // Motor_mocua_hocqua();
@@ -919,16 +919,13 @@ void reset_khaychuasanpham()
     // // Motor_khoacua_hocqua(255);
     // delay(200);
     // Motor_dungkich_hocqua();
-
-    // Motor_tamche_ra();
+    Motor_tamche_ra();
     ui8_solangoilenh = 0;
     chay_tamche = 0;
     ui32_timeout_chaytamngan = millis() + 5000;
     ui8_dungtamche = 1;
     ui8_dakhoa_cua = 0;
     // err_=1;
-    // ui8_hoanthanh=0;
-  // }
   }
     
 }
