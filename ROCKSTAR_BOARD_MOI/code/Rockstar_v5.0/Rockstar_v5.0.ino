@@ -310,7 +310,6 @@ void process()
 
   case 0x10:
   {
-
     ui16_last_order_command = 0x0000;
     ui8_function = 0x10;
     ui8_status = 0x00;
