@@ -759,7 +759,7 @@ int doccambien(int pin_cambien, uint32_t timeout, uint8_t muc_kiemtra)
   {
     if (reading == muc_kiemtra)
     {
-      return 1;
+      return 1;    
     }
   }
 
