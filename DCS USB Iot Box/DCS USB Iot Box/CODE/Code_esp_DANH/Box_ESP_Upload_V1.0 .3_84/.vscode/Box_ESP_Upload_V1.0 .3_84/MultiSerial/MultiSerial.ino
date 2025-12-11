@@ -286,6 +286,8 @@ void reconnectMQTT() {
     Serial.println("Reconnected and subscribed to topic.");
   }
 }
+code HTTPS DANH MOI CODE
+
 
 
 
@@ -8491,7 +8493,7 @@ void setup_modem ()
     // pinMode(6,INPUT_PULLUP);
 	delay(500);
     digitalWrite(PWRKEY_MODEM, HIGH);
-    delay(800); //Need delay
+    delay(500); //Need delay
     digitalWrite(PWRKEY_MODEM, LOW);
 
 // 	if(digitalRead(6) == 1)
@@ -11551,7 +11553,7 @@ void check_reset_box()
 void setup_pp()
 {
 	 // Khởi động modem
-	modem.restart();
+	// modem.restart();
 	Serial.println("Đang tìm mạng...");
 
 	if (!modem.waitForNetwork(50000)) {
@@ -11692,7 +11694,7 @@ int guifile_pp(String data_get,const char* channel_)
 {
 	unsigned long startTime = millis(); // Lấy thời gian bắt đầu
 	size_t contentLength = data_get.length();
-
+//code moi
 
 
 	// Tạo tên file theo số lần upload
@@ -11759,6 +11761,92 @@ int guifile_pp(String data_get,const char* channel_)
 	Serial.print((endTime - startTime) / 1000.0);
 	Serial.println(" giây");
 
+}
+
+
+int guifile_pp_theolaptrinh(String data_get, const char* channel_)
+{
+    unsigned long startTime = millis();
+
+    String boundary = "----ESP32Boundary";
+
+    // 🔥 Dữ liệu multipart cần gửi đúng theo API
+    String body = "";
+
+    body += "--" + boundary + "\r\n";
+    body += "Content-Disposition: form-data; name=\"PART\"\r\n\r\n";
+    body += "3\r\n";
+
+    body += "--" + boundary + "\r\n";
+    body += "Content-Disposition: form-data; name=\"PRINTER_MODEL\"\r\n\r\n";
+    body += "Epson-LX310\r\n";
+
+    body += "--" + boundary + "\r\n";
+    body += "Content-Disposition: form-data; name=\"PRINTER_BRAND\"\r\n\r\n";
+    body += "Epson\r\n";
+
+    body += "--" + boundary + "\r\n";
+    body += "Content-Disposition: form-data; name=\"VOUCHER_CODE\"\r\n\r\n";
+    body += "VN-INV-00045\r\n";
+
+    body += "--" + boundary + "--\r\n";
+
+    size_t contentLength = body.length();
+
+    Serial.println("=== BODY SEND ===");
+    Serial.println(body);
+
+    // ⭐ Gửi HTTPS raw (qua TinyGSM)
+    if (!base_client_gsm.connect(host, port)) {
+        Serial.println("❌ Không kết nối được tới server");
+        return 0;
+    }
+    Serial.println("✅ Đã kết nối tới server");
+
+    // ============================
+    // Gửi HTTP HEADER
+    // ============================
+    base_client_gsm.print(String("POST ") + serverPath + " HTTP/1.1\r\n");
+    base_client_gsm.print(String("Host: ") + host + "\r\n");
+    base_client_gsm.print("Connection: close\r\n");
+    base_client_gsm.print("X-API-KEY: 59ac5be1333a7b1247deb8f36609b25f41d781efbc7f06e7d485b04d8b3d9101\r\n");
+    base_client_gsm.print("Content-Type: multipart/form-data; boundary=" + boundary + "\r\n");
+    base_client_gsm.print("Content-Length: " + String(contentLength) + "\r\n\r\n");
+
+    // ============================
+    // Gửi BODY
+    // ============================
+    base_client_gsm.print(body);
+
+    // ============================
+    // Đọc phản hồi
+    // ============================
+    Serial.println("------ Server phản hồi ------");
+
+    String response = "";
+    while (base_client_gsm.connected() || base_client_gsm.available()) {
+        if (base_client_gsm.available()) {
+            String line = base_client_gsm.readStringUntil('\n');
+            Serial.println(line);
+            response += line + "\n";
+        }
+    }
+
+    response.toLowerCase();
+
+    if (response.indexOf("success") >= 0) {
+        Serial.println("✅ Gửi dữ liệu thành công!");
+        return 1;
+    } else {
+        Serial.println("❌ Thất bại. Server không trả success.");
+        return 0;
+    }
+
+    base_client_gsm.stop();
+
+    unsigned long endTime = millis();
+    Serial.print("⏱ Tổng thời gian gửi: ");
+    Serial.println((endTime - startTime) / 1000.0);
 }
 
 /*-------------------------------END FUNCTIONS DANH THEM VAO--------------------*/
