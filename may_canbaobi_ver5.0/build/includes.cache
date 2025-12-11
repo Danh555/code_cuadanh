@@ -1,0 +1,773 @@
+[
+  {
+    "added_include_path": "C:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\cores\\arduino"
+  },
+  {
+    "added_include_path": "C:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\variants\\eightanaloginputs"
+  },
+  {
+    "compile": {
+      "source_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp",
+      "object_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp.o",
+      "depfile_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp.d"
+    },
+    "compile_task": {
+      "args": [
+        "C:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\avr-gcc\\7.3.0-atmel3.6.1-arduino7/bin/avr-g++",
+        "-c",
+        "-g",
+        "-Os",
+        "-w",
+        "-std=gnu++11",
+        "-fpermissive",
+        "-fno-exceptions",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-fno-threadsafe-statics",
+        "-Wno-error=narrowing",
+        "-flto",
+        "-w",
+        "-x",
+        "c++",
+        "-E",
+        "-CC",
+        "-mmcu=atmega328p",
+        "-DF_CPU=16000000L",
+        "-DARDUINO=10607",
+        "-DARDUINO_AVR_NANO",
+        "-DARDUINO_ARCH_AVR",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\cores\\arduino",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\variants\\eightanaloginputs",
+        "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp",
+        "-o",
+        "nul"
+      ]
+    }
+  },
+  {
+    "missing_include_h": "HX711.h"
+  },
+  {
+    "added_include_path": "C:\\Users\\hieur\\Documents\\Arduino\\libraries\\HX711-master\\src"
+  },
+  {
+    "compile": {
+      "source_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp",
+      "object_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp.o",
+      "depfile_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp.d"
+    },
+    "compile_task": {
+      "args": [
+        "C:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\avr-gcc\\7.3.0-atmel3.6.1-arduino7/bin/avr-g++",
+        "-c",
+        "-g",
+        "-Os",
+        "-w",
+        "-std=gnu++11",
+        "-fpermissive",
+        "-fno-exceptions",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-fno-threadsafe-statics",
+        "-Wno-error=narrowing",
+        "-flto",
+        "-w",
+        "-x",
+        "c++",
+        "-E",
+        "-CC",
+        "-mmcu=atmega328p",
+        "-DF_CPU=16000000L",
+        "-DARDUINO=10607",
+        "-DARDUINO_AVR_NANO",
+        "-DARDUINO_ARCH_AVR",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\cores\\arduino",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\variants\\eightanaloginputs",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\HX711-master\\src",
+        "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp",
+        "-o",
+        "nul"
+      ]
+    }
+  },
+  {
+    "missing_include_h": "Wire.h"
+  },
+  {
+    "added_include_path": "C:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\Wire\\src"
+  },
+  {
+    "compile": {
+      "source_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp",
+      "object_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp.o",
+      "depfile_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp.d"
+    },
+    "compile_task": {
+      "args": [
+        "C:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\avr-gcc\\7.3.0-atmel3.6.1-arduino7/bin/avr-g++",
+        "-c",
+        "-g",
+        "-Os",
+        "-w",
+        "-std=gnu++11",
+        "-fpermissive",
+        "-fno-exceptions",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-fno-threadsafe-statics",
+        "-Wno-error=narrowing",
+        "-flto",
+        "-w",
+        "-x",
+        "c++",
+        "-E",
+        "-CC",
+        "-mmcu=atmega328p",
+        "-DF_CPU=16000000L",
+        "-DARDUINO=10607",
+        "-DARDUINO_AVR_NANO",
+        "-DARDUINO_ARCH_AVR",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\cores\\arduino",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\variants\\eightanaloginputs",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\HX711-master\\src",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\Wire\\src",
+        "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp",
+        "-o",
+        "nul"
+      ]
+    }
+  },
+  {
+    "missing_include_h": "LiquidCrystal_I2C.h"
+  },
+  {
+    "added_include_path": "C:\\Users\\hieur\\Documents\\Arduino\\libraries\\LiquidCrystal_I2C-1.1.2"
+  },
+  {
+    "compile": {
+      "source_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp",
+      "object_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp.o",
+      "depfile_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp.d"
+    },
+    "compile_task": {
+      "args": [
+        "C:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\avr-gcc\\7.3.0-atmel3.6.1-arduino7/bin/avr-g++",
+        "-c",
+        "-g",
+        "-Os",
+        "-w",
+        "-std=gnu++11",
+        "-fpermissive",
+        "-fno-exceptions",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-fno-threadsafe-statics",
+        "-Wno-error=narrowing",
+        "-flto",
+        "-w",
+        "-x",
+        "c++",
+        "-E",
+        "-CC",
+        "-mmcu=atmega328p",
+        "-DF_CPU=16000000L",
+        "-DARDUINO=10607",
+        "-DARDUINO_AVR_NANO",
+        "-DARDUINO_ARCH_AVR",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\cores\\arduino",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\variants\\eightanaloginputs",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\HX711-master\\src",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\Wire\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\LiquidCrystal_I2C-1.1.2",
+        "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp",
+        "-o",
+        "nul"
+      ]
+    }
+  },
+  {
+    "missing_include_h": "EEPROM.h"
+  },
+  {
+    "added_include_path": "C:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\EEPROM\\src"
+  },
+  {
+    "compile": {
+      "source_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp",
+      "object_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp.o",
+      "depfile_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp.d"
+    },
+    "compile_task": {
+      "args": [
+        "C:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\avr-gcc\\7.3.0-atmel3.6.1-arduino7/bin/avr-g++",
+        "-c",
+        "-g",
+        "-Os",
+        "-w",
+        "-std=gnu++11",
+        "-fpermissive",
+        "-fno-exceptions",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-fno-threadsafe-statics",
+        "-Wno-error=narrowing",
+        "-flto",
+        "-w",
+        "-x",
+        "c++",
+        "-E",
+        "-CC",
+        "-mmcu=atmega328p",
+        "-DF_CPU=16000000L",
+        "-DARDUINO=10607",
+        "-DARDUINO_AVR_NANO",
+        "-DARDUINO_ARCH_AVR",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\cores\\arduino",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\variants\\eightanaloginputs",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\HX711-master\\src",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\Wire\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\LiquidCrystal_I2C-1.1.2",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\EEPROM\\src",
+        "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp",
+        "-o",
+        "nul"
+      ]
+    }
+  },
+  {
+    "missing_include_h": "SimpleKalmanFilter.h"
+  },
+  {
+    "added_include_path": "C:\\Users\\hieur\\Documents\\Arduino\\libraries\\SimpleKalmanFilter-master\\src"
+  },
+  {
+    "compile": {
+      "source_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp",
+      "object_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp.o",
+      "depfile_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp.d"
+    },
+    "compile_task": {
+      "args": [
+        "C:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\avr-gcc\\7.3.0-atmel3.6.1-arduino7/bin/avr-g++",
+        "-c",
+        "-g",
+        "-Os",
+        "-w",
+        "-std=gnu++11",
+        "-fpermissive",
+        "-fno-exceptions",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-fno-threadsafe-statics",
+        "-Wno-error=narrowing",
+        "-flto",
+        "-w",
+        "-x",
+        "c++",
+        "-E",
+        "-CC",
+        "-mmcu=atmega328p",
+        "-DF_CPU=16000000L",
+        "-DARDUINO=10607",
+        "-DARDUINO_AVR_NANO",
+        "-DARDUINO_ARCH_AVR",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\cores\\arduino",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\variants\\eightanaloginputs",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\HX711-master\\src",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\Wire\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\LiquidCrystal_I2C-1.1.2",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\EEPROM\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\SimpleKalmanFilter-master\\src",
+        "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp",
+        "-o",
+        "nul"
+      ]
+    }
+  },
+  {
+    "missing_include_h": "Adafruit_NeoPixel.h"
+  },
+  {
+    "added_include_path": "C:\\Users\\hieur\\Documents\\Arduino\\libraries\\Adafruit_NeoPixel"
+  },
+  {
+    "compile": {
+      "source_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp",
+      "object_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp.o",
+      "depfile_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp.d"
+    },
+    "compile_task": {
+      "args": [
+        "C:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\avr-gcc\\7.3.0-atmel3.6.1-arduino7/bin/avr-g++",
+        "-c",
+        "-g",
+        "-Os",
+        "-w",
+        "-std=gnu++11",
+        "-fpermissive",
+        "-fno-exceptions",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-fno-threadsafe-statics",
+        "-Wno-error=narrowing",
+        "-flto",
+        "-w",
+        "-x",
+        "c++",
+        "-E",
+        "-CC",
+        "-mmcu=atmega328p",
+        "-DF_CPU=16000000L",
+        "-DARDUINO=10607",
+        "-DARDUINO_AVR_NANO",
+        "-DARDUINO_ARCH_AVR",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\cores\\arduino",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\variants\\eightanaloginputs",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\HX711-master\\src",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\Wire\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\LiquidCrystal_I2C-1.1.2",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\EEPROM\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\SimpleKalmanFilter-master\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\Adafruit_NeoPixel",
+        "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\sketch\\may_canbaobi_ver3.0.ino.cpp",
+        "-o",
+        "nul"
+      ]
+    }
+  },
+  {
+    "missing_include_h": ""
+  },
+  {
+    "compile": {
+      "source_path": "C:\\Users\\hieur\\Documents\\Arduino\\libraries\\HX711-master\\src\\HX711.cpp",
+      "object_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\libraries\\HX711-master\\HX711.cpp.o",
+      "depfile_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\libraries\\HX711-master\\HX711.cpp.d"
+    },
+    "compile_task": {
+      "args": [
+        "C:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\avr-gcc\\7.3.0-atmel3.6.1-arduino7/bin/avr-g++",
+        "-c",
+        "-g",
+        "-Os",
+        "-w",
+        "-std=gnu++11",
+        "-fpermissive",
+        "-fno-exceptions",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-fno-threadsafe-statics",
+        "-Wno-error=narrowing",
+        "-flto",
+        "-w",
+        "-x",
+        "c++",
+        "-E",
+        "-CC",
+        "-mmcu=atmega328p",
+        "-DF_CPU=16000000L",
+        "-DARDUINO=10607",
+        "-DARDUINO_AVR_NANO",
+        "-DARDUINO_ARCH_AVR",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\cores\\arduino",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\variants\\eightanaloginputs",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\HX711-master\\src",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\Wire\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\LiquidCrystal_I2C-1.1.2",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\EEPROM\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\SimpleKalmanFilter-master\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\Adafruit_NeoPixel",
+        "C:\\Users\\hieur\\Documents\\Arduino\\libraries\\HX711-master\\src\\HX711.cpp",
+        "-o",
+        "nul"
+      ]
+    }
+  },
+  {
+    "missing_include_h": ""
+  },
+  {
+    "compile": {
+      "source_path": "C:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\Wire\\src\\Wire.cpp",
+      "object_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\libraries\\Wire\\Wire.cpp.o",
+      "depfile_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\libraries\\Wire\\Wire.cpp.d"
+    },
+    "compile_task": {
+      "args": [
+        "C:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\avr-gcc\\7.3.0-atmel3.6.1-arduino7/bin/avr-g++",
+        "-c",
+        "-g",
+        "-Os",
+        "-w",
+        "-std=gnu++11",
+        "-fpermissive",
+        "-fno-exceptions",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-fno-threadsafe-statics",
+        "-Wno-error=narrowing",
+        "-flto",
+        "-w",
+        "-x",
+        "c++",
+        "-E",
+        "-CC",
+        "-mmcu=atmega328p",
+        "-DF_CPU=16000000L",
+        "-DARDUINO=10607",
+        "-DARDUINO_AVR_NANO",
+        "-DARDUINO_ARCH_AVR",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\cores\\arduino",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\variants\\eightanaloginputs",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\HX711-master\\src",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\Wire\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\LiquidCrystal_I2C-1.1.2",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\EEPROM\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\SimpleKalmanFilter-master\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\Adafruit_NeoPixel",
+        "C:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\Wire\\src\\Wire.cpp",
+        "-o",
+        "nul"
+      ]
+    }
+  },
+  {
+    "missing_include_h": ""
+  },
+  {
+    "compile": {
+      "source_path": "C:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\Wire\\src\\utility\\twi.c",
+      "object_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\libraries\\Wire\\utility\\twi.c.o",
+      "depfile_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\libraries\\Wire\\utility\\twi.c.d"
+    },
+    "compile_task": {
+      "args": [
+        "C:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\avr-gcc\\7.3.0-atmel3.6.1-arduino7/bin/avr-g++",
+        "-c",
+        "-g",
+        "-Os",
+        "-w",
+        "-std=gnu++11",
+        "-fpermissive",
+        "-fno-exceptions",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-fno-threadsafe-statics",
+        "-Wno-error=narrowing",
+        "-flto",
+        "-w",
+        "-x",
+        "c++",
+        "-E",
+        "-CC",
+        "-mmcu=atmega328p",
+        "-DF_CPU=16000000L",
+        "-DARDUINO=10607",
+        "-DARDUINO_AVR_NANO",
+        "-DARDUINO_ARCH_AVR",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\cores\\arduino",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\variants\\eightanaloginputs",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\HX711-master\\src",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\Wire\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\LiquidCrystal_I2C-1.1.2",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\EEPROM\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\SimpleKalmanFilter-master\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\Adafruit_NeoPixel",
+        "C:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\Wire\\src\\utility\\twi.c",
+        "-o",
+        "nul"
+      ]
+    }
+  },
+  {
+    "missing_include_h": ""
+  },
+  {
+    "compile": {
+      "source_path": "C:\\Users\\hieur\\Documents\\Arduino\\libraries\\LiquidCrystal_I2C-1.1.2\\LiquidCrystal_I2C.cpp",
+      "object_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\libraries\\LiquidCrystal_I2C-1.1.2\\LiquidCrystal_I2C.cpp.o",
+      "depfile_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\libraries\\LiquidCrystal_I2C-1.1.2\\LiquidCrystal_I2C.cpp.d"
+    },
+    "compile_task": {
+      "args": [
+        "C:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\avr-gcc\\7.3.0-atmel3.6.1-arduino7/bin/avr-g++",
+        "-c",
+        "-g",
+        "-Os",
+        "-w",
+        "-std=gnu++11",
+        "-fpermissive",
+        "-fno-exceptions",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-fno-threadsafe-statics",
+        "-Wno-error=narrowing",
+        "-flto",
+        "-w",
+        "-x",
+        "c++",
+        "-E",
+        "-CC",
+        "-mmcu=atmega328p",
+        "-DF_CPU=16000000L",
+        "-DARDUINO=10607",
+        "-DARDUINO_AVR_NANO",
+        "-DARDUINO_ARCH_AVR",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\cores\\arduino",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\variants\\eightanaloginputs",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\HX711-master\\src",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\Wire\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\LiquidCrystal_I2C-1.1.2",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\EEPROM\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\SimpleKalmanFilter-master\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\Adafruit_NeoPixel",
+        "C:\\Users\\hieur\\Documents\\Arduino\\libraries\\LiquidCrystal_I2C-1.1.2\\LiquidCrystal_I2C.cpp",
+        "-o",
+        "nul"
+      ]
+    }
+  },
+  {
+    "missing_include_h": ""
+  },
+  {
+    "compile": {
+      "source_path": "C:\\Users\\hieur\\Documents\\Arduino\\libraries\\SimpleKalmanFilter-master\\src\\SimpleKalmanFilter.cpp",
+      "object_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\libraries\\SimpleKalmanFilter-master\\SimpleKalmanFilter.cpp.o",
+      "depfile_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\libraries\\SimpleKalmanFilter-master\\SimpleKalmanFilter.cpp.d"
+    },
+    "compile_task": {
+      "args": [
+        "C:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\avr-gcc\\7.3.0-atmel3.6.1-arduino7/bin/avr-g++",
+        "-c",
+        "-g",
+        "-Os",
+        "-w",
+        "-std=gnu++11",
+        "-fpermissive",
+        "-fno-exceptions",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-fno-threadsafe-statics",
+        "-Wno-error=narrowing",
+        "-flto",
+        "-w",
+        "-x",
+        "c++",
+        "-E",
+        "-CC",
+        "-mmcu=atmega328p",
+        "-DF_CPU=16000000L",
+        "-DARDUINO=10607",
+        "-DARDUINO_AVR_NANO",
+        "-DARDUINO_ARCH_AVR",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\cores\\arduino",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\variants\\eightanaloginputs",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\HX711-master\\src",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\Wire\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\LiquidCrystal_I2C-1.1.2",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\EEPROM\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\SimpleKalmanFilter-master\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\Adafruit_NeoPixel",
+        "C:\\Users\\hieur\\Documents\\Arduino\\libraries\\SimpleKalmanFilter-master\\src\\SimpleKalmanFilter.cpp",
+        "-o",
+        "nul"
+      ]
+    }
+  },
+  {
+    "missing_include_h": ""
+  },
+  {
+    "compile": {
+      "source_path": "C:\\Users\\hieur\\Documents\\Arduino\\libraries\\Adafruit_NeoPixel\\Adafruit_NeoPixel.cpp",
+      "object_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\libraries\\Adafruit_NeoPixel\\Adafruit_NeoPixel.cpp.o",
+      "depfile_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\libraries\\Adafruit_NeoPixel\\Adafruit_NeoPixel.cpp.d"
+    },
+    "compile_task": {
+      "args": [
+        "C:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\avr-gcc\\7.3.0-atmel3.6.1-arduino7/bin/avr-g++",
+        "-c",
+        "-g",
+        "-Os",
+        "-w",
+        "-std=gnu++11",
+        "-fpermissive",
+        "-fno-exceptions",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-fno-threadsafe-statics",
+        "-Wno-error=narrowing",
+        "-flto",
+        "-w",
+        "-x",
+        "c++",
+        "-E",
+        "-CC",
+        "-mmcu=atmega328p",
+        "-DF_CPU=16000000L",
+        "-DARDUINO=10607",
+        "-DARDUINO_AVR_NANO",
+        "-DARDUINO_ARCH_AVR",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\cores\\arduino",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\variants\\eightanaloginputs",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\HX711-master\\src",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\Wire\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\LiquidCrystal_I2C-1.1.2",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\EEPROM\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\SimpleKalmanFilter-master\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\Adafruit_NeoPixel",
+        "C:\\Users\\hieur\\Documents\\Arduino\\libraries\\Adafruit_NeoPixel\\Adafruit_NeoPixel.cpp",
+        "-o",
+        "nul"
+      ]
+    }
+  },
+  {
+    "missing_include_h": ""
+  },
+  {
+    "compile": {
+      "source_path": "C:\\Users\\hieur\\Documents\\Arduino\\libraries\\Adafruit_NeoPixel\\esp.c",
+      "object_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\libraries\\Adafruit_NeoPixel\\esp.c.o",
+      "depfile_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\libraries\\Adafruit_NeoPixel\\esp.c.d"
+    },
+    "compile_task": {
+      "args": [
+        "C:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\avr-gcc\\7.3.0-atmel3.6.1-arduino7/bin/avr-g++",
+        "-c",
+        "-g",
+        "-Os",
+        "-w",
+        "-std=gnu++11",
+        "-fpermissive",
+        "-fno-exceptions",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-fno-threadsafe-statics",
+        "-Wno-error=narrowing",
+        "-flto",
+        "-w",
+        "-x",
+        "c++",
+        "-E",
+        "-CC",
+        "-mmcu=atmega328p",
+        "-DF_CPU=16000000L",
+        "-DARDUINO=10607",
+        "-DARDUINO_AVR_NANO",
+        "-DARDUINO_ARCH_AVR",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\cores\\arduino",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\variants\\eightanaloginputs",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\HX711-master\\src",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\Wire\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\LiquidCrystal_I2C-1.1.2",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\EEPROM\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\SimpleKalmanFilter-master\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\Adafruit_NeoPixel",
+        "C:\\Users\\hieur\\Documents\\Arduino\\libraries\\Adafruit_NeoPixel\\esp.c",
+        "-o",
+        "nul"
+      ]
+    }
+  },
+  {
+    "missing_include_h": ""
+  },
+  {
+    "compile": {
+      "source_path": "C:\\Users\\hieur\\Documents\\Arduino\\libraries\\Adafruit_NeoPixel\\esp8266.c",
+      "object_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\libraries\\Adafruit_NeoPixel\\esp8266.c.o",
+      "depfile_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\libraries\\Adafruit_NeoPixel\\esp8266.c.d"
+    },
+    "compile_task": {
+      "args": [
+        "C:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\avr-gcc\\7.3.0-atmel3.6.1-arduino7/bin/avr-g++",
+        "-c",
+        "-g",
+        "-Os",
+        "-w",
+        "-std=gnu++11",
+        "-fpermissive",
+        "-fno-exceptions",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-fno-threadsafe-statics",
+        "-Wno-error=narrowing",
+        "-flto",
+        "-w",
+        "-x",
+        "c++",
+        "-E",
+        "-CC",
+        "-mmcu=atmega328p",
+        "-DF_CPU=16000000L",
+        "-DARDUINO=10607",
+        "-DARDUINO_AVR_NANO",
+        "-DARDUINO_ARCH_AVR",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\cores\\arduino",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\variants\\eightanaloginputs",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\HX711-master\\src",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\Wire\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\LiquidCrystal_I2C-1.1.2",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\EEPROM\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\SimpleKalmanFilter-master\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\Adafruit_NeoPixel",
+        "C:\\Users\\hieur\\Documents\\Arduino\\libraries\\Adafruit_NeoPixel\\esp8266.c",
+        "-o",
+        "nul"
+      ]
+    }
+  },
+  {
+    "missing_include_h": ""
+  },
+  {
+    "compile": {
+      "source_path": "C:\\Users\\hieur\\Documents\\Arduino\\libraries\\Adafruit_NeoPixel\\kendyte_k210.c",
+      "object_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\libraries\\Adafruit_NeoPixel\\kendyte_k210.c.o",
+      "depfile_path": "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\build\\libraries\\Adafruit_NeoPixel\\kendyte_k210.c.d"
+    },
+    "compile_task": {
+      "args": [
+        "C:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\avr-gcc\\7.3.0-atmel3.6.1-arduino7/bin/avr-g++",
+        "-c",
+        "-g",
+        "-Os",
+        "-w",
+        "-std=gnu++11",
+        "-fpermissive",
+        "-fno-exceptions",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-fno-threadsafe-statics",
+        "-Wno-error=narrowing",
+        "-flto",
+        "-w",
+        "-x",
+        "c++",
+        "-E",
+        "-CC",
+        "-mmcu=atmega328p",
+        "-DF_CPU=16000000L",
+        "-DARDUINO=10607",
+        "-DARDUINO_AVR_NANO",
+        "-DARDUINO_ARCH_AVR",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\cores\\arduino",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\variants\\eightanaloginputs",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\HX711-master\\src",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\Wire\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\LiquidCrystal_I2C-1.1.2",
+        "-IC:\\Users\\hieur\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.6\\libraries\\EEPROM\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\SimpleKalmanFilter-master\\src",
+        "-IC:\\Users\\hieur\\Documents\\Arduino\\libraries\\Adafruit_NeoPixel",
+        "C:\\Users\\hieur\\Documents\\Arduino\\libraries\\Adafruit_NeoPixel\\kendyte_k210.c",
+        "-o",
+        "nul"
+      ]
+    }
+  },
+  {
+    "missing_include_h": ""
+  }
+]

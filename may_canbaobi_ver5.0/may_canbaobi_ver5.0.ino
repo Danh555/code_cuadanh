@@ -1060,7 +1060,12 @@ void xuly_button()
 				// Serial.println("setting overload");
 				lcd.clear();
 				lcd.setCursor(0,0);
-				lcd.print("LIMITED WEIGHT: ");		
+				lcd.print("SET LIMITED W: ");		
+
+				lcd.setCursor(0,1);
+				lcd.print("1:INCREASE WEIGHT");
+				lcd.setCursor(0,2);
+				lcd.print("2:DECREASE WEIGHT");	
 				// lcd.clear();
 				// lcd.setCursor(0,0);
 				// lcd.print("BACK SETTING MODE");
@@ -1068,12 +1073,63 @@ void xuly_button()
 				pressStartTime=millis()+20000;
 				ui8_setting_gioihan=1;
 				// ui8_nut1_bam=0;
+				ui8_nut2_bam=1;
 				ui8_solan_bamnut_nut1=0;
 				
 				
 			}
 		}
 		
+	}
+
+	if(ui8_solan_bamnut_nut2>0 && pressStartTime<=millis())
+	{
+		int reading = digitalRead(buttonPin);
+		if (reading == LOW) 
+		{ // Button is pressed
+			// Serial_debug.println("THOAT CHON MAU");
+			// lcd.clear();
+			// lcd.setCursor(0,0);
+			// lcd.print("EXIT SETTING MODE");
+			ui32_lasttime_bamnut1=millis()+100;
+			ui8_solan_bamnut_nut1=0;
+			ui8_solan_bamnut_nut2=0;
+			// ui8_mode_calib=0;
+			// ui8_modedebug
+		}
+
+		else
+		{
+			if(ui8_solan_bamnut_nut2==1)
+			{
+				lcd.clear();
+				lcd.setCursor(0,0);
+				lcd.print("LIMITED WEIGHT: ");
+
+				ui32_lasttime_bamnut1=millis()+60000;
+				pressStartTime=millis()+20000;
+				// ui8_setting_gioihan=1;
+				// ui8_nut1_bam=0;
+				ui8_increase=1;
+				ui8_solan_bamnut_nut2=0;
+			}
+
+			if(ui8_solan_bamnut_nut2==2)
+			{
+				lcd.clear();
+				lcd.setCursor(0,0);
+				lcd.print("LIMITED WEIGHT: ");
+				ui8_decrease=1;
+				ui32_lasttime_bamnut1=millis()+60000;
+				pressStartTime=millis()+20000;
+				// ui8_setting_gioihan=1;
+				// ui8_nut1_bam=0;
+				// ui8_solan_bamnut_nut1=0;
+				ui8_solan_bamnut_nut2=0;
+			}
+		}
+
+
 	}
 
 	if(ui8_setting_gioihan>0 && pressStartTime<=millis())
@@ -1085,6 +1141,8 @@ void xuly_button()
 			// Serial_debug.println("THOAT CHON MAU");
 			ui32_lasttime_bamnut1=millis()+100;
 			ui8_setting_gioihan=0;
+			ui8_decrease=0;
+			ui8_increase=1;
 			// ui8_gioihan_do=0;
 		// }
 
@@ -1390,7 +1448,40 @@ void button_chucnang()
 		lastButtonState = reading;
 	}
 
-	if(ui8_setting_gioihan==1 && ui8_modesetting==1)
+	if(ui8_modesetting==1 && ui8_nut2_bam==1 && ui8_setting_gioihan==1)
+	{
+		int reading = digitalRead(buttonPin);
+
+		if (reading != lastButtonState) 
+		{
+			lastClickTime = millis();
+		}
+
+		if((millis() - lastClickTime) > 50)
+		{	
+			if (reading != buttonState) 
+			{
+				buttonState = reading;
+				if(buttonState == LOW) 
+				{
+					// Nút được nhấn
+					ui8_solan_bamnut_nut2++;
+					if(ui8_solan_bamnut_nut2>2)
+					{
+						ui8_solan_bamnut_nut2=0;
+					}
+					lastClickTime = millis();
+					pressStartTime=millis()+1500;
+					ui32_timeout_modesetting=millis()+60000; // Thời gian chờ vào chế độ settings
+					Serial_debug.print("So lan bam nut 2: ");
+					Serial_debug.println(ui8_solan_bamnut_nut2);
+				}
+			}
+		}
+		lastButtonState = reading;
+	}
+
+	if(ui8_setting_gioihan==1 && ui8_modesetting==1 && ui8_increase==1)
 	{
 		int reading = digitalRead(buttonPin);
 
@@ -1414,6 +1505,44 @@ void button_chucnang()
 					lcd.setCursor(16,0);
 					lcd.print(ui8_gioihan_do);
 					if(ui8_gioihan_do>4)
+					{
+						ui8_gioihan_do=0;
+					}
+					lastClickTime = millis();
+					pressStartTime=millis()+10000;
+					ui32_timeout_modesetting=millis()+60000; // Thời gian chờ vào chế độ settings
+					Serial_debug.print("So lan bam nut chinh overload: ");
+					Serial_debug.println(ui8_gioihan_do);
+				}
+			}
+		}
+		lastButtonState = reading;
+	}
+
+	if(ui8_setting_gioihan==1 && ui8_modesetting==1 && ui8_decrease==1)
+	{
+		int reading = digitalRead(buttonPin);
+
+		if (reading != lastButtonState) 
+		{
+			lastClickTime = millis();
+		}
+
+		if((millis() - lastClickTime) > 50)
+		{	
+			if (reading != buttonState) 
+			{
+				buttonState = reading;
+				if(buttonState == LOW) 
+				{
+					// Nút được nhấn
+					ui8_gioihan_do=ui8_gioihan_do-0.1;
+					lcd.clear();
+					lcd.setCursor(0,0);
+					lcd.print("LIMITED WEIGHT: ");
+					lcd.setCursor(16,0);
+					lcd.print(ui8_gioihan_do);
+					if(ui8_gioihan_do<0)
 					{
 						ui8_gioihan_do=0;
 					}

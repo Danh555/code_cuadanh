@@ -1,0 +1,19 @@
+#line 1 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\libraries\\SimpleKalmanFilter-master\\library.json"
+{
+  "name": "SimpleKalmanFilter",
+  "keywords": "kalman, filter, linear, quadratic, estimation, LQE",
+  "description": "A basic implementation of Kalman Filter for single variable models.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/denyssene/SimpleKalmanFilter.git"
+  },
+  "version": "0.1.0",
+  "authors": {
+    "name": "Denys Sene",
+    "url": ""
+  },
+  "exclude": [
+  ],
+  "frameworks": "arduino",
+  "platforms": "*"
+}

@@ -1,5 +1,66 @@
+#include <Arduino.h>
+#line 1 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
 #include "LIB/GlobalVariable.h"
 
+#line 3 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void scan_i2c();
+#line 37 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void init_scale();
+#line 49 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void calibrateOffset();
+#line 96 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void hienthi_lcd_test();
+#line 112 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void start_locadcell();
+#line 141 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void setup();
+#line 204 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void serialEvent();
+#line 264 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void ghi_eeprom_offsetloadcell();
+#line 281 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void doc_eeprom_offsetloadcell();
+#line 298 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void doc_eeprom_w();
+#line 341 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void hienthi_tieude();
+#line 349 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void hienthi_khoiluong(float ui8_kl);
+#line 386 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void hienthi_moichao();
+#line 403 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void calib_can();
+#line 474 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void measure_w();
+#line 603 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void thuc_hien();
+#line 701 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+int serial_printf(const char *fmt, ...);
+#line 710 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void Serial_test();
+#line 899 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void xuly_button();
+#line 1118 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void setup_pixel();
+#line 1126 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void tatled();
+#line 1140 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void ledred();
+#line 1152 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void ledgreen();
+#line 1163 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void ledblue();
+#line 1174 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void sangled(uint8_t collor);
+#line 1242 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void led_overload();
+#line 1261 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void button_chucnang();
+#line 1439 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void hienthi_chaychu();
+#line 1460 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
+void loop();
+#line 3 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\may_canbaobi_ver3.0.ino"
 void scan_i2c()
 {
   byte error, address;
@@ -1407,13 +1468,13 @@ void button_chucnang()
 				if(buttonState == LOW) 
 				{
 					// Nút được nhấn
-					ui8_gioihan_do=ui8_gioihan_do+0.1;
+					ui8_gioihan_do=ui8_gioihan_do+1;
 					lcd.clear();
 					lcd.setCursor(0,0);
 					lcd.print("LIMITED WEIGHT: ");
 					lcd.setCursor(16,0);
 					lcd.print(ui8_gioihan_do);
-					if(ui8_gioihan_do>4)
+					if(ui8_gioihan_do>40)
 					{
 						ui8_gioihan_do=0;
 					}
@@ -1481,6 +1542,7 @@ void loop() {
 	
 	
 }
+
 
 
 
