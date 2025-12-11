@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "../../../../../../../../../POWER_ETHERNET_V2"
+		},
+		{
+			"path": "../../../../../../../../../libraries_iot-20250805T030748Z-1-001/libraries"
 		}
 	],
 	"settings": {

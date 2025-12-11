@@ -303,7 +303,7 @@ void reconnectMQTT() {
 #include "MQTT_4G_DANH.h"
 #include "Global_variable_Danh.h"
 #include "MQTT_ATCMD.h"
-#include <PPP.h>
+// #include <PPP.h>
 #include <WiFi.h>
 
 #define FORMAT_SPIFFS_IF_FAILED true
@@ -412,6 +412,7 @@ EthernetClient netethernet;
 
 /*------------------------------modem 4G-------------------------*/
 #define TINY_GSM_MODEM_SIM7600  // SIM7600 AT 
+#define TINY_GSM_USE_PPP true   // BẮT BUỘC để dùng PPP
 #define SerialMon Serial
 #define SerialAT Serial1
 

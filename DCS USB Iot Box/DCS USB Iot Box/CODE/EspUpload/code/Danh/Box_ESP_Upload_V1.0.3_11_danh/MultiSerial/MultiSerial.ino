@@ -1,9 +1,4 @@
 /*
-version name MOI NHAT 1.0.27
-đang test version 1.0.28
-version nay la 1.0.58
-code dang test tại phòng
-version nay la tat barcode ko check barcode
 Emergency !!!!!!!!!!!!!
 -S3: khi upload liên tục lên: bản tin sau có hiện trạng không up được, sau đó bị tràn buffer-->reset chip ESP : cần kiểm tra 
 
@@ -74,223 +69,6 @@ Done:
   created 30 Otc 2023
   by MrCong
   
-*Bản 1.0.9
-  Thêm phần đăng nhập mode config
-  username:admin
-  pass:admin
-
-11:51:49.269 -> .[9046] Initializing modem...
-11:51:50.621 -> [9046] ### TinyGSM Version: 0.10.9
-11:51:50.621 -> [9046] ### TinyGSM Compiled Module:  TinyGsmClientSIM7600
-11:51:50.621 -> [9064] ### Modem: A7672E-LASE
-11:51:50.621 -> [9064] ### Modem: A7672E-LASE
-11:51:51.696 -> [10171] ### Unhandled: +CME ERROR: phone failure
-11:51:52.213 -> [10676] ### Modem: A7672E-LASE
-11:51:52.213 -> [10676] Modem Name: A7672E-LASE
-11:51:52.260 -> [10702] Modem Info: Manufacturer: INCORPORATED Model: A7672E-LASE Revision: A7672M7_V1.11.1 IMEI: 869518073551179 +GCAP: +CGSM,+FCLASS,+DS
-11:51:52.260 -> [10723] Waiting for network...
-11:51:52.260 -> i = 0 
-11:51:52.260 -> [10733] Network connected
-11:51:52.260 -> [10733] Connecting to v-internet
-11:51:52.402 -> [10880] GPRS status: connected
-11:51:52.402 -> [10888] CCID: 89840480009383806364
-11:51:52.451 -> [10893] IMEI: 869518073551179
-11:51:52.451 -> [10898] IMSI: 452040938380636
-11:51:52.451 -> [10905] Operator: 45204
-11:51:52.451 -> [10910] Network Mode: 1
-11:51:52.451 -> [10917] Local IP: 10.173.2.174
-11:51:52.451 -> [10921] Signal quality: 26
-11:51:52.541 -> [11029] Current Network Time: 24/11/10,11:51:52
-11:51:52.588 -> [11038] year: 2024
-11:51:52.588 -> [11038] month: 11
-11:51:52.588 -> [11038] day: 10
-11:51:52.588 -> [11038] hour: 11
-11:51:52.588 -> [11038] minute: 51
-11:51:52.588 -> [11038] second: 52
-11:51:52.588 -> [11038] timezone: 7.00
-11:51:52.683 -> [11144] Modem Temp: 33.00
-11:51:52.683 -> [11146] ### Network error!
-11:51:53.673 -> [12148] ### Unhandled: NETWORK CLOSED UNEXPECTEDLY
-11:51:53.767 -> 
-11:51:53.767 -> +NETOPEN: 0
-11:51:53.767 -> 
-11:51:53.767 -> OK
-11:51:53.767 -> 
-11:51:53.767 -> +NETOPEN: 0
-11:51:53.767 -> 
-11:51:53.767 -> OK
-11:51:53.767 -> [12154] ... not connected
-
-
-#include <HardwareSerial.h>
-
-HardwareSerial Serial_SIM(1);  // Khởi tạo cổng Serial cho module SIM
-#define SIM_TX 17               // Chân TX của ESP32 nối với RX của SIM
-#define SIM_RX 16               // Chân RX của ESP32 nối với TX của SIM
-
-bool mqttConnected = false;
-unsigned long lastPing = 0;
-const unsigned long keepAliveInterval = 60000; // Thời gian giữ kết nối, 60 giây
-
-void setup() {
-  Serial.begin(115200);         // Serial cho debug
-  Serial_SIM.begin(9600, SERIAL_8N1, SIM_RX, SIM_TX);  // Serial cho module SIM
-
-  delay(2000);
-  
-  // Bước 1: Kết nối mạng di động
-  connectToNetwork();
-
-  // Bước 2: Khởi tạo MQTT với will topic và will message
-  initializeMQTTWithWill("home/status", "offline");
-
-  // Bước 3: Kết nối đến MQTT Broker và gửi tin nhắn "online" khi kết nối thành công
-  connectToMQTTBrokerAndSendOnline();
-
-  // Bước 4: Đăng ký vào topic
-  subscribeToTopic("home/status");
-
-  // Ghi nhận thời điểm kết nối
-  lastPing = millis();
-}
-
-void loop() {
-  // Kiểm tra và reconnect nếu mất kết nối MQTT
-  if (!mqttConnected) {
-    reconnectMQTT();
-  }
-
-  // Kiểm tra trạng thái mạng mỗi 10 giây
-  static unsigned long lastNetworkCheck = 0;
-  if (millis() - lastNetworkCheck > 10000) {
-    lastNetworkCheck = millis();
-    checkNetworkStatus();
-  }
-
-  // Kiểm tra thời gian giữ kết nối và gửi dữ liệu nếu cần
-  if (mqttConnected && (millis() - lastPing > keepAliveInterval)) {
-    if (!publishToTopic("home/status", "ping")) {
-      mqttConnected = false; // Cập nhật lại trạng thái nếu không thể gửi
-    } else {
-      lastPing = millis();
-    }
-  }
-
-  // Xử lý phản hồi từ module
-  if (Serial_SIM.available()) {
-    String response = Serial_SIM.readString();
-    Serial.println("Received from SIM: " + response);
-
-    // Kiểm tra nếu mất kết nối từ broker
-    if (response.indexOf("+CMQTTDISC:") != -1) {
-      mqttConnected = false;
-      Serial.println("MQTT disconnected by broker.");
-    }
-  }
-
-  delay(1000);
-}
-
-void connectToNetwork() {
-  sendATCommand("AT+CGATT=1", "OK", 2000);
-  sendATCommand("AT+CGDCONT=1,\"IP\",\"your_apn\"", "OK", 2000);  // Thay "your_apn" bằng APN của nhà mạng
-  sendATCommand("AT+NETOPEN", "+NETOPEN: 0", 5000);
-}
-
-void checkNetworkStatus() {
-  // Kiểm tra trạng thái mạng
-  if (!sendATCommand("AT+CGATT?", "+CGATT: 1", 2000)) {
-    Serial.println("Network disconnected. Attempting to reconnect...");
-    mqttConnected = false;
-    connectToNetwork();
-  }
-}
-
-void initializeMQTTWithWill(const char* willTopic, const char* willMessage) {
-  sendATCommand("AT+CMQTTSTART", "OK", 5000);
-  sendATCommand("AT+CMQTTACCQ=0,\"client_id\"", "OK", 2000);  // Khởi tạo client MQTT với client_id
-  
-  // Thiết lập will topic
-  int willTopicLength = strlen(willTopic);
-  String willTopicCmd = "AT+CMQTTWILLTOPIC=0," + String(willTopicLength);
-  sendATCommand(willTopicCmd.c_str(), ">", 2000);  // Chờ dấu ">" để gửi will topic
-  Serial_SIM.print(willTopic);                     // Gửi tên topic
-  delay(200);
-
-  // Thiết lập will message
-  int willMessageLength = strlen(willMessage);
-  String willMessageCmd = "AT+CMQTTWILLMSG=0," + String(willMessageLength) + ",1";  // QoS = 1 cho will message
-  sendATCommand(willMessageCmd.c_str(), ">", 2000);  // Chờ dấu ">" để gửi will message
-  Serial_SIM.print(willMessage);                     // Gửi nội dung will message
-  delay(200);
-
-  Serial.println("Initialized MQTT with will message: " + String(willMessage) + " on topic: " + String(willTopic));
-}
-
-void connectToMQTTBrokerAndSendOnline() {
-  if (sendATCommand("AT+CMQTTCONNECT=0,\"tcp://broker.hivemq.com:1883\",60,1", "OK", 5000)) {
-    mqttConnected = true;
-    publishToTopic("home/status", "online");
-    lastPing = millis();
-  } else {
-    Serial.println("Failed to connect to MQTT broker.");
-    mqttConnected = false;
-  }
-}
-
-void subscribeToTopic(const char* topic) {
-  int topicLength = strlen(topic);
-  String subscribeCmd = "AT+CMQTTSUB=0," + String(topicLength) + ",1";  // QoS là 1
-
-  sendATCommand(subscribeCmd.c_str(), ">", 2000);  // Gửi lệnh đăng ký, chờ ký tự ">"
-  Serial_SIM.print(topic);                         // Gửi tên topic
-  delay(200);  // Thời gian delay để hoàn tất gửi topic
-  Serial.println("Subscribed to topic: " + String(topic));
-}
-
-bool publishToTopic(const char* topic, const char* message) {
-  int topicLength = strlen(topic);
-  int messageLength = strlen(message);
-  
-  String publishCmd = "AT+CMQTTPUB=0," + String(topicLength) + ",1,0";  // QoS là 1, không giữ lại (retain)
-  
-  sendATCommand(publishCmd.c_str(), ">", 2000);  // Gửi lệnh publish, chờ ký tự ">"
-  Serial_SIM.print(topic);                        // Gửi tên topic
-  delay(200);
-  
-  sendATCommand("", ">", 2000);                   // Đợi tiếp ký tự ">"
-  Serial_SIM.print(message);                      // Gửi nội dung tin nhắn
-  delay(200);
-  Serial.println("Published message: " + String(message) + " to topic: " + String(topic));
-  return true;
-}
-
-bool sendATCommand(String command, String expected_response, unsigned int timeout) {
-  Serial_SIM.println(command);
-  long int time = millis();
-  while ((millis() - time) < timeout) {
-    if (Serial_SIM.find(expected_response.c_str())) {
-      Serial.println("Command executed: " + command);
-      return true;
-    }
-  }
-  Serial.println("Timeout waiting for response for command: " + command);
-  return false;
-}
-
-void reconnectMQTT() {
-  Serial.println("Attempting to reconnect to MQTT...");
-  connectToMQTTBrokerAndSendOnline();
-  if (mqttConnected) {
-    subscribeToTopic("home/status");
-    Serial.println("Reconnected and subscribed to topic.");
-  }
-}
-code HTTPS DANH MOI CODE
-
-
-
-
 */
 
 /*--------------------------------PHẦN DANH THÊM----------------------------*/
@@ -298,19 +76,10 @@ code HTTPS DANH MOI CODE
 #include "OTA_UPDATE_WIFI.h"
 #include <FS.h>                   //this needs to be first, or it all crashes and burns...
 #include "SPIFFS.h"
-#include "OTA_UPDATE_4G.h"
-#include "EEPROM.h"
-#include "SD.h"
-#include "MQTT_4G.h"
-#include "MQTT_4G_DANH.h"
-#include "Global_variable_Danh.h"
-#include "MQTT_ATCMD.h"
-
 #define FORMAT_SPIFFS_IF_FAILED true
 #define INTERRUPT_ATTR IRAM_ATTR
-#define TG_SLEEP_BOX 2*60*1000
 
-IPAddress IP_LOCAL (192,168,80,187);
+IPAddress IP_LOCAL (192,168,80,175);
 IPAddress IP_GATEWAY (192,168,80,254);
 IPAddress SUBNET (255,255,255,0);
 IPAddress DNS1 (8,8,8,8);
@@ -318,6 +87,8 @@ IPAddress DNS2 (8,8,4,4);
 // #include <time.h>
 /* start ethernet */
 WiFiClientSecure sclient;
+/*--------------------------------PHẦN DANH THÊM----------------------------*/
+
 
 #include "STM32F107.h"
 
@@ -387,7 +158,6 @@ ActionError actionError;
 // #define DF_UPFILE_USING_MQTT 1
 
 #include <MQTT.h>
-#include <PubSubClient.h>
 
 WiFiClient net;
 EthernetClient netethernet;
@@ -412,24 +182,16 @@ EthernetClient netethernet;
 
 /*------------------------------modem 4G-------------------------*/
 #define TINY_GSM_MODEM_SIM7600  // SIM7600 AT 
-#define TINY_GSM_USE_PPP true
 #define SerialMon Serial
 #define SerialAT Serial1
-
-
-#define MODEM_RST 1
-// #define MODEM_PWR 4
-#define MODEM_TX 4
-#define MODEM_RX 5
-// #define SerialAT Serial1
 
 // Increase RX buffer to capture the entire response
 // Chips without internal buffering (A6/A7, ESP8266, M590)
 // need enough space in the buffer for the entire response
 // else data will be lost (and the http library will fail).
-// #if !defined(TINY_GSM_RX_BUFFER)
-// #define TINY_GSM_RX_BUFFER 650
-// #endif
+#if !defined(TINY_GSM_RX_BUFFER)
+#define TINY_GSM_RX_BUFFER 650
+#endif
 
 // See all AT commands, if wanted
 // #define DUMP_AT_COMMANDS
@@ -439,8 +201,8 @@ EthernetClient netethernet;
 // #define LOGGING  // <- Logging is for the HTTP library
 
 // Range to attempt to autobaud
-// #define GSM_AUTOBAUD_MIN 9600
-// #define GSM_AUTOBAUD_MAX 115200
+#define GSM_AUTOBAUD_MIN 9600
+#define GSM_AUTOBAUD_MAX 115200
 
 // Add a reception delay - may be needed for a fast processor at a slow baud rate
 // #define TINY_GSM_YIELD() { delay(2); }
@@ -449,14 +211,14 @@ EthernetClient netethernet;
 /*
  * Tests enabled
  */
-// #define TINY_GSM_TEST_GPRS          true
-// #define TINY_GSM_TEST_TCP           true
+#define TINY_GSM_TEST_GPRS          true
+#define TINY_GSM_TEST_TCP           true
 
-// #define TINY_GSM_USE_GPRS true
-// #define TINY_GSM_USE_WIFI false
+#define TINY_GSM_USE_GPRS true
+#define TINY_GSM_USE_WIFI false
 
-// // set GSM PIN, if any
-// #define GSM_PIN ""
+// set GSM PIN, if any
+#define GSM_PIN ""
 
 
 // flag to force SSL client authentication, if needed
@@ -465,7 +227,6 @@ EthernetClient netethernet;
 // Your GPRS credentials, if any
 // const char apn[]  = "v-internet";
 const char apn[]  = "m-wap";
-
 const char gprsUser[] = "";
 const char gprsPass[] = "";
 
@@ -482,18 +243,18 @@ const char gprsPass[] = "";
 #include <ArduinoHttpClient.h>
 
 // Just in case someone defined the wrong thing..
-// #if TINY_GSM_USE_GPRS && not defined TINY_GSM_MODEM_HAS_GPRS
-// #undef TINY_GSM_USE_GPRS
-// #undef TINY_GSM_USE_WIFI
-// #define TINY_GSM_USE_GPRS false
-// #define TINY_GSM_USE_WIFI true
-// #endif
-// #if TINY_GSM_USE_WIFI && not defined TINY_GSM_MODEM_HAS_WIFI
-// #undef TINY_GSM_USE_GPRS
-// #undef TINY_GSM_USE_WIFI
-// #define TINY_GSM_USE_GPRS true
-// #define TINY_GSM_USE_WIFI false
-// #endif
+#if TINY_GSM_USE_GPRS && not defined TINY_GSM_MODEM_HAS_GPRS
+#undef TINY_GSM_USE_GPRS
+#undef TINY_GSM_USE_WIFI
+#define TINY_GSM_USE_GPRS false
+#define TINY_GSM_USE_WIFI true
+#endif
+#if TINY_GSM_USE_WIFI && not defined TINY_GSM_MODEM_HAS_WIFI
+#undef TINY_GSM_USE_GPRS
+#undef TINY_GSM_USE_WIFI
+#define TINY_GSM_USE_GPRS true
+#define TINY_GSM_USE_WIFI false
+#endif
 
 #ifdef DUMP_AT_COMMANDS
 #include <StreamDebugger.h>
@@ -506,12 +267,10 @@ TinyGsm modem(SerialAT);
 // HTTPS Transport
 // TinyGsmClient base_client(modem, 0);
 // SSLClient secure_layer(&base_client);
-// HttpClient client = HttpClient(secure_layer, "raw.githubusercontent.com", 443);
-// TinyGsmClient base_client_gsm(modem,0);
-TinyGsmClient base_client_gsm(modem);
+// HttpClient client = HttpClient(secure_layer, server, port);
+TinyGsmClient base_client_gsm(modem, 0);
 SSLClient mysclient_gsm(base_client_gsm, TAs, (size_t)TAs_NUM, rand_pin);
-// PubSubClient  mqtt_gsm(base_client_gsm);
-extern PubSubClient mqtt_gsm(base_client_gsm);
+
 #if (DF_mqtt_modem)
 // TinyGsmClient net4G(modem,0);
 #endif 
@@ -527,27 +286,13 @@ extern PubSubClient mqtt_gsm(base_client_gsm);
 
 // #include <WiFiManager.h>         //https://github.com/tzapu/WiFiManager
 
-/* link cũ */
-// #define URL_fw_Version "https://raw.githubusercontent.com/DaikCong/DCSPrinter/main/bin_version.txt"
-// #define URL_fw_Bin "https://raw.githubusercontent.com/DaikCong/DCSPrinter/main/fw_printer_esp.bin"
 
-
-
-// #define URL_fw_Version "https://raw.githubusercontent.com/DaikCong/DCSPrinter/main/fw_version.txt"
-
-// #define URL_fw_Bin "https://raw.githubusercontent.com/DaikCong/DCSPrinter/main/fw_ITB_svr.bin"
-#define URL_fw_Version "https://raw.githubusercontent.com/Danh555/file_code/main/file_version.txt"
-// #define URL_fw_Bin "https://raw.githubusercontent.com/DaikCong/DCSPrinter/main/fw_ITB_svr.bin"
-#define URL_fw_Bin "https://raw.githubusercontent.com/Danh555/file_code/main/MultiSerial.ino.bin"
-
-const char *versionname="1.0.62";
-
-// #define df_time_upgrade_ms 600000 //10minute*60second*1000ms
-// uint32_t u32check_firmware=120000;//2minute*60second*1000ms
+#define URL_fw_Version "https://raw.githubusercontent.com/DaikCong/DCSPrinter/main/bin_version.txt"
+#define URL_fw_Bin "https://raw.githubusercontent.com/DaikCong/DCSPrinter/main/fw_printer_esp.bin"
+const char *versionname="1.0.0";
 
 #define df_time_upgrade_ms 600000 //10minute*60second*1000ms
-// #define df_time_upgrade_ms 30000
-uint32_t u32check_firmware=120000;//2minute*60second*1000ms
+uint32_t u32check_firmware=0;
 
 // const char *ssid="tuantuan";
 // const char *password="12345678";
@@ -555,7 +300,7 @@ uint32_t u32check_firmware=120000;//2minute*60second*1000ms
 const char *ssid="RD-2.4Ghz";
 const char *password="@12345678";
 
-uint8_t ui8_dangup_bill=0;
+
 
 // const char *ssid="mrCong";
 // const char *password="0938477008";
@@ -645,62 +390,14 @@ const String STM32_CHIPNAME[47] = {
   "STM32L47xxx/48xxx",
   "STM32L496xx/4A6xx"
 };
-// String mk="admin";
 WebServer server(80);
-const char* validUsername = systeminfo.USERNAME; // Khai báo biến chứa giá trị username hợp lệ
-const char* validPassword = systeminfo.PASSWORD;
-char newVar[sizeof(validUsername) + 2];
-const char* loginIndex = 
-			"<body style='background-color:black;'>"
-			"</body>"
-			"<form name='loginForm'>"
-			"<table width='20%' bgcolor='##000000' align='center'>"
-        "<tr>"
-            "<td colspan=2>"
-                "<center><font size=4><body text=#ffffff><b>LOGIN MODE CONFIG</b></body></font></center>"
-                "<br>"
-            "</td>"
-            "<br>"
-            "<br>"
-        "</tr>"
-        "<tr>"
-             "<td>Username:</td>"
-             "<td><input type='text' size=25 name='userid'><br></td>"
-        "</tr>"
-        "<br>"
-        "<br>"
-        "<tr>"
-            "<td>Password:</td>"
-            "<td><input type='Password' size=25 name='pwd'><br></td>"
-            "<br>"
-            "<br>"
-        "</tr>"
-        "<tr>"
-            "<td><input type='submit' onclick='check(this.form)' value='Login'></td>"
-        "</tr>"
-    "</table>"
-"</form>"
-"<script>"
-	"var mk = 'admin';"
-    "function check(form)"
-    "{"
-    "if(form.userid.value==mk && form.pwd.value==mk)"
-    "{"
-    "window.open('/Login')"
-    "}"
-    "else"
-    "{"
-    " alert('Error Password or Username')/*displays error message*/"
-    "}"
-    "}"
-"</script>";
 const char* serverIndex = "<h1>Upload STM32 BinFile</h1><h2>Please use STM32FW.bin as the file name<br><br><form method='POST' action='/upload' enctype='multipart/form-data'><input type='file' name='update'><input type='submit' value='Upload'></form></h2>";
 
 
 const char* serverIndexesp =
 			"<!DOCTYPE html><html lang=\"en\"><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no\"/><title>Update Server Controller</title>"
 			"<style>.c{text-align: center;} div,input{padding:5px;font-size:1em;} input{width:95%;} body{text-align: center;font-family:verdana;} button{border:0;border-radius:0.3rem;background-color:#1fa3ec;color:#fff;line-height:2.4rem;font-size:1.2rem;width:100%;} .q{float: right;width: 64px;text-align: right;} .l{background: url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAALVBMVEX///8EBwfBwsLw8PAzNjaCg4NTVVUjJiZDRUUUFxdiZGSho6OSk5Pg4eFydHTCjaf3AAAAZElEQVQ4je2NSw7AIAhEBamKn97/uMXEGBvozkWb9C2Zx4xzWykBhFAeYp9gkLyZE0zIMno9n4g19hmdY39scwqVkOXaxph0ZCXQcqxSpgQpONa59wkRDOL93eAXvimwlbPbwwVAegLS1HGfZAAAAABJRU5ErkJggg==\") no-repeat left center;background-size: 1em;}</style>"
-			"</head><body text=#ffffff bgcolor=##000000><div style='text-align:left;display:inline-block;min-width:260px;'>"
+			"</head><body text=#ffffff bgcolor=##4da5b9><div style='text-align:left;display:inline-block;min-width:260px;'>"
 			"<h3>Update Firmware to Server Controller</h3>"
 			"<br/>Note: You are about to update the program for the Server Controller<br/>"
 			"Please choose the correct file format as:<br/>"
@@ -710,7 +407,7 @@ const char* serverIndexesp =
 const char* serverIndexprinter =
 			"<!DOCTYPE html><html lang=\"en\"><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no\"/><title>Update Server Controller</title>"
 			"<style>.c{text-align: center;} div,input{padding:5px;font-size:1em;} input{width:95%;} body{text-align: center;font-family:verdana;} button{border:0;border-radius:0.3rem;background-color:#1fa3ec;color:#fff;line-height:2.4rem;font-size:1.2rem;width:100%;} .q{float: right;width: 64px;text-align: right;} .l{background: url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAALVBMVEX///8EBwfBwsLw8PAzNjaCg4NTVVUjJiZDRUUUFxdiZGSho6OSk5Pg4eFydHTCjaf3AAAAZElEQVQ4je2NSw7AIAhEBamKn97/uMXEGBvozkWb9C2Zx4xzWykBhFAeYp9gkLyZE0zIMno9n4g19hmdY39scwqVkOXaxph0ZCXQcqxSpgQpONa59wkRDOL93eAXvimwlbPbwwVAegLS1HGfZAAAAABJRU5ErkJggg==\") no-repeat left center;background-size: 1em;}</style>"
-			"</head><body text=#ffffff bgcolor=##000000><div style='text-align:left;display:inline-block;min-width:260px;'>"
+			"</head><body text=#ffffff bgcolor=##4da5b9><div style='text-align:left;display:inline-block;min-width:260px;'>"
 			"<h3>Update Firmware to Printer Controller</h3>"
 			"<br/>Note: You are about to update the program for the Printer Controller<br/>"
 			"Please choose the correct file format as:<br/>"
@@ -720,7 +417,7 @@ const char* serverIndexprinter =
 const char* serverIndexbarcode =
 			"<!DOCTYPE html><html lang=\"en\"><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no\"/><title>Update Server Controller</title>"
 			"<style>.c{text-align: center;} div,input{padding:5px;font-size:1em;} input{width:95%;} body{text-align: center;font-family:verdana;} button{border:0;border-radius:0.3rem;background-color:#1fa3ec;color:#fff;line-height:2.4rem;font-size:1.2rem;width:100%;} .q{float: right;width: 64px;text-align: right;} .l{background: url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAALVBMVEX///8EBwfBwsLw8PAzNjaCg4NTVVUjJiZDRUUUFxdiZGSho6OSk5Pg4eFydHTCjaf3AAAAZElEQVQ4je2NSw7AIAhEBamKn97/uMXEGBvozkWb9C2Zx4xzWykBhFAeYp9gkLyZE0zIMno9n4g19hmdY39scwqVkOXaxph0ZCXQcqxSpgQpONa59wkRDOL93eAXvimwlbPbwwVAegLS1HGfZAAAAABJRU5ErkJggg==\") no-repeat left center;background-size: 1em;}</style>"
-			"</head><body text=#ffffff bgcolor=##000000><div style='text-align:left;display:inline-block;min-width:260px;'>"
+			"</head><body text=#ffffff bgcolor=##4da5b9><div style='text-align:left;display:inline-block;min-width:260px;'>"
 			"<h3>Update Firmware to Barcode Controller</h3>"
 			"<br/>Note: You are about to update the program for the Barcode Controller<br/>"
 			"Please choose the correct file format as:<br/>"
@@ -730,7 +427,7 @@ const char* serverIndexbarcode =
 const char* serverIndexsetting =
 			"<!DOCTYPE html><html lang=\"en\"><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no\"/><title>Update Server Controller</title>"
 			"<style>.c{text-align: center;} div,input{padding:5px;font-size:1em;} input{width:95%;} body{text-align: center;font-family:verdana;} button{border:0;border-radius:0.3rem;background-color:#1fa3ec;color:#fff;line-height:2.4rem;font-size:1.2rem;width:100%;} .q{float: right;width: 64px;text-align: right;} .l{background: url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAALVBMVEX///8EBwfBwsLw8PAzNjaCg4NTVVUjJiZDRUUUFxdiZGSho6OSk5Pg4eFydHTCjaf3AAAAZElEQVQ4je2NSw7AIAhEBamKn97/uMXEGBvozkWb9C2Zx4xzWykBhFAeYp9gkLyZE0zIMno9n4g19hmdY39scwqVkOXaxph0ZCXQcqxSpgQpONa59wkRDOL93eAXvimwlbPbwwVAegLS1HGfZAAAAABJRU5ErkJggg==\") no-repeat left center;background-size: 1em;}</style>"
-			"</head><body text=#ffffff bgcolor=##000000><div style='text-align:left;display:inline-block;min-width:260px;'>"
+			"</head><body text=#ffffff bgcolor=##4da5b9><div style='text-align:left;display:inline-block;min-width:260px;'>"
 			"<h3>System Setting</h3>"
 			"<br/>Note: You are about to config the parametters for Main Controller<br/>"
 			"Please choose the correct file format as:<br/>"			
@@ -791,7 +488,7 @@ str_update_manager device_upgrade;
 */
 
 // #define max_packagesize_uploadmqtt (16*1024)  //4096 = 4*1024 = 4k số byte mỗi part upload lên server MAX = 8*512
-#define max_packagesize_uploadmqtt (10*1024)  //4096 = 4*1024 = 4k số byte mỗi part upload lên server MAX = 8*512
+#define max_packagesize_uploadmqtt (16*1024)  //4096 = 4*1024 = 4k số byte mỗi part upload lên server MAX = 8*512
 
 #define DF_NUM_OF_BYTES_READmqtt 512		//số bytes mỗi lần đọc ra từ flash
 
@@ -802,6 +499,7 @@ str_update_manager device_upgrade;
 // char VALUE [size_buffer] = {'\0'}; // Nhận tối đa 0.5Mb là 76569 // 45000 30*1024
 // char VALUE [50*1024] = {'\0'}; // Nhận tối đa 0.5Mb là 76569 // 45000 30*1024
 char VALUE [17*1024] = {'\0'}; // Nhận tối đa 0.5Mb là 76569 // 45000 30*1024
+
 
 #define DF_LEN_PRINTER (4096+50)
 
@@ -826,10 +524,10 @@ uint32_t		totalup=0;
 // uint32_t		last_len_upload=0;
 uint8_t		updatepart=0;
 uint8_t		totalpart=0;
-uint16_t index_buffer_printed =0; 
+uint16_t index_buffer_printed =0;
 uint8_t ui8_data_rec [DF_LEN_PRINTER];
 uint16_t  ui16_counter_up =25; /* time upload = 30 - ui16_counter_up*/
-
+uint16_t ui16_counterfail =0;
 uint8_t have_header =0;
 int have_cmd =0;
 uint8_t ui8_cmd[50];
@@ -838,6 +536,7 @@ uint8_t ui8_have_newfile =0;
 uint8_t stt_storing_file =0;
 uint8_t ui8_busy_rec_printer =0; //=1: đang nhận dữ liệu in, ưu tiên nhận trước, dừng up lên server
 uint32_t u32_timer_rec_printer_data =0;
+uint32_t ui32_time_allow_upfile =0;
 uint32_t u32_timer_test =0;
 
 #define dflabel_header_length 4
@@ -884,7 +583,6 @@ String nameofqcode;		//chứa mã qcode
 
 // const char *mynamedevice="ITB_1234567890";
 char mynamedevice[20];
-const char *ten_id = mynamedevice;
 
 struct str_time_manager
 {
@@ -908,28 +606,6 @@ struct str_regetlost_chunk
 
 str_regetlost_chunk inforeget;
 
-
-struct str_setting
-{
-	uint8_t 	status_set=0;
-	// uint8_t 	chunk;
-	uint8_t 	index = 0;
-	char name_topic[24];
-	char name_tofind_setting[24];
-};
-
-str_setting inforeget_setting;
-
-struct str_setting_sniff
-{
-	uint8_t 	status_set=0;
-	// uint8_t 	chunk;
-	uint8_t 	index = 0;
-	char name_topic[24];
-	char name_tofind_setting[24];
-};
-
-str_setting_sniff inforeget_sniff;
 
 
 enum device_status
@@ -955,10 +631,7 @@ str_device_manager deviceprinter;
 struct str_device_status
 {
 	uint8_t		printer=2; /*chưa cập nhật thông tin*/
-	uint8_t		barcode=2; /*chưa cập nhật thông tin*/	
-	uint8_t 	log_debug=0;
-	char 		vs_printer[20];/* xx.yy.zzz*/	
-	char 		vs_barcode[20];/* xx.yy.zzz*/
+	uint8_t		barcode=2; /*chưa cập nhật thông tin*/
 };
 
 str_device_status device_status;
@@ -1038,78 +711,42 @@ int flash_led=0;
 uint32_t lastDebounceTime =0;
 
 void  setup() {
-
   // initialize both serial ports:
   Serial.begin(115200);
-  EEPROM.begin(4096);
 	/*init RTC*/
  	// Wire.begin();
-	Wire.begin(42, 41,5000);
-
-	
- 	//Wire.setClock(100000);
-	
-	// WiFi.config(IP_LOCAL,IP_GATEWAY,SUBNET,DNS1,DNS2);
-	// digitalWrite(PWRKEY_MODEM, HIGH);
-	ui8_ketnoithanhcong_mqtt=1;
+	Wire.begin(42, 41);
+ 	Wire.setClock(100000);
+	WiFi.config(IP_LOCAL,IP_GATEWAY,SUBNET,DNS1,DNS2);
 // Serial1.begin(115200);
 // Serial2.begin(115200);
 
 //   Serial1.begin(9600,SERIAL_8N1,26,27); /* test board*/
 //   Serial2.begin(230400,SERIAL_8N1,17,16);
 //   pinMode(led_sign,OUTPUT);
+
 	hardware_init();
 	harware_int_test();
-
-
-	pinMode(48,OUTPUT);
-    digitalWrite(48,1);
 	/*----------------extern flash---------------*/
 	flash.begin();
+
     // reserve 200 bytes for the inputString:
   inputString.reserve(200);
 
   delay(10);
   
-   if(!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED))
-   {
-		Serial.println("SPIFFS Moundt Failed");
-		return;
-   }
+    if(!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED))
+	{
+        Serial.println("SPIFFS Mount Failed");
+        return;
+    }
 
   Serial.println("-----------------------------------");
   Serial.println("Test HW Interceptor box");
   Serial.printf("firmware version: %s\n", versionname);  
   Serial.println("-----------------------------------\n");
   
-//   ui8_datgioihanfile=1;
-	// formatdisk_func();
-	// for(int i=0; i<max_file_save; i++)
-	// {
-	// 	Serial.println("-----------------------------------\n");
-	// 	Serial.printf("save_bill_info_flash %d\n", i);
-		
-	// 	HEADER_FILE head_file_temp;
-		
-	// 	/*init values*/
-	// 	sprintf(head_file_temp.SOF,"SOF");
-	// 	// sprintf(head_file_temp.brand_name,"EPSON");
-	// 	// sprintf(head_file_temp.model,"TM-T88IV");
-	// 	// sprintf(head_file_temp.SOF,"SOF");
-	// 	sprintf(head_file_temp.brand_name,header_file_doing.brand_name);
-	// 	sprintf(head_file_temp.model,header_file_doing.model);
-	// 	strncpy(head_file_temp.name, bill_media_info.nameofbill, sizeof(bill_media_info.nameofbill));	
-	// 	head_file_temp.length = bill_media_info.sizedata;
 
-	// 	head_file_temp.addr = upload_manager_info.next_addr_data;
-	// 	write_header_index(i, head_file_temp);
-
-	// }
-
-	// while(1);
-
-	server_modem.busy=1;
-	select_uart(UART_4G);
 	/*load values*/
 	deleteallmdeia(SPIFFS, "/", 0);
 
@@ -1121,14 +758,12 @@ void  setup() {
 
 	load_values();
 	
-	// snprintf(mynamedevice, 20, "ITB_%lld", ESP.getEfuseMac());
+	snprintf(mynamedevice, 20, "ITB_%lld", ESP.getEfuseMac());
 	Serial.print("Name of box: ");
 	Serial.println(mynamedevice);
-
-	setup_realtimeclock();
 	
-	// pinMode(48,OUTPUT);//key power nguon PIN
-	// digitalWrite(48,0);
+  	
+	setup_realtimeclock();
 	/*thông báo khởi động*/
 	for(int i=0;i<5;i++)
 	{
@@ -1140,6 +775,7 @@ void  setup() {
 	
 	/* setup ethernet */
     // start Ethernet and UDP
+
 	if(server_ethernet.enable == DEVICE_ENABLE)
 	{
 		//RESET chip internet
@@ -1178,11 +814,6 @@ void  setup() {
 		{
 			server_ethernet.status = MY_OK;
 			Serial.println("Ethernet connected, using DHCP");
-			Serial.println(systeminfo.wifi_name);
-			WiFi.begin(systeminfo.wifi_name, systeminfo.  wifi_pass);		
-			connect_bywifi();		
-			server_wifi.enable = MY_ERRO;
-			Serial.println("wifi: disable");
 		}
 	}
 	else
@@ -1198,7 +829,7 @@ void  setup() {
 		WiFi.begin(systeminfo.wifi_name, systeminfo.wifi_pass);	
 		connect_bywifi();		
 	}
-	else if(server_ethernet.enable == DEVICE_ENABLE || server_modem.enable == DEVICE_ENABLE)
+	else
 	{
 		/* khởi tạo chỗ này để sử dụng wifi config */
 		Serial.println(systeminfo.wifi_name);
@@ -1208,7 +839,39 @@ void  setup() {
 		Serial.println("wifi: disable");
 	}
 
-	if( server_modem.enable == DEVICE_ENABLE)
+		
+	if (system_connection_mode == BYETHERNET)
+	{
+		clientmqtt.begin("mqtt.altacloud.biz",1883,netethernet);
+	}
+#if (DF_mqtt_modem)
+	else if (system_connection_mode == BYSIM4G)
+	{
+		clientmqtt.begin("mqtt.altacloud.biz",1883,base_client_gsm);
+	}
+#endif 
+	else
+	{
+		clientmqtt.begin("mqtt.altacloud.biz",1883,net);			
+	}
+
+	clientmqtt.setHost("mqtt.altacloud.biz",1883);
+	clientmqtt.setKeepAlive(300);//5 minutes
+	clientmqtt.setTimeout(30000);
+	// clientmqtt.onMessageAdvanced(messageReceived);
+	clientmqtt.onMessage(messageReceived);
+
+
+  /* setup s3 */
+	iotClient.setAWSRegion("us-east-1"); 
+	iotClient.setAWSEndpoint("s3.altacloud.biz:443");
+	iotClient.setAWSDomain("s3.altacloud.biz"); 	 
+	iotClient.setAWSKeyID("esp-iot-2023");
+	iotClient.setAWSSecretKey("secret-esp-iot-2023-alta");
+    iotClient.setHttpClient(&httpClient);
+	iotClient.setDateTimeProvider(&dateTimeProvider);
+  
+    if( server_modem.enable == DEVICE_ENABLE)
 	{
 		setup_modem();
 	}
@@ -1216,9 +879,9 @@ void  setup() {
 	{
 		Serial.println("4G: disable");
 	}
-
-	server_init(); /*mode config wifi*/	
 	
+	server_init(); /*mode config wifi*/
+
 	/*sum kq init*/
 
 	/* load upload info*/
@@ -1268,197 +931,43 @@ void  setup() {
 
 	 info_time_system.mode = BYETHERNET;
 
-	
+	/*reset other device*/
+	digitalWrite(RESET_BARCODE,0);
+	delay(100);
+	digitalWrite(RESET_BARCODE,1);
 	
   
   #if (DF_DEBUG_NOUPLOAD_TO_SERVER > 0 )
   	Serial.println("\n !!!!!!!! DF_DEBUG_NOUPLOAD_TO_SERVER!!!!!!!!!!!!!!!\n");
   #endif 
 
- 
-  	// send_at("ATE1");
-	if(String(systeminfo.name_domain) == "")
-	{
-		String tam_test = "mqtt.altacloud.biz";
-		tam_test.toCharArray(systeminfo.name_domain,40);
-	}
 
-	if(String(systeminfo.username_mqtt) == "")
-	{
-		String tam_test = "altamedia";
-		tam_test.toCharArray(systeminfo.username_mqtt,40);
-	}
-
-	if(String(systeminfo.password_mqtt) == "")
-	{
-		String tam_test = "altamedia";
-		tam_test.toCharArray(systeminfo.password_mqtt,40);
-	}
-
-
-	if (system_connection_mode == BYETHERNET)
-	{
-		// clientmqtt.begin("mqtt.altacloud.biz",1883,netethernet);
-		clientmqtt.begin(systeminfo.name_domain,1883,netethernet);
-		Serial.println("MQTT BANG ETHERNET");
-	}
-#if (DF_mqtt_modem)
-	else if (system_connection_mode == BYSIM4G)
-	{
-		// send_at("ATE1");
-		// wRespon(100);
-		// init_MQTT();
-		// // send_at("AT+CMQTTCFG=\"checkUTF8\",0,0");
-		// connect_MQTT_ATCMD();
-
-		Serial.println("vo day ne");
-		ui8_check_disconnect_mqtt=0;
-		// connectMQTT();
-    
-
-		// send_at("ATE1");
-		// wRespon(100);
-		// init_MQTT(mynamedevice);
-		// // delay(500);
-		// connect_MQTT_ATCMD();
-		// ui8_connect_mqtt_atcmd=0;
-		
-		clientmqtt.begin(systeminfo.name_domain,1883,base_client_gsm);
-		Serial.println("mqtt bang 4g");
-	}
-#endif 
-	else
-	{
-		// clientmqtt.begin("mqtt.altacloud.biz",1883,net);
-		clientmqtt.begin(systeminfo.name_domain,1883,net);
-		Serial.println("mqtt wifi");			
-	}
-
-	// #ifndef DF_MQTT_UP_4G
-
-		clientmqtt.setHost(systeminfo.name_domain,1883);
-		clientmqtt.setKeepAlive(180);//don vi la s
-		clientmqtt.setTimeout(5000);//don vi la ms
-		// // clientmqtt.onMessageAdvanced();
-		// clientmqtt.onMessage(messageReceived);
-		// setup_mqtt(mqtt_gsm,systeminfo.name_domain);
-
-//    u32_time_resend_opu = millis() + 10*60*1000;/*sau 10' up len*/
-
-  u32_time_resend_opu = millis() + 5*1000;
-  deviceprinter.time = millis() + 120000;// 2 phút = 2*60*1000
-  u32_time_connected_mqtt = millis()+60*1000;	
-  ui32_timeout_check_set = millis() + 10000;
-//   ui32_timeout_checksleepbox = millis() + TG_SLEEP_BOX;// 1 ngày
-  ui32_timeout_checkprinter = millis() + TG_SLEEP_PRINTER; // 30 phut
-  ui32_timeout_checkpower=millis() + TG_KICHPIN;	
-  ui32_timeout_formatdisk=millis()+10000;
-//   lastNetworkCheck = millis();
-lastNetworkCheck = millis()+60000;
-  check_dataluu();
-
-	#if (DF_USING_BARCODE)
-
-	digitalWrite(RESET_BARCODE,0);
-	delay(100);
-	digitalWrite(RESET_BARCODE,1);
-	// ui8_truycap_mqtt=1;
-	server_modem.busy=0;
-	// check_version_barcode();
-	// Serial.println("lai tro lai DEV_INIT reset bien");
-
-	uint32_t ui32_timeout_thoat = millis() + 1500;
-	while(ui8_checkbarcode_landau==0 && ui32_timeout_thoat>millis())
-	{
-		// Serial.println("GET CODE");
-		SerialToBarcodeModem.println("#GET$");
-		check_serial_qcode_Scanner();
-		// server_modem.busy=1;
-	}
+  	#if (DF_USING_BARCODE)
+	barcode_process(); /*cần xử lý lại*/
 	#else
-	Serial.println("\n !!!!!!!! DISABLE BARCOD!!!!!!!!!!!!!!!\n");
+	Serial.println("\n !!!!!!!! DISABLE BARCODE!!!!!!!!!!!!!!!\n");
 	#endif
-	// #endif
-	
+ 
+  u32_time_resend_opu = millis() + 10*60*1000;/*sau 10' up len*/
 
-//   Serial.println(String(systeminfo.header_ID));
-//   int tam = strlen(inforeget_setting.name_topic);
-//   if(tam<=0)
-//   {
-// 	Serial.println("chua co header");
-// 	// inforeget_setting.name_topic="PRINTER";
-// 	// String tam_test = "PRINTER";
-// 	// tam_test.toCharArray(inforeget_setting.name_topic,100);
-// 	if(systeminfo.header_ID=="")
-// 	{
-// 		String tam_test = "PRINTER";
-// 		tam_test.toCharArray(systeminfo.header_ID,100);
-// 	}
-// 	sprintf(inforeget_setting.name_topic,"%s",systeminfo.header_ID);
-// 	EEPROM.put(0,inforeget_setting.name_topic);
-//   	EEPROM.commit();
-//   }
+  deviceprinter.time = millis() + 120000;// 2 phút = 2*60*1000
 
-//   else if(systeminfo.header_ID!=inforeget_setting.name_topic)
-//   {
-// 	sprintf(inforeget_setting.name_topic,"%s",systeminfo.header_ID);
-// 	EEPROM.put(0,inforeget_setting.name_topic);
-//   	EEPROM.commit();
-//   }
-
-//   else 
-//   {
-// // 	// sprintf(inforeget_setting.name_topic,"%s",systeminfo.header_ID);
-// 	// EEPROM.put(0,inforeget_setting.name_topic);
-//   	// EEPROM.commit();
-// 	// EEPROM.get(0,inforeget_setting.name_topic);
-//   }
-  	EEPROM.get(0,inforeget_setting.name_topic);//nao chay thi mo ra
-	Serial.println(String(inforeget_setting.name_topic));
-	delay(50);
-
-	// setup_mqtt_atcmd(systeminfo.name_domain,systeminfo.username_mqtt,systeminfo.password_mqtt,inforeget_setting.name_topic,mynamedevice);
-	// // delay(200);
-	
-	// for(int i=0;i<=5;i++)
-	// {
-	// 	if(public_online==1)
-	// 	{
-	// 		setup_modem();
-	// 		disconnect_MQTT_ATCMD();
-	// 		setup_mqtt_atcmd(systeminfo.name_domain,systeminfo.username_mqtt,systeminfo.password_mqtt,inforeget_setting.name_topic,mynamedevice);
-	// 	}
-	// }
-	
-//   EEPROM.put(0,inforeget_setting.name_topic);
-//   EEPROM.commit();
-// //   delay(1000);
-//   server_modem.busy=0;
-	/*reset other device*/
-  ui8_truycap_mqtt=0;	
-//   if(ui8_checkbarcode_landau==1)
-//   {
-	// select_uart(UART_4G);
-	// server_modem.busy=1;
-//   }	
-//   ui32_timeout_connectmqtt = millis() + 2000;
   Serial.println("\n --------application start-------");
+  
 }
-      
-void loop() 
-{
+// int m =0;
+void loop() {
+ 
 	/* Đây là chế độ chạy bình thường, và chưa nhấn nút setting */
-
-	
 	if(flash_led==0 && system_running_mode == 0)
 	{		
+		// process_upfile();			/*S3*/
+		
 		process_upfile_mqtt();	/*MQTT: mới test wifi, ethernet*/
 		
 		process_get_chunk_mqtt();
 
-		// process_upbarcode();
-
-		process_get_header_topicmqtt();
+		process_upbarcode();
 
 		#if DF_USING_CHECKTIME
 		check_system_time();
@@ -1468,77 +977,102 @@ void loop()
 
 		check_format_disk();
 		
-		// checkfirmware();
-
-		//phan danh them
-		// xuly_info_printer();
-		// #if (DF_USING_BARCODE)
-		// SWITCH_BARCODE();
-		// #endif
-		xuly_thongtin_mayin();
-		sleep_nguon();
-		checkpower();
-		tat_pin();
-		// reset_sim();
-		// check_reset_box();
-		// check_song();
-		// if(ui8_datgioihanfile==1 && ui8_canformatdisk==1)
-		// {
-		// 	Serial.println("format disk");
-		// 	formatdisk_func();
-		// 	ui32_timeout_formatdisk=millis()+240*60*1000;
-		// 	ui8_canformatdisk=0;
-		// 	ui8_datgioihanfile=0;
-		// }
+		checkfirmware();
 		
+		
+		// select_uart(UART_4G);
+		/*mqtt process*/
+		
+		
+		clientmqtt.loop();
+				
+		if (!clientmqtt.connected()) {
+			if (ui8_busy_rec_printer != 1)
+			{
+				connect_mqtt();
+			}
+		}
 	}
-
+		
 	if(system_running_mode ==0)
 	{
-		/* đây là chế độ chạy bình thường */	
-		#if (DF_USING_BARCODE)
-			// Serial.println("barcode");
-			barcode_process(); /*cần xử lý lại*/	
-		#endif 
+		/* đây là chế độ chạy bình thường */
 		
-		// check_serial_qcode_Scanner();
+		#if (DF_USING_BARCODE)
+		select_uart(UART_BARCODE);
+		barcode_process(); /*cần xử lý lại*/	
+		#endif 
+			
 		check_serial_debug();
 		check_serial_printer();	
-		// check_SIM(100)BIL20241120072628;
-
+				
 		heart_beat();
 		check_button();
 		check_status_device();
-		print_sniff();
-		// if(ui8_modebusy_printer==1)
-		// {
-		// check_reset_printer();
-		// sleep_box();
-		// connect_mqtt_atcmd();
-		// check_disconnectmqtt();
-		// if(ui8_busy_rec_printer == 0 && ui8_sim_erro==0 && ui16_counterfail==0)
-		// {
-		// 	// if(u32check_firmware<millis() || ui8_dangupdate_mqtt==1) return;
-		// 	reconnect(systeminfo.name_domain,systeminfo.username_mqtt,systeminfo.password_mqtt,inforeget_setting.name_topic,mynamedevice);	
-		// }
-		// messageReceived(topic_mqtt,payload_mqtt);
 	}
 	else
 	{
 		/* đây là chế độ cấu hình qua wifi */
-		if(ui32_timeout_thoat_config<millis() && ui8_dangvao_web == 0)
-		{
-			Serial.println("thoat khoi config");
-			system_running_mode = 0;
-		}
 		flashflash();
 		server.handleClient();
 	}
 
-	upload_fw_STM32_printer();
-	upload_code_STM32_barcode();
+	/*------------------------SAVE FILE SU DUNG ETHERNET--------------------*/
+	if(ui8_update_fw_eth==1 && ui8_update_eth_esp32 == 1)
+	{
+		save_fileOTA_ETHERNET(mysclient,file_update_eth_esp32);
+		// listDir("/",0);
+		// readFile(file_update_esp32);
+		ui8_update_fw_eth=0;   
+		ui8_update_eth_esp32=0;
+	}
 
+	else if(ui8_update_fw_eth==1 && ui8_update_eth_STM32 == 1)
+	{
+		save_fileOTA_ETHERNET(mysclient,file_update_eth_stm32);
+		// listDir("/",0);
+		// readFile(file_update_stm32);
+		ui8_update_fw_eth=0;   
+		ui8_update_eth_STM32=0;
+	}
+	/*------------------------SAVE FILE SU DUNG ETHERNET--------------------*/
+
+	/*------------------------SAVE FILE SU DUNG WIFI--------------------*/
+
+	if(ui8_update_fw_wifi==1 && ui8_update_fw_ESP32==1)
+	{
+		Serial.println("dang luu file cho ESP32");
+		save_file(sclient,file_update_wifi_esp32);
+		ui8_update_fw_wifi=0;
+		ui8_update_fw_ESP32=0;
+	}
+
+	else if(ui8_update_fw_wifi==1 && ui8_update_fw_STM32==1)
+	{
+		Serial.println("dang luu file cho STM32");
+		save_file(sclient,file_update_wifi_stm32);
+		upload_code_STM32();
+		reset_chip();
+		ui8_check_kiemtraupcode = 1;
+		ui8_update_fw_wifi = 0;
+		ui8_update_fw_STM32 = 0;
+	}
+	
+	// if(ui8_check_kiemtraupcode==1)
+	// {
+	// 	if(millis() - ui32_timeout_resetchip >= 10000)
+	// 	{
+	// 		Serial.println("vào chỗ reset chip");
+	// 		reset_chip();
+	// 	}
+	// 	ui8_check_kiemtraupcode=0;
+	// }
+
+	// napcode();
+
+	/*------------------------SAVE FILE SU DUNG WIFI--------------------*/
 }
+
 void printhelp()
 {
 	Serial.println("\n --------access STM32--------------------");  
@@ -1567,112 +1101,13 @@ void printhelp()
 	Serial.println("v. test upload file printed file");
 }
 
-// void load_values()
-// {
-// 	Serial.println("Load values..."); 
-			
-// 	spiff_readsettingfile("/sys.ini", &systeminfo);
-
-//     /*in debug */
-
-// 	device_status.vs_printer[0] ='N';;/* xóa version cũ, để cập nhật tên version mới */
-// 	device_status.vs_printer[1] ='O';;/* xóa version cũ, để cập nhật tên version mới */
-// 	device_status.vs_printer[2] ='T';;/* xóa version cũ, để cập nhật tên version mới */
-// 	device_status.vs_printer[3] ='\0';;/* xóa version cũ, để cập nhật tên version mới */
-
-// 	// device_status.vs_barcode[0] ='1';;
-// 	// device_status.vs_barcode[1] ='.';;
-// 	// device_status.vs_barcode[2] ='0';;
-// 	// device_status.vs_barcode[3] ='.';;
-// 	// device_status.vs_barcode[4] ='4';;
-
-// /*
-// 	SerialDebug.print("ssid = ");
-// 	SerialDebug.println(systeminfo.wifi_name);
-// 	SerialDebug.print("pass = ");
-// 	SerialDebug.println(systeminfo.wifi_pass);
-// 	SerialDebug.print("apn = ");
-// 	SerialDebug.println(systeminfo.apn);
-// 	SerialDebug.print("use_ethernet = ");
-// 	SerialDebug.println(systeminfo.use_ethernet);
-// 	SerialDebug.print("use_wifi = ");
-// 	SerialDebug.println(systeminfo.use_wifi);
-// 	SerialDebug.print("use_modem = ");
-// 	SerialDebug.println(systeminfo.use_modem);
-// */
-	
-// 	server_modem.enable = DEVICE_DISABLE;
-// 	server_ethernet.enable = DEVICE_DISABLE;
-	
-// 	systeminfo.use_network[0]='1';
-	
-// 	if(systeminfo.use_network[0] == '0')
-// 	{
-// 		system_connection_mode = BYETHERNET;
-// 		server_ethernet.enable = DEVICE_ENABLE;
-// 		SerialDebug.println("ethernet mode");
-// 	}	
-// 	else if(systeminfo.use_network[0] == '2')
-// 	{
-// 		system_connection_mode = BYSIM4G;
-// 		server_modem.enable = DEVICE_ENABLE;
-// 		SerialDebug.println("4G mode");
-// 	}
-// 	else
-// 	{
-// 		system_connection_mode = BYWIFI;
-// 		server_wifi.enable = DEVICE_ENABLE;
-// 		SerialDebug.println("wifi mode");
-// 	}
-// 	server_wifi.enable = DEVICE_ENABLE;
-
-// 	//load values test
-	
-// 	SerialDebug.println("\n\n !!!!!!!!!!!!!!! debug here!!!!!!!!!!!!!!!");
-// 	// SerialDebug.println("\n\n !!!!!!!!!!!!!!! debug here!!!!!!!!!!!!!!!");
-// 	// SerialDebug.println("\n\n !!!!!!!!!!!!!!! debug here!!!!!!!!!!!!!!!");
-
-// 	server_modem.enable = DEVICE_DISABLE;
-// 	server_ethernet.enable = DEVICE_ENABLE;
-// 	server_wifi.enable = DEVICE_DISABLE;
-// 	system_connection_mode = BYETHERNET;
-// }
-
-void load_values() // nay code goc
+void load_values()
 {
 	Serial.println("Load values..."); 
 			
 	spiff_readsettingfile("/sys.ini", &systeminfo);
 
-    /*in debug */	
-	Serial.print("gia tri username: ");
-	Serial.println(validUsername);
-
-	
-	newVar[0] = '\'';
-    
-    // Sao chép giá trị của mk vào newVar, bắt đầu từ vị trí thứ hai
-    strcpy(&newVar[1], validUsername);
-    
-    // Đặt ký tự cuối cùng là dấu '
-    newVar[sizeof(validUsername)+2] = '\'';
-    
-    // Đặt ký tự null để kết thúc chuỗi
-    newVar[sizeof(validUsername) + 3] = '\0';
-	Serial.print("gia tri username sau khi them: ");
-	Serial.println(newVar);
-
-	device_status.vs_printer[0] ='N';;/* xóa version cũ, để cập nhật tên version mới */
-	device_status.vs_printer[1] ='O';;/* xóa version cũ, để cập nhật tên version mới */
-	device_status.vs_printer[2] ='T';;/* xóa version cũ, để cập nhật tên version mới */
-	device_status.vs_printer[3] ='\0';;/* xóa version cũ, để cập nhật tên version mới */
-
-	// device_status.vs_barcode[0] ='1';;
-	// device_status.vs_barcode[1] ='.';;
-	// device_status.vs_barcode[2] ='0';;
-	// device_status.vs_barcode[3] ='.';;
-	// device_status.vs_barcode[4] ='4';;
-
+    /*in debug */
 /*
 	SerialDebug.print("ssid = ");
 	SerialDebug.println(systeminfo.wifi_name);
@@ -1687,12 +1122,11 @@ void load_values() // nay code goc
 	SerialDebug.print("use_modem = ");
 	SerialDebug.println(systeminfo.use_modem);
 */
-	
 	server_modem.enable = DEVICE_DISABLE;
 	server_ethernet.enable = DEVICE_DISABLE;
-	// server_wifi.enable = DEVICE_DISABLE;
-	// systeminfo.use_network[0]='1';
-	// server_wifi.enable = DEVICE_ENABLE;
+	
+	systeminfo.use_network[0]='1';
+	
 	if(systeminfo.use_network[0] == '0')
 	{
 		system_connection_mode = BYETHERNET;
@@ -1702,7 +1136,6 @@ void load_values() // nay code goc
 	else if(systeminfo.use_network[0] == '2')
 	{
 		system_connection_mode = BYSIM4G;
-		// select_uart(UART_4G);
 		server_modem.enable = DEVICE_ENABLE;
 		SerialDebug.println("4G mode");
 	}
@@ -1712,19 +1145,18 @@ void load_values() // nay code goc
 		server_wifi.enable = DEVICE_ENABLE;
 		SerialDebug.println("wifi mode");
 	}
-	// server_wifi.enable = DEVICE_ENABLE;
+	server_wifi.enable = DEVICE_ENABLE;
 
 	//load values test
 	
 	SerialDebug.println("\n\n !!!!!!!!!!!!!!! debug here!!!!!!!!!!!!!!!");
-	SerialDebug.println(systeminfo.use_network[0]);
 	// SerialDebug.println("\n\n !!!!!!!!!!!!!!! debug here!!!!!!!!!!!!!!!");
 	// SerialDebug.println("\n\n !!!!!!!!!!!!!!! debug here!!!!!!!!!!!!!!!");
 
-	// server_modem.enable = DEVICE_ENABLE;
-	// server_ethernet.enable = DEVICE_DISABLE;
-	// server_wifi.enable = DEVICE_ENABLE;
-	// system_connection_mode = BYSIM4G;
+	server_modem.enable = DEVICE_DISABLE;
+	server_ethernet.enable = DEVICE_DISABLE;
+	server_wifi.enable = DEVICE_ENABLE;
+	system_connection_mode = BYWIFI;
 
 	// system_running_mode =1;
 }
@@ -1902,18 +1334,6 @@ void setup_realtimeclock()
 }
 /*---------------------------------Realtime Clock DS1307 end-----------------------------------------------------*/
 /*---------------------------------------------------------------------------------------------------------------*/
-// void check_serial_sim()
-// {
-// 	if(SerialAT.available())
-// 	{
-// 		String text = SerialAT.readString();
-// 		// if(text == "+CMQTTCONNECT: 0,0")
-// 		// {
-// 			Serial.println("test: ");
-// 			Serial.print(text);
-// 		// }
-// 	}
-// }
 
 
 void check_serial_debug()
@@ -1921,32 +1341,28 @@ void check_serial_debug()
 	  // read from port 0, send to port 2:
   if (Serial.available()) {
     int inByte = Serial.read();
+    
 	if(inByte =='1')
-	{	
-		Serial1.end();
-		Serial2.end();
-		select_uart(UART_BARCODE);
-		delay(500);
-		SerialQR4G.begin(115200, SERIAL_8E1, 5, 4);
-		delay(100);
-		digitalWrite(SEL_QR_4G, HIGH);
-		FlashMode_test();
-		delay(200);
-		init_chip_test();
-		Serial2.write(inByte);
-	}    
+    {
+      Serial.println("mode 1: get info STM");
+	  Serial.println("-------");
+	  init_chip_STM32();
+	  
+    }
 
 	else if(inByte =='2')
     {
-		check_stmErase_test();
+      Serial.println("\n mode 2: test write file to flash: expired");
+	  Serial.println("-------");
+	  inByte ='a';
+	  check_stmErase_test();
     }
 	else if(inByte =='3')
     {
-		Serial.println("\n mode 3: expired");
-		Serial.println("-------");
-		inByte ='a';
-		reset_chip();
-		Serial2.write(inByte);
+      Serial.println("\n mode 3: expired");
+	  Serial.println("-------");
+	  inByte ='a';
+	  reset_chip();
     }
 
 	// else if(inByte =='d' || inByte =='D')
@@ -1958,18 +1374,16 @@ void check_serial_debug()
 	else if(inByte =='5')
     {      
       /* yêu cầu STM gửi vùng flash chứa data in qua */
-	//   send_at("ATE1");
 	  Serial.println("\n get flash data printed");
 	  Serial.println("-------");
-	//   SerialQR4G.begin(115200, SERIAL_8N1, 5, 4);
-    //   digitalWrite(SEL_QR_4G, HIGH);
-    //   digitalWrite(RST_F107, LOW);
-    //   delay(50);
-    //   digitalWrite(Boot_F107, LOW);
-    //   delay(50);
-    //   digitalWrite(RST_F107, HIGH);
-    //   Serial.println("OK SEL_QR_4G = HIGH");
-		Serial2.write(inByte);
+	  SerialQR4G.begin(115200, SERIAL_8N1, 5, 4);
+      digitalWrite(SEL_QR_4G, HIGH);
+      digitalWrite(RST_F107, LOW);
+      delay(50);
+      digitalWrite(Boot_F107, LOW);
+      delay(50);
+      digitalWrite(RST_F107, HIGH);
+      Serial.println("OK SEL_QR_4G = HIGH");
     }
 	else if(inByte =='6')
     {      
@@ -1983,17 +1397,17 @@ void check_serial_debug()
 		delay(100);
 		// digitalWrite(RS_ETHERNET,1);
 		digitalWrite(RESET_BARCODE,1);
-		Serial2.write(inByte);
     }
 	else if(inByte =='7')
     {      
       /* yêu cầu STM gửi vùng flash chứa data in qua */
 	  Serial.println("\n reset esp controller");
 	  Serial.println("-------");
-	  ESP.restart();
-	  delay(2000);
+		ESP.restart();
+		delay(2000);
+
 	  inByte ='a';
-	  Serial2.write(inByte);
+
     }
 	else if(inByte =='8')
     {      
@@ -2007,7 +1421,6 @@ void check_serial_debug()
 		delay(100);
 		digitalWrite(RS_ETHERNET,1);
 		// digitalWrite(RESET_BARCODE,1);
-		Serial2.write(inByte);
     }
 	else if(inByte =='9')
     {      
@@ -2018,25 +1431,8 @@ void check_serial_debug()
 	  	/*reset other device*/
 		digitalWrite(RESET_PRINTER,0);
 		delay(100);
-		digitalWrite(RESET_PRINTER,1);	
-		Serial2.write(inByte);	
+		digitalWrite(RESET_PRINTER,1);		
     }
-
-	else if(inByte =='A')
-	{
-		start_log();
-	}
-
-	else if(inByte == 'B')
-	{
-		end_log();
-	}
-
-	else if(inByte == 'C')
-	{
-		device_status.log_debug=0;
-	}
-
 	else if(inByte =='b')
 	{
 		Serial.println("\n debug use ethernet ");
@@ -2053,77 +1449,38 @@ void check_serial_debug()
 	}
 	else if(inByte =='d')
 	{
-		// Serial.println("debug use modem 4G ");
-		// // server_ethernet.status	= MY_ERRO;
-		// // server_wifi.status	= MY_ERRO;
-		// // server_modem.status	= MY_OK;
-		// Serial.println("by modem");
-		// //chuyển mode
-		// server_modem.busy = 1;
-		// select_uart(UART_4G);
-		// delay(1);
-		// firmwareUpdate_4G(mysclient_gsm,"raw.githubusercontent.com",443,"DatMinhHo/OTA/main/Blink_Led.ino.esp32.bin");
-		// ui8_update_fw_4G_STM32=1;
-		// ui8_update_fw_4G=1;
-
-
-		// disconnect_MQTT();
-		// ui8_dangupdate_esp=1;
-		// char duonglink_dow_server[100];
-		// sprintf(duonglink_dow_server,"Danh555/file_code/main/ITB_ServerV%s.ino.bin",check_fw_server);
-		// Serial.println(duonglink_dow_server);
-		// Serial.println("up date to server controller");
-		// update_ESP32_4G(mysclient_gsm,"raw.githubusercontent.com",443,duonglink_dow_server);
-		kt_fwversion="6";
-		u32check_firmware = millis() + 1000;
-		// ui8_ketnoi_esp_4G=1;
-		
+		Serial.println("debug use modem 4G ");
+		server_ethernet.status	= MY_ERRO;
+		server_wifi.status	= MY_ERRO;
+		server_modem.status	= MY_OK;
 	}
 	else if(inByte =='e')
 	{
-		// disconnect_MQTT("OFFLINE", mynamedevice);
-		// Serial.println("call update fw");
-		// u32check_firmware  = 0;
-		// server_modem.busy = 1;
-		// select_uart(UART_4G);
-		// delay(1);
-		// FirmwareVersionCheck_4G();
-
-
-		// Serial.println("connect update 4G");
-		// Serial.println("save file bin for STM32");
-		// ui8_ketnoi_github_4G=1;
-
-
-		kt_fwversion="4";
-		u32check_firmware = millis() + 1000;
+		Serial.println("debug use ALL ");
+		server_ethernet.status	= MY_OK;
+		server_wifi.status	= MY_OK;
+		server_modem.status	= MY_OK;
 	}
 	else if(inByte =='f')
 	{
 		// u32check_firmware  = 0;
 		Serial.println("connect update esp32");
-		// firmwareUpdate_Ethernet(mysclient,"raw.githubusercontent.com", 443, "DatMinhHo/OTA/main/Blink_Led.ino.esp32.bin");
-		firmwareUpdate_Ethernet(mysclient,"raw.githubusercontent.com", 443, "Danh555/file_code/main/MultiSerial.ino.bin");
+		firmwareUpdate_Ethernet(mysclient,"raw.githubusercontent.com", 443, "DatMinhHo/OTA/main/Blink_Led.ino.esp32.bin");
 		ui8_update_eth_esp32=1;
 		ui8_update_fw_eth=1;
 	}
 
 	else if(inByte=='F')
 	{
-		// Serial.println("connect update wifi");
+		Serial.println("connect update wifi");
 		Serial.println("save file bin for ESP32");
-		// connected_server(sclient, test_root_ca, "raw.githubusercontent.com", 443, "DatMinhHo/OTA/main/Blink_Led.ino.esp32.bin");
-		// ui8_update_fw_wifi=1;
-		// ui8_update_fw_ESP32=1;
-		save_fileOTA_4G(mysclient_gsm,file_update_wifi_esp32);
-
+		connected_server(sclient, test_root_ca, "raw.githubusercontent.com", 443, "DatMinhHo/OTA/main/Blink_Led.ino.esp32.bin");
+		ui8_update_fw_wifi=1;
+		ui8_update_fw_ESP32=1;
 	}
 	else if(inByte == 'm')
 	{
-		// listDir("/", 0);
-		Serial.println("connect update esp32 wifi");
-		// ui8_ketnoi_github = 1;
-		update_ESP32_SPIFFS_4G(mysclient_gsm,file_update_wifi_esp32);
+		listDir("/", 0);
 	}
 	else if(inByte =='g')
 	{
@@ -2139,38 +1496,8 @@ void check_serial_debug()
 	else if(inByte =='i')
 	{
 		Serial.println("test public mqtt");
-		updatemqtt_func(1024);
-		// ui8_update_mqtt_4g = 1;
+		updatemqtt_func();
 	}
-
-	else if(inByte =='I')
-	{
-		Serial.println("test public mqtt");
-		updatemqtt_func(2024);
-		// ui8_update_mqtt_4g = 1;
-	}
-
-	else if(inByte =='U')
-	{
-		Serial.println("test public mqtt");
-		updatemqtt_func(8024);
-		// ui8_update_mqtt_4g = 1;
-	}
-
-	else if(inByte == 'J')
-	{
-		Serial.println("test public mqtt");
-		// updatemqtt_func(1100);	
-		uploadCounter++;
-		dayfile();
-	}
-	else if(inByte == 'Y')
-	{
-		// Serial.println("test public mqtt");
-		// updatemqtt_func(1600);
-		ui8_ketnoi_github_4G_barcode=1;
-	}
-
 	else if(inByte =='j')
 	{
 		Serial.println("format disk");
@@ -2185,29 +1512,17 @@ void check_serial_debug()
 	}
 	else if(inByte == 'K')
 	{
-		// Serial.println("connect update wifi");
-		// Serial.println("save file bin for STM32");
-		// // connected_server(sclient, test_root_ca, "raw.githubusercontent.com", 443, "Danh555/file_code/main/STM32F107RCT6_new.bin");
-		// connected_server(sclient, test_root_ca, "raw.githubusercontent.com", 443, "Danh555/file_code/main/ITB_Printer_0.0.3.bin");
-		// ui8_update_fw_wifi=1;
-		// ui8_update_fw_STM32=1;
-
 		Serial.println("connect update wifi");
 		Serial.println("save file bin for STM32");
-		// uint8_t ui8_chophepchay = 1;
-		// connected_server(sclient, test_root_ca, "raw.githubusercontent.com", 443, "Danh555/file_code/main/ITB_Printer_0.0.3.bin");
-
-		// ui8_update_fw_wifi=1;
-		// ui8_update_fw_STM32=1;
-		// ui8_chophepchay=0;
-		ui8_ketnoi_github = 1;
+		connected_server(sclient, test_root_ca, "raw.githubusercontent.com", 443, "Danh555/file_code/main/STM32F107RCT6_new.bin");
+		ui8_update_fw_wifi=1;
+		ui8_update_fw_STM32=1;
 	}
-	else if(inByte =='r')
+	else if(inByte =='r' || inByte =='R')
 	{
 		Serial.println("\n read file");
 		Serial.println("-------");
 		readInSPIFFS();
-		
 	}
 	else if(inByte =='u')
 	{
@@ -2253,7 +1568,7 @@ void check_serial_debug()
 		ui32_timecheck_qcode = millis()+60000;		
 		Serial.println("Wait for Qcode in 60S...");
 	}
-	else if(inByte =='x')
+	else if(inByte =='x' || inByte =='X')
 	{
 		Serial.print("Cancel upload file");
 		totalkichthuoc =0;
@@ -2297,33 +1612,7 @@ void check_serial_debug()
 		Serial.println("Wait for Qcode in 60S...");
 	}
 
-	else if(inByte =='T')
-	{
-		// select_uart(UART_4G);
-		// SerialToBarcodeModem.println("AT+CVALARM=0");
-		// test_upload_file_new();// test up file mqtt
-		updatemqtt_func(10*1024);
-		// test_upload_data_SPIFFS();
-		// response_Manufacturer_STM();
-		// ui32_timeout_check_barcode = millis() + 2000;
-		// ui8_dangconnect_mqtt=1;
 
-		// startMQTT();
-		// // connectToMQTTBroker();
-		// connect_MQTT_ATCMD();
-		// subscribeToTopic("your_topic");
-		// publishMessage("your_topic", "Hello MQTT");
-	}
-
-	else if(inByte == 'R')
-	{
-		response_Product_STM();
-	}
-
-	else if(inByte =='X')
-	{
-		response_Serialnumber_STM();	
-	}
 	
 	else if(inByte =='\r')
 	{
@@ -2333,48 +1622,29 @@ void check_serial_debug()
 	{
 		
 	}
-	// else
-	// {
-	// 	printhelp();
-	// }
+	else
+	{
+		printhelp();
+	}
     
-    
+    Serial2.write(inByte);
   }
 }
 
 /* Serial2 */
-#if (code_anhcong)
-	void respone_ACK()
-	{
-		Serial2.write('O');
-	}
-	void respone_Idle()
-	{
-		Serial2.write('M');
-	}
-	void respone_Erro()
-	{
-		Serial2.write('E');
-	}
+void respone_ACK()
+{
+	Serial2.write('O');
+}
+void respone_Idle()
+{
+	Serial2.write('M');
+}
+void respone_Erro()
+{
+	Serial2.write('E');
+}
 
-#else 
-	void respone_ACK()
-	{
-		// Serial2.write('0');
-		Serial2.write("#R 0$");
-	}
-	void respone_Idle()
-	{
-		// Serial2.write('1');
-		Serial2.write("#R 1$");
-	}
-	void respone_Erro()
-	{
-		// Serial2.write('2');
-		Serial2.write("#R 2$");
-	}
-
-#endif
 
 uint32_t atoui32(char* chuoi)
 {
@@ -2423,11 +1693,8 @@ void check_status_device()
 		if ( millis() > u32_timer_rec_printer_data)
 		{			
 			Serial.println("exit Busy mode");
-			// inforeget_sniff.index=1;
-			ui32_timeout_printsniff = millis() + TG_CHECK_SNIFF;
 			ui8_busy_rec_printer =0;
-		}	
-			
+		}		
 	}
 
 	/* test 10s truyền 1 đoạn data qua stm*/	
@@ -2442,50 +1709,16 @@ void check_status_device()
 	#endif 
 }
 
-void check_fw_barcode()
-{
-	
-	while(Serial1.available())
-	{
-		char inChar = (char)Serial1.read();
-		if(inChar == '\n')
-		{
-			stringComplete_serial = true;
-		}
-		else
-		{
-			index_serial += inChar;
-		}
-	}
-	
-}
-
-void index_of_serial()
-{
-	check_fw_barcode();
-	if(stringComplete_serial)
-	{
-		if(ui8_ketqua_uart==1)
-		{
-			Serial.print("data ne: ");
-			Serial.println(index_serial);
-		}
-		index_serial="";
-		stringComplete_serial=false;
-	}
-}
-
 void check_serial_printer()
 {
 	
 	if (is_data ==1) /* printed data*/
 	{
-
-		while (Serial2.available()) 
-		{
+		while (Serial2.available()) {
 			// get the new byte:
 			char inChar = (char)Serial2.read();
 			ui32_timechar = millis();
+					
 			if(ui16_index_printed < ui16_len_package)
 			{
 			
@@ -2497,7 +1730,6 @@ void check_serial_printer()
 				{							
 					is_save_package = 1;
 					is_data =0;
-					
 				}
 			}
 			else
@@ -2508,26 +1740,22 @@ void check_serial_printer()
 	}
 	else /* cmd data*/
 	{
-		while (Serial2.available()) 
-		{
+		while (Serial2.available()) {
 			
 			/* CMD I*/
 			// get the new byte:
-			
 			char inChar = (char)Serial2.read();
 			ui32_timechar = millis();
 			Serial.write(inChar);
-			// Serial.println("nhay vao day roi");
+			
 			if(have_header)
 			{				
 				if (inChar == '\n')
 				{
-					// ui8_modebusy_printer=1;
 					ui8_cmd[ui16_index_cmd] = '\0';
 					have_cmd =1;
 					have_header=0;
 					ui16_index_cmd=0;
-					// Serial.println("du lieu toi");
 					break;
 				}
 				else
@@ -2544,8 +1772,7 @@ void check_serial_printer()
 			}
 			else			
 			{
-				if (finding_header(inChar)) 
-				{
+				if (finding_header(inChar)) {
 					have_header =1;
 					ui16_index_cmd=0;
 				}
@@ -2627,7 +1854,7 @@ void check_serial_printer()
 				Serial.print("totalbuffer =");
 				Serial.println(tong);								
 				bill_media_info.sizedata = tong;
-				if(tong >= TONG_KICHTHUOCBILL_CHOPHEP)
+				if(tong > 0)
 				{													
 					creatnamebill();
 					save_bill_info();//save header
@@ -2667,90 +1894,32 @@ void check_serial_printer()
 		{					
 			/* đang in file, dừng các hoạt động khác để chuẩn bị nhận file */
 			ui8_busy_rec_printer = 1;
-			ui8_modebusy_printer = 1;
 			u32_timer_rec_printer_data = millis() + 60000;// 1 phút
-			ui32_timeout_checkprinter = millis() + TG_SLEEP_PRINTER; // 30 phut
 			Serial.println("Busy mode");
-			// if(ui8_ketnoimqtt_ok==1)
-			// {
-			// 	ui8_candisconnectmqtt=1;
-			// 	ui32_timeout_disconnect_mqtt=millis();
-			// }
-			
 		}
 		else if (ui8_cmd[0] == 'I') 
 		{					
-			/* I1 [version]*/
-			
 			if (ui8_cmd[1] == '1') 
 			{
 				if(device_status.printer != 1 && device_status.printer != 2)
 				{					
-					u32_time_resend_opu = millis() + 10000;
-					// ui8_guiinfo_manu = 0;
-					// ui8_guistatus_manu = 0;
-					// ui8_guiseri_manu = 0;
-					Serial.println("info may in san sang");
-					u32_timeout_checkinfo_printer = millis() + 500;
-					u32_timeout_checkstatus_printer = millis() + 1000;
-					u32_timeout_checkserinumber_printer = millis() + 1500;
-					ui8_check_manufacturer=0;
-					ui8_check_product_printer=0;
-					ui8_check_serialnumber_printer=0;
+					u32_time_resend_opu = millis() + 1000;
 				}
 				
 				device_status.printer = 1;
-				
 				Serial.println("Printer Ready");
 			}
-			else if (ui8_cmd[1] == '0') 
+			else
 			{
 				
 				if(device_status.printer != 0 && device_status.printer != 2)
 				{
-					u32_time_resend_opu = millis() + 10000;
-					Serial.println("info may in ko san sang");
-
-					u32_timeout_checkinfo_printer = millis() + 500;
-					u32_timeout_checkstatus_printer = millis() + 1000;
-					u32_timeout_checkserinumber_printer = millis() + 1500;
-					ui8_check_manufacturer=0;
-					ui8_check_product_printer=0;
-					ui8_check_serialnumber_printer=0;
+					u32_time_resend_opu = millis() + 1000;
 				}
 
 				device_status.printer = 0;
 				Serial.println("Printer Not Ready");
-				String(header_file_doing.model)="";
-				String(header_file_doing.brand_name)="";
-				String(Serial_number)="";
-			}
-
-			// if(String(device_status.vs_printer) == "NOT")
-			// {
-				// strncpy(device_status.vs_printer,(ui8_cmd+3), sizeof(device_status.vs_printer));
-				for(int m=0;m<sizeof(device_status.vs_printer);m++)
-				{
-					device_status.vs_printer[m] = (char)ui8_cmd[3+m];
-					if(ui8_cmd[3+m] = '\0')break;
-				}								
-				Serial.println("Printer vs = " +   String(device_status.vs_printer));		
-
-				if(device_status.vs_printer[2] == '1')
-				{
-					Serial.println("may in 1");
-				}	
-
-				if(device_status.vs_printer[2] == '2')
-				{
-					Serial.println("may in 2");
-				}
-
-				if(device_status.vs_printer[2] == '3')
-				{
-					Serial.println("may in 3");
-				}	
-			// }
+			}						
 		}
 		else if (ui8_cmd[0] == '4')
 		{
@@ -2796,88 +1965,6 @@ void check_serial_printer()
 				}
 			}
 		}
-
-		else if(ui8_cmd[0] == 'G')
-		{	
-			if(ui8_cmd[1] == '1')
-			{
-				for(int i = 0; i<sizeof(header_file_doing.brand_name); i++)
-				{
-					header_file_doing.brand_name[i] = ui8_cmd[3+i];
-					if(ui8_cmd[3+i] = '\0')break;
-				}
-
-				Serial.println("Manufactor name = " +   String(header_file_doing.brand_name));
-				Serial.println("gia tri luu cua manufactor name= "+header_tam);
-				// u32_time_resend_opu = millis() + 1000;
-				// // ui8_check_manufacturer = 1;
-				// if(String(header_file_doing.brand_name) != " ")
-				// {
-				// 	ui8_check_manufacturer = 1;
-				// }
-				// else
-				// {
-				// 	u32_timeout_checkinfo_printer = millis() + 2000;
-				// }
-				if(header_tam != String(header_file_doing.brand_name) && String(header_file_doing.brand_name) != "")
-				{
-					header_tam =  String(header_file_doing.brand_name);
-					Serial.println("gia tri luu cua manufactor name= "+header_tam);
-					ui8_guiinfo_manu=1;
-					// u32_time_resend_opu = millis() + 1000;
-				}
-				ui8_checkketnoi_manufacturer = 1;
-				ui8_check_manufacturer=1;
-				server_modem.busy==0;
-				
-			}
-
-			
-
-			else if(ui8_cmd[1] == '2')
-			{
-				for(int i = 0; i<sizeof(header_file_doing.model); i++)
-				{
-					header_file_doing.model[i] = ui8_cmd[3+i];
-					if(ui8_cmd[3+i] = '\0')break;
-				}
-
-				Serial.println("Product name = " +   String(header_file_doing.model));
-				// header_tam_1 =  String(header_file_doing.model);
-				// u32_time_resend_opu = millis() + 1000;
-				if(header_tam_1 != String(header_file_doing.model) && String(header_file_doing.model) != "")
-				{
-					// u32_time_resend_opu = millis() + 1000;
-					header_tam_1 =  String(header_file_doing.model);
-					ui8_guistatus_manu=1;
-				}
-				ui8_checkketnoi_product_printer = 1;
-				ui8_check_product_printer=1;
-				server_modem.busy==0;
-			}
-
-			else if(ui8_cmd[1] == '3')
-			{
-				for(int i = 0; i<sizeof(Serial_number); i++)
-				{
-					Serial_number[i] = ui8_cmd[3+i];
-					if(ui8_cmd[3+i] = '\0')break;
-				}
-
-				Serial.println("Serial_number name = " +   String(Serial_number));
-				// header_tam_2 =  String(Serial_number);
-				// u32_time_resend_opu = millis() + 1000;
-				if(header_tam_2 != String(Serial_number) && String(Serial_number) != "")
-				{
-					// u32_time_resend_opu = millis() + 1000;
-					header_tam_2 =  String(Serial_number);
-					ui8_guiseri_manu=1;
-				}
-				ui8_checkketnoi_serialnumber_printer = 1;
-				ui8_check_serialnumber_printer=1;
-				server_modem.busy==0;
-			}
-		}
 		else
 		{
 			Serial.print("Unknow CMD ");
@@ -2914,6 +2001,7 @@ void select_uart(int uart_index_)
 {
 	/* barcode*/
 	digitalWrite( CS_UART, uart_index_);
+
 }
 
 /*
@@ -2923,29 +2011,22 @@ check_serial_qcode_Scanner
 */
 int check_serial_qcode_Scanner()
 {	
-	if (server_modem.busy == 1) 
-	{
-		return 1;
-	}
+	if (server_modem.busy == 1) return 1;
 	int kq =0;
-	server_modem.busy=0;
 	select_uart(UART_BARCODE);
-	// Serial.println("vo check barcode");
 
 	// read from port 1, send to port 0:
-  while (SerialToBarcodeModem.available()) 
-  {
+  while (SerialToBarcodeModem.available()) {
     char inChar = (char)SerialToBarcodeModem.read();
-	// Serial.println("co nhan duoc ne");
     Serial.write(inChar);
 	//nếu quét liên tiếp 2 lần liền: sẽ bị chồng mã
 	// add it to the inputString:
     
     // if the incoming character is a newline, set a flag so the main loop can
     // do something about it:
-    if (inChar == '\n' || inChar == '\r') 
-	{
-		
+    if (inChar == '\n' || inChar == '\r') {
+
+		// Serial.println("have enter");
 /*
 	#BC CODE
 	8935106211321
@@ -2991,38 +2072,23 @@ int check_serial_qcode_Scanner()
 			kq =0;
 			ui8_chuanbinhanbarcode =1;			
 		}
-
-		else if (inputString.startsWith("#BC I1"))
+		else if (inputString == "#BC I1")
 		{
 			if(device_status.barcode != 1 && device_status.barcode != 2)
 			{
 				u32_time_resend_opu = millis() + 1000;
 			}
-			String s =inputString.substring(7,inputString.length());
-			// Serial.println(s);
-			s.toCharArray(device_status.vs_barcode,100);
-			Serial.println(String(device_status.vs_barcode));
-			device_status.barcode = 1;		
-			ui8_checkbarcode_landau=1;		
-			ui8_rs_barcode=0;		
+			
+			device_status.barcode = 1;						
 		}		
-
-		else if (inputString.startsWith("#BC I0"))
+		else if (inputString == "#BC I0")
 		{
 			if(device_status.barcode != 0 && device_status.barcode != 2)
 			{
 				u32_time_resend_opu = millis() + 1000;
 			}
-			device_status.barcode = 0;		
-			String s =inputString.substring(7,inputString.length());
-			
-			// Serial.println(s);
-			s.toCharArray(device_status.vs_barcode,100);
-			Serial.println(String(device_status.vs_barcode));
-			Serial.println("bat duoc version");	
-			ui8_checkbarcode_landau=1;
-			ui8_rs_barcode=0;	
-		}
+			device_status.barcode = 0;						
+		}		
 		inputString = "";
     }
 	else
@@ -3060,178 +2126,33 @@ return kq;
 	//   select_uart(UART_4G);
 }
 
-void check_version_barcode()
-{
-	if (server_modem.busy == 1) return;
-	
-	switch (devicebarcode.stage)
-	{
-		case DEV_INIT/* constant-expression */:
-		{
-			/* code */		
-			select_uart(UART_BARCODE);
-			// Serial.println("vo check barcode");	
-			
-			if(system_connection_mode==BYSIM4G)
-			{
-				ui8_demsolan_barcode++;	
-				if(ui8_demsolan_barcode < 10)
-				{
-					Serial.println("GET CODE");
-					SerialToBarcodeModem.println("#GET$");
-					// SerialToBarcodeModem.write('#');
-					devicebarcode.time = millis() + 10000;
-					devicebarcode.stage = DEV_WAITDATA;
-				}
-				if(ui8_demsolan_barcode >= 10)
-				{
-					Serial.println("ket thuc doc status barcode");
-					ui8_truycap_mqtt = 0;
-					server_modem.busy=1;
-					ui8_demsolan_barcode=0;
-				}
-			}
-			break;
-		}
-		case DEV_WAITDATA/* constant-expression */:
-		{
-			/* code */
-			// Serial.println("DEV_WAITDATA BARCODE");
-			check_serial_qcode_Scanner();
-
-			if(millis() > devicebarcode.time)
-			{
-				Serial.println("Warning barcode no responed");
-				devicebarcode.resend++;
-				if(devicebarcode.resend > 1)
-				{
-					Serial.println("RESET BARCODE");
-					/*reset barcode here*/
-					digitalWrite(RESET_BARCODE,0);
-					delay(100);
-					digitalWrite(RESET_BARCODE,1);
-
-					devicebarcode.resend = 0;
-					devicebarcode.time = millis() + 10000;/*thời gian check status barcode processor*/
-					devicebarcode.stage = DEV_IDLE;
-				}
-				else
-				{
-					Serial.println("lai tro lai DEV_INIT");
-					devicebarcode.stage = DEV_INIT;
-				}									
-			}
-			break;	
-		}
-		default:
-		{	
-			if(millis() > devicebarcode.time)
-			{
-				
-				devicebarcode.resend = 0;
-				devicebarcode.stage = DEV_INIT;
-				Serial.println("lai tro lai DEV_INIT reset bien");
-				Serial.println("GET CODE");
-				SerialToBarcodeModem.println("#GET$");
-				check_serial_qcode_Scanner();
-			}
-			
-			break;
-		}
-	}
-}
-
 void barcode_process()
 {
-	if (server_modem.busy == 1) return;
-	// if(ui8_dangupdate == 1) return;
-	// Serial.println("vao barcode roi");
-	// if(millis() < ui32_timeout_check_barcode) return;
-	// if(system_connection_mode==BYSIM4G)
-	// {
-		if(ui8_truycap_mqtt==0) return;
-		if(millis() < ui32_timeout_check_barcode) return;
-		if(ui8_kiemtra_header == 1) 
-		{
-			ui8_truycap_mqtt = 0;
-			server_modem.busy=1;
-			return;
-		}
-
-		if(millis() > u32check_firmware)
-		{
-			// ui8_truycap_mqtt = 0;
-			// server_modem.busy=1;
-			// ui8_demsolan_barcode=0;
-			u32check_firmware=millis()+df_time_upgrade_ms;
-			return;
-		}
-
-		if(ui8_busy_rec_printer==1)
-		{
-			Serial.println("ket thuc doc status barcode");
-			ui8_truycap_mqtt = 0;
-			server_modem.busy=1;
-			select_uart(UART_4G);
-			return;
-		}
-
-		if(millis() > u32_time_resend_opu)
-		{
-			u32_time_resend_opu=millis()+2000;
-		}
-	// }
-	
-	// ui8_demsolan_barcode = 0;
-	// ui8_demsolan_barcode++;
-	// Serial.println(ui8_demsolan_barcode);
-
-	// if(ui8_demsolan_barcode >= 200)
-	// {
-	// 	ui8_truycap_mqtt = 0;
-	// }
-	// server_modem.busy=0;	
+	if (server_modem.busy == 1) return ;
+		
 	switch (devicebarcode.stage)
 	{
 		case DEV_INIT/* constant-expression */:
 		{
-			/* code */		
+			/* code */			
 			select_uart(UART_BARCODE);
-			// Serial.println("vo check barcode");	
-			
-			// if(system_connection_mode==BYSIM4G)
-			// {
-				ui8_demsolan_barcode++;	
-				if(ui8_demsolan_barcode < 3)
-				{
-					Serial.println("GET CODE");
-					SerialToBarcodeModem.println("#GET$");
-					// SerialToBarcodeModem.write('#');
-					devicebarcode.time = millis() + 10000;
-					devicebarcode.stage = DEV_WAITDATA;
-				}
-				if(ui8_demsolan_barcode >= 3)
-				{
-					Serial.println("ket thuc doc status barcode");
-					ui8_truycap_mqtt = 0;
-					server_modem.busy=1;
-					ui8_demsolan_barcode=0;
-					server_modem.busy=1;
-					select_uart(UART_4G);
-					ui32_timeout_connectmqtt=millis()+2000;
-					// u32_time_resend_opu=millis()+10000;
-					u32check_firmware=millis() + df_time_upgrade_ms;
-					devicebarcode.stage = DEV_IDLE;
-				}
-			// }
+			Serial.println("GET CODE");
+			SerialToBarcodeModem.println("#GET$");
+			// SerialToBarcodeModem.write('#');
+			devicebarcode.time = millis() + 5000;
+			devicebarcode.stage = DEV_WAITDATA;
 			break;
 		}
 		case DEV_WAITDATA/* constant-expression */:
 		{
 			/* code */
-			// Serial.println("DEV_WAITDATA BARCODE");
 			check_serial_qcode_Scanner();
-
+			
+			// if (check_serial_qcode_Scanner())
+			// {
+			// 	select_uart(UART_4G);
+			// }
+			
 			if(millis() > devicebarcode.time)
 			{
 				Serial.println("Warning barcode no responed");
@@ -3239,19 +2160,19 @@ void barcode_process()
 				devicebarcode.resend++;
 				if(devicebarcode.resend > 1)
 				{
-					Serial.println("RESET BARCODE");
 					/*reset barcode here*/
 					digitalWrite(RESET_BARCODE,0);
 					delay(100);
 					digitalWrite(RESET_BARCODE,1);
 
 					devicebarcode.resend = 0;
-					devicebarcode.time = millis() + 10000;/*thời gian check status barcode processor*/
+					devicebarcode.time = millis() + 5000;/*thời gian check status barcode processor*/
 					devicebarcode.stage = DEV_IDLE;
+
+					// select_uart(UART_4G);
 				}
 				else
 				{
-					Serial.println("lai tro lai DEV_INIT");
 					devicebarcode.stage = DEV_INIT;
 				}									
 			}
@@ -3261,10 +2182,8 @@ void barcode_process()
 		{	
 			if(millis() > devicebarcode.time)
 			{
-				
 				devicebarcode.resend = 0;
 				devicebarcode.stage = DEV_INIT;
-				Serial.println("lai tro lai DEV_INIT reset bien");
 			}
 			
 			break;
@@ -3316,22 +2235,6 @@ int heart_beat() {
 	  {
 			tempus = millis() + 500;			
 	  }
-	  else if(ui8_dangupdate_printer == 1)
-	  {
-			tempus = millis() + 950;	
-	  }
-	  else if(ui8_dangupdate_barcode == 1)
-	  {
-			tempus = millis() + 650;	
-	  }
-	  else if(ui8_truycap_mqtt == 1)
-	  {
-			tempus = millis() + 950;
-	  }
-	//   else if(ui8_dangupdate_esp == 1)
-	//   {
-	// 		tempus = millis() + 500;
-	//   }
 	  else
 	  {
 			tempus = millis() + 50;
@@ -3345,56 +2248,18 @@ int heart_beat() {
 		if(flash_led || system_running_mode ==1)
 	   {
 		tempus = millis() + 100;
-	// 	int docreadpower = analogRead(READ_POWER);
-	// Serial.println(docreadpower);
 	   }
 	   else if(network_status == MY_ERRO)
 	  {
 			tempus = millis() + 500;	
 	  }
-	  else if(ui8_dangupdate_printer == 1)
-	  {
-			tempus = millis() + 50;	
-	  }
-	  else if(ui8_dangupdate_barcode == 1)
-	  {
-			tempus = millis() + 250;	
-	  }
-	//   else if(ui8_dangupdate_esp == 1)
-	//   {
-	// 		tempus = millis() + 500;
-	//   }
-	  else if(ui8_truycap_mqtt == 1)
-	  {
-			tempus = millis() + 300;
-	  }
 	  else
 	  {
 			tempus = millis() + 950;
-			// Serial.print("doc analog: ");
-			// Serial.println(docreadpower);
 	  }
     }
   }
   return kq;
-}
-
-void checkpower()
-{
-	if(ui8_check_power==1 && ui8_solan_kt==1)
-	{
-		Serial.println("rut nguon roi cb qua pin");
-		ui32_timeout_checkpower=millis() + 20000;	
-		ui8_check_power=0;
-	}
-}
-
-void tat_pin()
-{
-	if(ui32_timeout_checkpower<millis())
-	{
-		digitalWrite(48,0);
-	}
 }
 
 int flashled(int mode_) 
@@ -3477,7 +2342,7 @@ void check_button()
 		delay(500); // Without delay I've seen the IP address blank
 		SerialDebug.println(F("AP IP address: "));
   		SerialDebug.println(WiFi.softAPIP());
-		ui32_timeout_thoat_config = millis() + TG_TIMEOUT_WEBCONFIG;
+
 		system_running_mode =1;
 	}
 
@@ -3604,7 +2469,7 @@ void deleteallmdeia(fs::FS &fs, const char * dirname, uint8_t levels){
 
 			  String s =String(file.name());
 			//   if (s.endsWith(".ini") || s.endsWith(".dat")|| s.endsWith(".h")) {
-			  if (s.endsWith(".ini") || s.endsWith(".sys") || s.endsWith(".txt")) {
+			  if (s.endsWith(".ini") || s.endsWith(".sys")) {
 				#ifndef use_debug_serial
 				SerialDEBUG.println("[*FILE]: \tright file-->keep");
 				#endif 								
@@ -3797,6 +2662,7 @@ void deleteFile(fs::FS &fs, String path){
 }
 
 
+
 const char* testsend(const char* request, const char* serverUrl, int port)
 {
     //port = 443;
@@ -3979,9 +2845,7 @@ const char* upload_file_to_server(const char* request, const char* serverUrl, in
 			}
 			Serial.println("disconneted server");
 
-		} 
-		else 
-		{
+		} else {
 			// mysclient.setInsecure();
 			Serial.println("Connection Unsuccessful");
 			// connection was unsuccessful
@@ -4404,23 +3268,11 @@ uint32_t getkichthuoc(uint8_t stt_)
 		header_file_doing.length =0;
 		Serial.println("size get : ERRO");
 	}
-	// if(header_file_doing.length > 400*1024)
-	// {
-	// 	Serial.println("size get : Too large");
-	// 	header_file_doing.length =0;
-	// }
-
-	// if(header_file_doing.length < TONG_KICHTHUOCBILL_CHOPHEP)
-	// {
-	// 	Serial.println("size get : Too small");
-	// 	header_file_doing.length =0;
-	// }
-	
-	// if(header_file_doing.length < 8024)
-	// {
-	// 	Serial.println("size get : Too small");
-	// 	header_file_doing.length =0;
-	// }
+	if(header_file_doing.length > 200*1024)
+	{
+		Serial.println("size get : Too large");
+		header_file_doing.length =0;
+	}
 	
 	Serial.print("size get = ");
 	Serial.println(header_file_doing.length);
@@ -4652,7 +3504,6 @@ int get_files_part_mqtt(char* dataBuffer, int part_, int tong_)
 
 	/*kiểm tra sơ bộ*/
 	if (header_file_doing.length==0) return 0;
-	// if(header_file_doing.length<=8024) return 0;
 	
 	uint32_t start = max_packagesize_uploadmqtt*part_;
 	uint32_t end =start + max_packagesize_uploadmqtt -1;
@@ -4701,7 +3552,7 @@ Serial.println("\n --------------Get data start ----------------------");
 while (number_data_hientai < len_remain)
 {
 	number_data_get = len_remain - number_data_hientai;
-	if (number_data_get > 256)number_data_get =256; 
+	if (number_data_get > 256)number_data_get =256;
 
 	if(number_data_get)
 	{
@@ -5147,15 +3998,6 @@ int get_files_headder_mqtt(char* dataBuffer, int part_)
 	doc["time"]=String(header_file_doing.name+3);	
 	doc["printerModel"] = String(header_file_doing.model);	//Product
 	doc["printerBrand"] = String(header_file_doing.brand_name);	//Manufacturer
-	if(device_status.log_debug == 1)
-	{
-		doc["mode"] = "LOG";
-	}
-
-	else 
-	{
-		doc["mode"] = "BILL";
-	}
 
 	/*
 	cal number of part mqtt
@@ -5163,7 +4005,7 @@ int get_files_headder_mqtt(char* dataBuffer, int part_)
 	-chỉ gồm part data printer	
 	*/
 	
-	uint64_t t=0;
+	uint32_t t=0;
 	uint8_t num_part=0;
 
 	SerialDEBUG.println(F("cal number of part "));
@@ -5474,12 +4316,6 @@ void check_file_to_upload()
 		
 		ui16_counter_up =100;
 	}
-
-	if(upload_manager_info.mid == upload_manager_info.tot)
-	{
-		// Serial.println("het bill de up roi");
-		ui8_canformatdisk=1;
-	}
 	
 	/*else if(upload_manager_info.mid > upload_manager_info.tot)
 	{
@@ -5579,7 +4415,7 @@ void process_upfile()
 			len/=2;
 			
 			if(updatepart == 0)
-			{ 
+			{
 				Serial.println("header: no increase data up");
 			}
 			else
@@ -5620,7 +4456,6 @@ void process_upfile()
 			Serial.println("up fail");
 			ui16_counter_up = 0;
 			ui16_counterfail++;
-			Serial.println(ui16_counterfail);
 			if(ui16_counterfail > 1)
 			{
 				//reset
@@ -5661,71 +4496,19 @@ void process_upfile()
 #if (DF_UPFILE_USING_MQTT)
 void process_upfile_mqtt()
 {
-	// if(ui8_dangupdate_esp==1) return;
 	/*check server*/
-	#ifndef DF_MQTT_UP_4G
-		if (!clientmqtt.connected()) return;
-	#endif
-	// last_check_rssi=millis()+10;
-	if (ui8_force_format ==1 || ui8_ketnoithanhcong_mqtt==0) return;
+	if (!clientmqtt.connected()) return;
+
+	if (ui8_force_format ==1) return;
 	
 	//check busy
-	if(ui8_sim_erro==1)
-	{
-		// Serial.println("dang loi");
-		return;
-	} 
 	if(ui8_busy_rec_printer == 1) return;
-	if(ui8_truycap_mqtt==1) return;
-	if(ui8_dangconnect_mqtt==1) return;
-	if (ui8_need_pub_barcode == 1) return;
-	// if(ui8_chuoi_disconnect==1) return;
-
-	// if(system_connection_mode == BYSIM4G)
-	// {
-	// 	if(ui8_connect_mqtt_atcmd==0 && ui8_ketnoimqtt_ok == 0)
-	// 	{
-	// 		ui8_connect_mqtt_atcmd=1;
-	// 	}
-	// }
-	
-	// if(ui8_candisconnectmqtt==1) return;
-	// if(system_connection_mode == BYSIM4G)
-	// {
-	// 	if(ui8_candisconnectmqtt == 1) 
-	// 	{
-	// 		// ui32_timeout_disconnect_mqtt=millis()+60000;
-	// 		return;
-	// 	}	
-	// }
-
-	// if(ui8_dangupbarcode == 1) return;
-	// if(server_modem.busy == 0) return;
 	
 	//kiểm tra qcode
 	// if (ui8_newfile_wait_check_qcode == 1) return;
-
-	// if(system_connection_mode == BYSIM4G)
-	// {
-	// // 	// if(ui8_candisconnectmqtt==1)
-	// // 	// {
-	// // 	// 	ui32_timeout_disconnect_mqtt = millis() + 60*1000;
-	// // 	// 	ui8_candisconnectmqtt=0;
-	// // 	// }
-	// 	if(ui8_check_disconnect_mqtt==1)
-	// 	{
-	// 		Serial.println("dang disconect can connect lai trong ham process_upfile_mqtt");
-	// 		init_MQTT();
-	// 		send_at("AT+CMQTTCFG=\"checkUTF8\",0,0");
-	// 		connect_MQTT_ATCMD();
-	// 		ui32_timeout_disconnect_mqtt=millis()+5000;
-	// 		ui8_check_disconnect_mqtt=0;
-	// 	}
-	// }
-	int check_song_ne=0;
-	ui8_dangupdate_mqtt=1;
+		
 	check_file_to_upload();
-	// last_check_rssi=millis();
+
 	if(ui8_need_upload ==0)
 	{
 		//check file to upload
@@ -5734,10 +4517,6 @@ void process_upfile_mqtt()
 
 	// if (ui16_counter_up <30)return;
 	if ( millis() <  ui32_time_allow_upfile) return;
-	// while(ui8_phathien_loisai==1)
-	// {
-	// 	if(ui8_phathien_loisai==0) return;
-	// }
 
 	int len;	
 	
@@ -5747,13 +4526,11 @@ void process_upfile_mqtt()
 	{		
 		totalkichthuoc = getkichthuoc(upload_manager_info.mid);
 		upload_manager_info.sizedata = totalkichthuoc;
-		Serial.println("tong kich thuoc bill la");
-		Serial.print(totalkichthuoc);
 	}
-
-	
+		
 	Serial.print("get part : ");
 	Serial.println(updatepart);
+
 	int kq =1;
 	/*len = chiều dài public: không phải là chiều dài dữ liệu in*/
 	if (updatepart==0)
@@ -5772,204 +4549,29 @@ void process_upfile_mqtt()
 	/* start upload file to s3 */
 	if (len >0)
 	{
-		u32_time_resend_opu=millis()+60000;
-		// check_song();
-		// if(ui8_rssi<15||ui8_rssi==99)
-		// {
-		// 	// Serial.println("song yeu qua");
-		// 	return;
-		// }
-		// if(ui8_rssi>=15 && check_song_ne==0)
-		// {
-		// 	Serial.println("song ok");
-		// 	check_song_ne=1;
-		// }
-		ui8_dangup_bill=1;
-		lastNetworkCheck = millis()+60000;
-		// u32check_firmware = millis() + df_time_upgrade_ms;
 		
-		ui32_timeout_checkprinter=millis() + TG_SLEEP_PRINTER;
-		if(ui8_solan_kt == 1)
-		{
-			ui32_timeout_checkpower=millis() + 5*60*1000;
-		}
-		// u32_timeout_checkinfo_printer = millis() + 6000;
-		// u32_timeout_checkstatus_printer = millis() + 5500;
-		// u32_timeout_checkserinumber_printer = millis() + 5000;
-		ui8_dangin = 1;
 		char channel_[100];  
 		// sprintf(channel_,"PRINTER/%s/BILL",mynamedevice);
 		uint32_t tam = millis();
 		if (updatepart==0)
 		{
-			if(device_status.log_debug == 1)
-			{
-				Serial.println("vao mode in log");
-			}
-			else 
-			{
-				Serial.println("vao mode in bill");
-			}
-			sprintf(channel_,"%s/%s/%s/INFO",inforeget_setting.name_topic,mynamedevice, upload_manager_info.nameofbill);
-
-			// %d%02d%02d%02d%02d%02d",(tmstruct.tm_year+1900),( tmstruct.tm_mon+1), tmstruct.tm_mday,tmstruct.tm_hour , tmstruct.tm_min, tmstruct.tm_sec
+			sprintf(channel_,"PRINTER/%s/%s/INFO",mynamedevice, upload_manager_info.nameofbill);
 			#if (DF_DEBUG_NOUPLOAD_TO_SERVER)
 				kq =1;
-
-			// #elif (DF_MQTT_UP_4G)
-			// 	String data_get = "";
-			// 	Serial.println("Load data");
-			// 	for(uint64_t i = 0; i< len ; i++)
-			// 	{	  	  
-			// 		data_get += VALUE[i];
-			// 	}
-			// 	Serial.println("gia tri cua len la: " +(String) len);
-				
-			// 	// Serial.println(data_get.length());
-			// 	pulic_data(data_get,len,channel_);
-			// 	// Serial.write(value_moi,strlen(value_moi));
-			// 	// int need_upload_opu = res_command(500, "+CMQTTPUB: 0,0");
-			// 	// pulic_data_TEST(VALUE,len,channel_);
-			// 	kq = gsm_send_serial("AT+CMQTTPUB=0,1,60",300);
-			// 	// Serial.write(VALUE,len);
-
-			// #else
-			// 	kq = clientmqtt.publish(channel_,VALUE,1,2);
+			#else
+				kq = clientmqtt.publish(channel_,VALUE,1,2);
 			#endif 
-
-			if(system_connection_mode == BYSIM4G)
-			{
-				if(ui8_check_disconnect_mqtt==1)
-				{
-					Serial.println("dang disconect can connect lai trong ham process_upfile_mqtt");
-					// init_MQTT(inforeget_setting.name_topic,mynamedevice);
-					// // send_at("AT+CMQTTCFG=\"checkUTF8\",0,0");
-					// connect_MQTT_ATCMD();
-					// if(mqttConnected==0)
-					// {
-						disconnect_MQTT();
-						setup_mqtt_atcmd(systeminfo.name_domain,systeminfo.username_mqtt,systeminfo.password_mqtt,inforeget_setting.name_topic,mynamedevice);
-					// }
-					ui32_timeout_disconnect_mqtt=millis()+5000;
-					ui8_check_disconnect_mqtt=0;
-				}
-
-				if(ui8_check_disconnect_mqtt==0)
-				{
-					String data_get = "";
-				// ui32_timeout_check_barcode = millis() + 20000;
-				Serial.println("Load data");
-				Serial.println("up file MQTT");
-				for(uint64_t i = 0; i< len ; i++)
-				{	  	  
-					data_get += VALUE[i];
-				}
-				Serial.println("gia tri cua len la: " +(String) len);
-				
-				// kq = clientmqtt.publish(channel_,VALUE,1,2);
-				// Serial.println(data_get.length());
-				kq=publish_data(data_get,len,channel_);
-				// Serial.write(value_moi,strlen(value_moi));
-				// int need_upload_opu = res_command(500, "+CMQTTPUB: 0,0");
-				// pulic_data_TEST(VALUE,len,channel_);
-				// kq = gsm_send_serial("AT+CMQTTPUB=0,1,100,1",500);
-				// kq=ui8_check_pub;
-				// Serial.write(VALUE,len);
-				}
-				
-			}
-
-			else
-			{
-				kq = clientmqtt.publish(channel_,VALUE,1,2);	
-			}
-
 		}
 		else
 		{	
-			sprintf(channel_,"%s/%s/%s/%d/CHUNK",inforeget_setting.name_topic,mynamedevice, upload_manager_info.nameofbill, (updatepart -1));
+			sprintf(channel_,"PRINTER/%s/%s/%d/CHUNK",mynamedevice, upload_manager_info.nameofbill, (updatepart -1));
 			
 			#if (DF_DEBUG_NOUPLOAD_TO_SERVER)
 				kq =1;
-			
-			// #elif (DF_MQTT_UP_4G)
-			// 	String data_get = "";
-			// 	Serial.println("Load data");
-			// 	for(uint64_t i = 0; i< len ; i++)
-			// 	{	  	  
-
-			// 		data_get += VALUE[i];
-			// 	}
-			// 	// // Serial.println(data_get.length());
-			// 	Serial.println("gia tri cua len la: " +(String) len);
-			// 	// Serial.println(data_get);
-			// 	pulic_data(data_get,len,channel_);
-			// 	// pulic_data_TEST(VALUE,len,channel_);
-			// 	// Serial.write(value_moi,strlen(value_moi));
-			// 	// int need_upload_opu = res_command(500, "+CMQTTPUB: 0,0");
-			// 	kq = gsm_send_serial("AT+CMQTTPUB=0,1,60",300);
-			// 	// Serial.write(VALUE,len);
-			// #else
-			// 	// bool MQTTClient::publish(const char topic[], const char payload[], int length, bool retained, int qos)
-			// 	kq = clientmqtt.publish(channel_,VALUE,len,1,2);
+			#else
+				// bool MQTTClient::publish(const char topic[], const char payload[], int length, bool retained, int qos)
+				kq = clientmqtt.publish(channel_,VALUE,len,1,2);
 			#endif 			
-
-			if(system_connection_mode == BYSIM4G)
-			{
-				ui8_danggui_chunk=1;
-				// if(ui8_candisconnectmqtt==1)
-				// {
-				// 	ui32_timeout_disconnect_mqtt = millis() + 60*1000;
-				// 	ui8_candisconnectmqtt=0;
-				// }
-				if(ui8_check_disconnect_mqtt==1)
-				{
-					Serial.println("dang disconect can connect lai trong ham process_upfile_mqtt");
-					// init_MQTT(inforeget_setting.name_topic,mynamedevice);
-					// // send_at("AT+CMQTTCFG=\"checkUTF8\",0,0");
-					// connect_MQTT_ATCMD();
-					// if(mqttConnected==0)
-					// {
-
-					// 	setup_mqtt_atcmd(systeminfo.name_domain,systeminfo.username_mqtt,systeminfo.password_mqtt,inforeget_setting.name_topic,mynamedevice);
-					// }
-
-					disconnect_MQTT();
-					setup_mqtt_atcmd(systeminfo.name_domain,systeminfo.username_mqtt,systeminfo.password_mqtt,inforeget_setting.name_topic,mynamedevice);
-					// setup_mqtt_atcmd(systeminfo.name_domain,systeminfo.username_mqtt,systeminfo.password_mqtt,inforeget_setting.name_topic,mynamedevice);
-					ui32_timeout_disconnect_mqtt=millis()+5000;
-					ui8_check_disconnect_mqtt=0;
-				}
-
-				if(ui8_check_disconnect_mqtt==0)
-				{
-					String data_get = "";
-					// ui32_timeout_check_barcode = millis() + 20000;
-					Serial.println("Load data");
-					Serial.println("up file MQTT_2");
-					for(uint64_t i = 0; i< len ; i++)
-					{	  	  
-
-						data_get += VALUE[i];
-					}
-					// // Serial.println(data_get.length());
-					Serial.println("gia tri cua len la: " +(String) len);
-					// Serial.println(data_get);
-					// kq=pulic_data(data_get,len,channel_);
-					kq=publish_data(data_get,len,channel_);
-					// pulic_data_TEST(VALUE,len,channel_);
-					// Serial.write(value_moi,strlen(value_moi));
-					// int need_upload_opu = res_command(500, "+CMQTTPUB: 0,0");
-					// kq = gsm_send_serial("AT+CMQTTPUB=0,1,100,1",500);
-					// kq=ui8_check_pub;
-					// Serial.write(VALUE,len);
-				}
-			}
-
-			else
-			{
-				kq = clientmqtt.publish(channel_,VALUE,len,1,2);	
-			}
 		}
 
 
@@ -6000,12 +4602,6 @@ void process_upfile_mqtt()
 			ui16_counterfail =0;
 			// len/=2;
 			
-			// if(system_connection_mode == BYSIM4G && ui8_candisconnectmqtt==0 && ui8_danggui_chunk==1)
-			// {
-			// 	ui8_candisconnectmqtt=1;
-			// 	ui32_timeout_disconnect_mqtt = millis();
-			// 	ui8_danggui_chunk=0;
-			// }
 
 			if(updatepart == 0)
 			{
@@ -6027,40 +4623,12 @@ void process_upfile_mqtt()
 
 			if (totalup >= totalkichthuoc)
 			{
-				ui8_solan_pubbill=0;
 				Serial.print("Finish");
 				totalkichthuoc =0;
 				updatepart=0;
 				totalup=0;
 				ui8_need_upload =0;
 				ui8_qcode_complete = 0;			
-				Serial.println("vao day  roi");
-				ui8_dangupdate_mqtt=0;
-				ui8_dangup_bill=0;
-				// lastNetworkCheck = millis();
-				lastNetworkCheck = millis()+30000;
-				ui32_timeout_check_barcode = millis() + 2000;
-				if(ui8_solan_kt == 1)
-				{
-					ui32_timeout_checkpower=millis() + 20000;
-				}
-				#if (DF_USING_BARCODE)
-			// Serial.println("barcode");
-					// barcode_process(); /*cần xử lý lại*/	
-					ui8_dangconnect_mqtt=1;
-				#endif 
-				
-				ui8_dangin=0;
-				// if(system_connection_mode == BYSIM4G)
-				// {
-				// 	ui8_candisconnectmqtt=1;
-				// 	ui32_timeout_disconnect_mqtt = millis() + 200;
-				// }
-				
-				if(device_status.log_debug == 1)
-				{
-					device_status.log_debug = 0;
-				}
 				// strcpy(upload_manager_info.nameofbill,"BILLFINISHED");
 			}
 			
@@ -6072,76 +4640,19 @@ void process_upfile_mqtt()
 			// spiff_updatemediafile("/up_manage.h", &upload_manager_info,1);
 			spiff_updatemediafile(name_up_manager, &upload_manager_info,1);
 			ui16_counter_up = 25;
-			ui32_time_allow_upfile = millis() + 300; /*sau 1s up part tiếp theo */
-
-
+			ui32_time_allow_upfile = millis() + 1000; /*sau 1s up part tiếp theo */
 		}
 		else
 		{
 			Serial.println("up fail");
 			ui16_counter_up = 25;
 			ui16_counterfail++;
-			Serial.print(ui16_counterfail);
-			// ui32_timeout_disconnect_mqtt = millis() + 500;
-			// if(ui16_counterfail==1)
-			// {
-			// 	if(system_connection_mode == BYSIM4G)
-			// 	{
-			// 		ui8_candisconnectmqtt=1;
-			// 		ui32_timeout_disconnect_mqtt=millis()+1000;
-			// 	}
-				
-			// }
-
-			if(ui16_counterfail<2)
+			if(ui16_counterfail > 1)
 			{
-				// ui8_ketnoimqtt_ok=0;
-				// disconnect_MQTT();
-				if(system_connection_mode == BYSIM4G)
-				{
-					// ui8_candisconnectmqtt=1;
-					Serial.println("gui lai");
-					// ui8_check_disconnect_mqtt=1;
-					// // ui8_ketnoimqtt_ok=0;
-					// ui32_timeout_disconnect_mqtt=millis()+100;
-					ui32_time_allow_upfile = millis() + 500;
-					// ui8_uploadlai=1;
-				}
-
-				else
-				{	
-					ui32_time_allow_upfile = millis() + 500;
-				}
-				
-			}
-
-			if(ui16_counterfail > 2)
-			{
-				ui8_dangupdate_mqtt=0;
+				//reset
 				Serial.println("-------------restart here------");
-				// ESP.restart();
-				if(system_connection_mode == BYSIM4G)
-				{
-					mqttConnected=false;
-					ui8_sim_erro=1;
-					ui32_timeout_resetsim=millis()+100;
-					Serial.println("reset sim");
-					ui8_check_disconnect_mqtt=1;
-					// ui8_uploi=1;
-					// ui8_candisconnectmqtt=1;
-					// ui32_timeout_disconnect_mqtt=millis()+10;
-					// ui32_time_allow_upfile = millis() + 500;
-					// ui8_check_disconnect_mqtt=1;
-					// delay(2000);
-					// setup_modem();
-					// ui8_sim_erro=1;
-					// ui32_timeout_resetsim=millis()+10000;
-					// delay(2000);
-				}
-				else
-				{
-					ESP.restart();
-				}
+				ESP.restart();
+				delay(2000);
 			}
 		}
 	}
@@ -6171,8 +4682,6 @@ void process_upfile_mqtt()
 		spiff_updatemediafile(name_up_manager, &upload_manager_info,1);
 		ui16_counter_up = 25;
 		ui32_time_allow_upfile = millis() + 2000;
-		
-		// server_modem.busy=0;
 	}
 }
 #endif 
@@ -6352,19 +4861,11 @@ long spiff_getSSD_info(String file, STR_SSD_INFO *regs) {
 }
 void process_get_chunk_mqtt()
 {
-	// if(ui8_dangupdate_esp==1) return;
-	if(ui8_busy_rec_printer == 1) return;
 	if(inforeget.status == 0) return;
-	if(inforeget_setting.status_set == 1) return;
-	if(ui8_dangconnect_mqtt==1) return;
-	if(millis()<ui32_timeout_guilailannua) return;
-	#ifndef DF_MQTT_UP_4G
-		if (!clientmqtt.connected()) return;
-	#endif
-	if(server_modem.busy == 0 || ui8_ketnoithanhcong_mqtt==0) return;
-	// if(ui8_truycap_mqtt==1) return;
+	
+	if (!clientmqtt.connected()) return;
+
 	//tìm chunk lost
-	// ui8_dangupdate_mqtt=1;
 	int tam = find_bill(inforeget.name_tofind);
 	int stat =0;
 	HEADER_FILE head_file_tempread;
@@ -6380,12 +4881,6 @@ void process_get_chunk_mqtt()
 		inval(&head_file_tempread);
 		Serial.println("---------end result--------------------");
 		stat =1;
-	}
-
-	if(tam == -1)
-	{
-		// Serial.println("da xoa bill roi");
-		return;
 	}
 	
 	if (inforeget.index ==0)
@@ -6403,7 +4898,6 @@ void process_get_chunk_mqtt()
 		else
 		{
 			doc["mesage"] ="File not found";
-
 		}
 		doc["name"] = String(inforeget.name_tofind);
 		doc["chunk"] =inforeget.chunk;
@@ -6414,7 +4908,7 @@ void process_get_chunk_mqtt()
 		Serial.println("");
 
 		char channel_[100];  
-		sprintf(channel_,"%s/%s/RESP",inforeget_setting.name_topic,mynamedevice);
+		sprintf(channel_,"PRINTER/%s/RESP",mynamedevice);
 
 		Serial.print("Topic : ");
 		Serial.println(channel_);
@@ -6424,78 +4918,18 @@ void process_get_chunk_mqtt()
 		#if (DF_DEBUG_NOUPLOAD_TO_SERVER)
 			int tt =1;
 			Serial.println("debug no upload");
-
-		// #elif (DF_MQTT_UP_4G)
-		// 	String data_get = "";
-		// 	Serial.println("Load data");
-		// 	for(uint64_t i = 0; i<(strlen(msg)) ; i++)
-		// 	{	  	  
-		// 		// VALUE[u] = i;
-		// 		// u++;
-		// 		// j++;  
-		// 		// // VALUE[u] = 'A';
-		// 		// data_get+=VALUE[u];
-
-		// 		data_get += msg[i];
-		// 	}
-		// 	Serial.println(data_get.length());
-		// 	pulic_data(data_get,data_get.length(),channel_);
-		// 	// Serial.write(value_moi,strlen(value_moi));
-		// 	// int need_upload_opu = res_command(500, "+CMQTTPUB: 0,0");
-		// 	int tt = gsm_send_serial("AT+CMQTTPUB=0,1,60",500);
-
-		// #else
-		// 	int tt  = clientmqtt.publish(channel_,msg,0,2);
+		#else
+			int tt  = clientmqtt.publish(channel_,msg,0,2);
 		#endif
-		int tt=0;
-		if(system_connection_mode==BYSIM4G)
-		{
-			// server_modem.busy = 1;
-			// select_uart(UART_4G);
-			// delay(10);
-			String data_get = "";
-			// ui32_timeout_check_barcode = millis() + 20000;
-			Serial.println("Load data");
-			Serial.println("up file chunk mqtt");
-			for(uint64_t i = 0; i<(strlen(msg)) ; i++)
-			{	  	  
-				// VALUE[u] = i;
-				// u++;
-				// j++;  
-				// // VALUE[u] = 'A';
-				// data_get+=VALUE[u];
 
-				data_get += msg[i];
-			}
-			Serial.println(data_get.length());
-			// if(ui8_check_disconnect_mqtt==0)
-			// {
-				// tt  = clientmqtt.publish(channel_,msg,0,2);
-				tt=publish_data(data_get,data_get.length(),channel_);
-				// Serial.write(value_moi,strlen(value_moi));
-				// int need_upload_opu = res_command(500, "+CMQTTPUB: 0,0");
-				// tt = gsm_send_serial("AT+CMQTTPUB=0,1,60",500);
-				// tt = gsm_send_serial("AT+CMQTTPUB=0,1,100,1",500);
-				// tt=ui8_check_pub;
-			// }	
-		}
-
-		else
-		{
-			tt  = clientmqtt.publish(channel_,msg,0,2);	
-		}
-
-		if (tt ==1)
+		if (tt ==1 )
 		{
 			Serial.println("sent");
-			ui8_dangupdate_mqtt=0;
+			
 			if (tam == -1)
 			{
-				// server_modem.busy=0;
 				inforeget.index =0;	/*end*/
 				inforeget.status = 0;
-				ui8_demsolangui_RESP=0;
-				
 			}
 			else
 			{
@@ -6505,155 +4939,37 @@ void process_get_chunk_mqtt()
 		else
 		{
 			Serial.println("fail");
-			ui8_demsolangui_RESP++;
-			if(ui8_demsolangui_RESP>3)
-			{
-				ui8_dangupdate_mqtt=0;
-				ui8_demsolangui_RESP=0;
-				inforeget.index =0;	/*end*/
-				inforeget.status = 0;
-			}
-			// ui8_candisconnectmqtt=1;
-			// ui32_timeout_disconnect_mqtt=millis()+1000;
-			// server_modem.busy=0;
 		}
 	}
 
-	if (inforeget.index == 1 && stat==1)
+	if (inforeget.index == 1)
 	{
-		if(system_connection_mode == BYSIM4G)
-		{
-			if(ui8_check_disconnect_mqtt==1)
-			{
-				Serial.println("dang disconect can connect lai trong ham process_upfile_mqtt");
-				// init_MQTT(inforeget_setting.name_topic,mynamedevice);
-				// // send_at("AT+CMQTTCFG=\"checkUTF8\",0,0");
-				// connect_MQTT_ATCMD();
-				setup_mqtt_atcmd(systeminfo.name_domain,systeminfo.username_mqtt,systeminfo.password_mqtt,inforeget_setting.name_topic,mynamedevice);
-				ui32_timeout_disconnect_mqtt=millis()+5000;
-				ui8_check_disconnect_mqtt=0;
-			}
-		}
-		
 		/*up chunk*/
 		int len = get_lost_chunk(VALUE,inforeget.chunk,totalkichthuoc,head_file_tempread);
 		debug_raw_data(VALUE,len);
-
-		if (len >0 && ui8_ketnoimqtt_ok==1)
+		if (len >0)
 		{
-			int kq=0;
 			char channel_[100];
-			sprintf(channel_,"%s/%s/%s/%d/CHUNK",inforeget_setting.name_topic,mynamedevice, inforeget.name_tofind, inforeget.chunk);
+			sprintf(channel_,"PRINTER/%s/%s/%d/CHUNK",mynamedevice, inforeget.name_tofind, inforeget.chunk);
 			#if (DF_DEBUG_NOUPLOAD_TO_SERVER)
 				int kq =1;
-
-			// #elif (DF_MQTT_UP_4G)
-			// 	String data_get = "";
-			// 	Serial.println("Load data");
-			// 	for(uint64_t i = 0; i<(strlen(VALUE)) ; i++)
-			// 	{	  	  
-			// 		// VALUE[u] = i;
-			// 		// u++;
-			// 		// j++;  
-			// 		// // VALUE[u] = 'A';
-			// 		// data_get+=VALUE[u];
-
-			// 		data_get += VALUE[i];
-			// 	}
-			// 	Serial.println(data_get.length());
-			// 	pulic_data(data_get,data_get.length(),channel_);
-			// 	// Serial.write(value_moi,strlen(value_moi));
-			// 	// int need_upload_opu = res_command(500, "+CMQTTPUB: 0,0");
-			// 	int kq = gsm_send_serial("AT+CMQTTPUB=0,1,60",500);
-
-			// #else
-			// 	int kq = clientmqtt.publish(channel_,VALUE,len,1,2);
+			#else
+				int kq = clientmqtt.publish(channel_,VALUE,len,1,2);
 			#endif
-
-
-			if(system_connection_mode==BYSIM4G)
-			{
-				// if(ui8_connect_mqtt_atcmd==0 && ui8_ketnoimqtt_ok == 0)
-				// {
-				// 	ui8_connect_mqtt_atcmd=1;
-				// }
-				// server_modem.busy=1;
-				// select_uart(UART_4G);
-				// delay(10);
-				String data_get = "";
-				// ui32_timeout_check_barcode = millis() + 20000;
-				Serial.println("Load data");
-				Serial.println("up file chunk mqtt_2");
-				for(uint64_t i = 0; i<len ; i++)
-				{	  	  
-					// VALUE[u] = i;
-					// u++;
-					// j++;  
-					// // VALUE[u] = 'A';
-					// data_get+=VALUE[u];
-
-					data_get += VALUE[i];
-				}
-				Serial.println(len);
-				// if(ui8_check_disconnect_mqtt==0)
-				// {
-					// kq = clientmqtt.publish(channel_,VALUE,len,1,2);
-					kq=publish_data(data_get,len,channel_);
-					// Serial.write(value_moi,strlen(value_moi));
-					// int need_upload_opu = res_command(500, "+CMQTTPUB: 0,0");
-					// kq = gsm_send_serial("AT+CMQTTPUB=0,1,100,1",500);
-					// kq=ui8_check_pub;
-				// }	
-			}
-
-			else
-			{
-				kq = clientmqtt.publish(channel_,VALUE,len,1,2);
-			}
-
 			Serial.print("Topic : ");
 			Serial.println(channel_);
 
 			if (kq ==1)
 			{
-				// ui32_timeout_check_barcode = millis() + 20000;
 				inforeget.index =0;	/*end*/
 				inforeget.status = 0;
 				Serial.println("up ok finish");
-				ui8_demsolanguisai_chunk=0;
-				lastNetworkCheck = millis()+60000;
-				// ui8_candisconnectmqtt=1;
-				// ui32_timeout_disconnect_mqtt = millis() + TG_DISCONNECT_MQTT;
-				// server_modem.busy=0;
 			}
 			else
 			{
 				//đặt thời gian gửi lại
 				delay(100);
 				Serial.println("up fail");
-				Serial.println("nhay vao get_chunk");
-				// ui8_check_disconnect_mqtt=1;
-				ui8_demsolanguisai_chunk++;
-				// if(ui8_demsolanguisai_chunk>3)
-				// {
-				// 	inforeget.index =0;	/*end*/
-				// 	inforeget.status = 0;
-				// 	ui8_demsolanguisai_chunk=0;
-				// 	return;
-				// }
-				ui8_candisconnectmqtt=1;
-				ui32_timeout_disconnect_mqtt=millis()+100;
-				// setup_modem();
-				ui8_sim_erro=1;
-				ui32_timeout_resetsim=millis()+300;
-				ui32_timeout_guilailannua = millis() + 10000;
-				if(ui8_demsolanguisai_chunk>3)
-				{
-					ESP.restart();
-					ui8_demsolanguisai_chunk=0;
-					ui8_check_disconnect_mqtt=1;
-				}
-				// server_modem.busy=0;
 			}
 
 		}
@@ -6725,37 +5041,21 @@ long spiff_updatemediafile(String file, mqtt_OPH_MEDIA_HTTP *regs, int ms) {
   return (1);
 }
 
-void load_setting_default(String file, str_system_info *regs)
-{
+void load_setting_default(String file, str_system_info *regs){
 
 	StaticJsonDocument<1024> json1;
-	char name[20];
-	snprintf(name, 20, "ITB_%lld", ESP.getEfuseMac());
+
 	json1["ssid"] = "RD-2.4Ghz";
 	json1["pass"] = "@12345678";
-	json1["apn"] = "v-internet";	
+	json1["apn"] = "m-wap";	
 	json1["ethernet"] = "0";
 	json1["wifi"] = "1";
-	json1["modem"] = "2";
-	json1["domain"] = "mqtt.altacloud.biz";
-	json1["username"] = "altamedia";
-	json1["password"] = "Altamedia";
-	json1["header"] = "PRINTER";
-	json1["id_box"] = name;
-	// json1["save_file"] = "EEPROM";
+	json1["modem"] = "0";
 
 	sprintf(regs->wifi_name,"%s","RD-2.4Ghz");
 	sprintf(regs->wifi_pass,"%s","@12345678");
-	sprintf(regs->apn,"%s","v-internet");
-	sprintf(regs->use_network,"%s","2"); /* wifi*/
-	sprintf(regs->save_file_config,"%s","EEPROM"); // MAC DINH SAI EEPROM LUU GIU LIEU
-	sprintf(regs->name_domain,"%s","mqtt.altacloud.biz");
-	sprintf(regs->username_mqtt,"%s","altamedia");
-	sprintf(regs->password_mqtt,"%s","Altamedia");
-	sprintf(regs->header_ID,"%s", "PRINTER");
-	sprintf(mynamedevice,"%s", name);
-	// sprintf(regs->USERNAME,"%s","admin");
-	// sprintf(regs->PASSWORD,"%s","admin");
+	sprintf(regs->apn,"%s","m-wap");
+	sprintf(regs->use_network,"%s","1"); /* wifi*/
 /*
 	sprintf(regs->use_ethernet,"%s","0");
 	sprintf(regs->use_wifi,"%s","1");
@@ -6793,10 +5093,8 @@ long spiff_readsettingfile(String file, str_system_info *regs) {
 	deserializeJson(jsonBuffer,buf.get());
 
 	SerialDEBUG.print(F("[*FILE]: \t"));
-	serializeJson(jsonBuffer,SerialDEBUG);  	 
+	serializeJson(jsonBuffer,SerialDEBUG);  	
 	SerialDEBUG.println(F(""));
-	char name[20];
-	snprintf(name, 20, "ITB_%lld", ESP.getEfuseMac());
 	
 	if (!jsonBuffer.isNull()) {
 
@@ -6813,7 +5111,7 @@ long spiff_readsettingfile(String file, str_system_info *regs) {
 		sizeof(regs->apn));         // <- destination's capacity
 		
 		strlcpy(regs->use_network,                  // <- destination
-		jsonBuffer["network"] | "2",  // <- source
+		jsonBuffer["network"] | "1",  // <- source
 		sizeof(regs->use_network));         // <- destination's capacity
 		
 		// strlcpy(regs->use_ethernet,                  // <- destination
@@ -6827,30 +5125,6 @@ long spiff_readsettingfile(String file, str_system_info *regs) {
 		// strlcpy(regs->use_modem,                  // <- destination
 		// jsonBuffer["modem"] | "0",  // <- source
 		// sizeof(regs->use_modem));         // <- destination's capacity
-
-		strlcpy(regs->save_file_config,                  // <- destination
-		jsonBuffer["save_file"] | "EEPROM",  // <- source
-		sizeof(regs->save_file_config));         // <- destination's capacity
-
-		strlcpy(regs->name_domain,                  // <- destination
-		jsonBuffer["domain"] | "domain",  // <- source
-		sizeof(regs->name_domain));         // <- destination's capacity
-
-		strlcpy(regs->username_mqtt,                  // <- destination
-		jsonBuffer["username"] | "username",  // <- source
-		sizeof(regs->username_mqtt));         // <- destination's capacity
-
-		strlcpy(regs->password_mqtt,                  // <- destination
-		jsonBuffer["password"] | "password",  // <- source
-		sizeof(regs->password_mqtt));         // <- destination's capacity
-
-		strlcpy(regs->header_ID,                  // <- destination
-		jsonBuffer["header"] | "PRINTER",  // <- source
-		sizeof(regs->header_ID));         // <- destination's capacity
-
-		strlcpy(mynamedevice,                  // <- destination
-		jsonBuffer["id_box"] | name,  // <- source
-		sizeof(mynamedevice));         // <- destination's capacity
 
 		f.close();
 	} else {
@@ -6880,7 +5154,7 @@ long spiff_updatesettingfile(String file, str_system_info *regs) {
 
 	#ifdef use_debug_serial
 		SerialDEBUG.println(F("\n\r[FILE]:spiff_updatemediafile Start"));
-	#endif      
+	#endif
 	
 	//Open file for write
     File f = SPIFFS.open(file,  "w");
@@ -6904,14 +5178,6 @@ long spiff_updatesettingfile(String file, str_system_info *regs) {
 	doc["pass"]=regs->wifi_pass;
 	doc["apn"]=regs->apn;	
 	doc["network"]=regs->use_network;
-	doc["save_file"]=regs->save_file_config;
-	doc["domain"]=regs->name_domain;
-	doc["username"]=regs->username_mqtt;
-	doc["password"]=regs->password_mqtt;
-	doc["header"]=regs->header_ID;
-	doc["id_box"]=mynamedevice;
-	// doc["username"] = regs->USERNAME;
-	// doc["password"] = regs->PASSWORD;
 	// doc["ethernet"]=regs->use_ethernet;
 	// doc["wifi"]=regs->use_wifi;
 	// doc["modem"]=regs->use_modem;
@@ -6964,10 +5230,7 @@ void check_system_time()
 	*/
 	
 	//đọc thời gian hiện tại
-	// if(ui8_busy_rec_printer == 1) return;
-	if(ui8_init_stm32_printer == 1) return;
-	if(ui8_init_stm32_barcode == 1) return;
-	// if(ui8_truycap_mqtt==1) return;
+	if(ui8_busy_rec_printer == 1) return;
 
 	if (millis() < info_time_system.u32check_system_time) return;
 	
@@ -6995,12 +5258,11 @@ void check_system_time()
 		if(system_connection_mode==BYETHERNET)
 		{
 			SerialDEBUG.println("mode ethernet");
-			// updatetimebyEthernet_func();
+			updatetimebyEthernet_func();
 		}
 		else if(system_connection_mode==BYSIM4G)
 		{						
 			SerialDEBUG.println("mode 4G");
-			// ui32_timeout_check_barcode = millis() + 20000;
 			updatetimebyModem_func();
 		}
 		else
@@ -7101,8 +5363,6 @@ mode ethernet
 void updatetimebyModem_func()
 {
 	if (server_modem.status == MY_ERRO) return;
-	if(server_modem.busy==0) return;
-	server_modem.busy = 1;
 	select_uart(UART_4G);
 	delay(1);	
 	Serial.println("\n --------updatetimebyModem_func-------\n");
@@ -7187,107 +5447,6 @@ void updatetimebyModem_func()
 
 	Serial.println("\n --------end updatetimebyModem_func-------");
 }
-// void updatetimebyEthernet_func()
-// {
-// 	if (server_ethernet.status == MY_ERRO) return;
-// 	Serial.println("\n --------updatetimebyEthernet_func-------\n");
-	
-// 	const char* res = "";	
-// 	res = iotClient.get_timeshadow();
-	
-// 	Serial.println(res);
-
-// 	if(res == "")
-// 	{
-// 		Serial.println("\n get time fail\n");
-// 	}
-// 	else
-// 	{
-// 		//2023 12 04 07 00 49		
-// 		struct tm tmstruct ;
-// 		uint32_t tam= 0;
-
-// 		tam = (res[0]-'0')*1000;
-// 		tam += (res[1]-'0')*100;
-// 		tam += (res[2]-'0')*10;
-// 		tam += (res[3]-'0')*1;
-// 		tmstruct.tm_year=tam-1900;
-// 		// Serial.print("year = ");	
-// 		// Serial.println(tmstruct.tm_year);
-
-// 		tam =0;
-// 		tam += (res[4]-'0')*10;
-// 		tam += res[5]-'0';
-// 		tmstruct.tm_mon=tam-1;
-// 		// Serial.print("tm_mon = ");	
-// 		// Serial.println(tmstruct.tm_mon);
-
-// 		tam =0;
-// 		tam += (res[6]-'0')*10;
-// 		tam += res[7]-'0';
-// 		tmstruct.tm_mday=tam;
-// 		// Serial.print("tm_mday = ");	
-// 		// Serial.println(tmstruct.tm_mday);
-
-
-// 		tam =0;
-// 		tam += (res[8]-'0')*10;
-// 		tam += res[9]-'0';
-// 		tmstruct.tm_hour=tam;
-// 		// Serial.print("tm_hour = ");	
-// 		// Serial.println(tmstruct.tm_hour);
-
-// 		tam =0;
-// 		tam += (res[10]-'0')*10;
-// 		tam += res[11]-'0';
-// 		tmstruct.tm_min=tam;
-// 		// Serial.print("tm_min = ");	
-// 		// Serial.println(tmstruct.tm_min);
-
-// 		tam =0;
-// 		tam += (res[12]-'0')*10;
-// 		tam += res[13]-'0';
-// 		tmstruct.tm_sec=tam;
-// 		// Serial.print("tm_sec = ");	
-// 		// Serial.println(tmstruct.tm_sec);
-
-// 		time_t  t = mktime(&tmstruct);//đây là thời gian UNIX
-
-// 		Serial.print("UNIX = ");	
-// 		Serial.println(t);
-		
-// 		if(t > 1640998800)//Date and time (your time zone): thứ bảy, 1 tháng 1 năm 2022 08:00:00 GMT+07:00
-// 		{
-
-// 			Serial.println("\t Set local time");
-// 			// t += 7*60*60; //convert to timezone =7
-
-// 			timeval epoch = {t, 0};
-// 			settimeofday((const timeval*)&epoch, 0);
-			
-// 			//kiểm tra nếu RTC bị chạy sai, thì cập nhật cho RTC
-// 			if(ui8_ds1307_need_update==1 && tmstruct.tm_year > 80)
-// 			{
-// 				ui8_ds1307_need_update =0;
-// 				#ifndef use_debug_serial
-// 				SerialDEBUG.println("\t update time for RTC");
-// 				#endif 
-// 				// This line sets the RTC with an explicit date & time, for example to set
-// 				// January 21, 2014 at 3am you would call:
-// 				// rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
-// 				rtc.adjust(DateTime(((tmstruct.tm_year)+1900), (( tmstruct.tm_mon)+1), tmstruct.tm_mday, tmstruct.tm_hour, tmstruct.tm_min, tmstruct.tm_sec));
-// 				//read time RTC
-// 				read_time_RTC();
-// 			}
-// 		}
-// 	}
-	
-// 	info_time_system.u32check_system_time = millis() + 2000;
-
-// 	//   Serial.println("\n --------Response From server-------\n");
-
-// 	Serial.println("\n --------end updatetimebyEthernet_func-------");
-// }
 void updatetimebyEthernet_func()
 {
 	if (server_ethernet.status == MY_ERRO) return;
@@ -7467,7 +5626,6 @@ void creatnamebill()
 	}
 	else
 	{
-		Serial.println("nhay vao rtc clock");
 		sprintf(bill_media_info.nameofbill,"BIL%d%02d%02d%02d%02d%02d",(tmstruct.tm_year+1900),( tmstruct.tm_mon+1), tmstruct.tm_mday,tmstruct.tm_hour , tmstruct.tm_min, tmstruct.tm_sec);
 	}
 
@@ -7565,11 +5723,8 @@ void save_bill_info()
 	
 	/*init values*/
 	sprintf(head_file_temp.SOF,"SOF");
-	// sprintf(head_file_temp.brand_name,"EPSON");
-	// sprintf(head_file_temp.model,"TM-T88IV");
-	// sprintf(head_file_temp.SOF,"SOF");
-	sprintf(head_file_temp.brand_name,header_file_doing.brand_name);
-	sprintf(head_file_temp.model,header_file_doing.model);
+	sprintf(head_file_temp.brand_name,"EPSON");
+	sprintf(head_file_temp.model,"TM-T88IV");
 	strncpy(head_file_temp.name, bill_media_info.nameofbill, sizeof(bill_media_info.nameofbill));	
 	head_file_temp.length = bill_media_info.sizedata;
 
@@ -7644,7 +5799,6 @@ int FirmwareVersionCheck(void)
 {
   String payload;
   int httpCode;
-  int kq =0;
   String fwurl = "";
   fwurl += URL_fw_Version;
   fwurl += "?";
@@ -7683,383 +5837,7 @@ int FirmwareVersionCheck(void)
   if (httpCode == HTTP_CODE_OK) // if version received
   {
     payload.trim();
-
-	Serial.println(payload);
-    
-	/* so sánh version to update*/
-	/* 
-	{"SVR": "1.0.3", "PRT": "1.0.4", "BCD": "1.0.1"}
-	*/
-	StaticJsonDocument<1024> doc;
-	// Deserialize the JSON document
-	DeserializationError error = deserializeJson(doc, payload);
-	if (error)
-	{
-		SerialDEBUG.println(F("This is a JDaughter string, not a JSON string"));
-		return 0;
-	}	
-	char chuoi[20];
-	/* kiểm tra ID: đúng mới cập nhật */
-	strlcpy(chuoi,                  // <- destination
-	doc["ID"] | "erro",  // <- source
-	sizeof(chuoi));         // <- destination's capacity
-	SerialDEBUG.println("ID  =" + String(chuoi));
-
-	if(String(chuoi)=="ALL")
-	{
-		SerialDEBUG.printf("Allow update \n");
-	}
-	else if(String(chuoi)==String(mynamedevice))
-	{
-		SerialDEBUG.printf("Allow update \n");
-	}
-	else
-	{
-		SerialDEBUG.printf("Not update \n");
-		return 0;
-	}
-	
-	
-	/* kiểm tra update cho server */
-
-	
-	strlcpy(chuoi,                  // <- destination
-	doc["SVR"] | "erro",  // <- source
-	sizeof(chuoi));         // <- destination's capacity
-	// SerialDEBUG.println("Version wifi board =" + String(chuoi));
-	
-	if(String(chuoi)=="erro")
-	{
-		SerialDEBUG.printf("Firmware: check erro\n");
-		sprintf(check_fw_server,"%s",versionname);
-	}
-	else if(String(chuoi)==String(versionname))
-	{
-		SerialDEBUG.printf("latest fw:%s\n", versionname);
-		Serial.printf("latest fw server:%s\n", chuoi);
-    	sprintf(check_fw_server,"%s",chuoi);
-	}
-	else{
-		SerialDEBUG.printf("new firmware server is %s\n",chuoi);
-		Serial.printf("latest fw server:%s\n", chuoi);
-    	sprintf(check_fw_server,"%s",chuoi);
-		kq =1;
-	}
-
-	if(kt_fwversion=="")
-	{
-		Serial.println("nhay len tren");
-		char loai_fw[20];
-		sprintf(loai_fw,"PRT%c",device_status.vs_printer[2]);
-		Serial.println(loai_fw);
-		strlcpy(chuoi,                  // <- destination
-		doc[loai_fw] | "erro",  // <- source
-		sizeof(chuoi));         // <- destination's capacity
-		// Serial.println("Version 4G LMD =" + String(chuoi));
-		// Serial.println("Version device_status_printer" + String(device_status.vs_printer));
-		// if ( String (device_status.vs_printer) != "NOT")
-		// {	
-		if(String(chuoi)=="erro")
-		{
-		Serial.printf("printer version erro check");
-			sprintf(check_fw_printer,"%s",device_status.vs_printer);
-		}
-		else if(String(chuoi)==String(device_status.vs_printer))
-		{
-		Serial.printf("Firmware printer latest :%s\n", String(device_status.vs_printer));
-		sprintf(check_fw_printer,"%s",chuoi);
-		}
-		else
-		{
-		Serial.printf("new firmware printer is %s\n",chuoi);
-		sprintf(check_fw_printer,"%s",chuoi);
-		kq =2;
-		}
-	}
-
-	else if(kt_fwversion!="")
-	{
-		Serial.println("nhay xuong duoi");
-		char loai_fw[20];
-		sprintf(loai_fw,"PRT%s",kt_fwversion);
-		Serial.println(loai_fw);
-		strlcpy(chuoi,                  // <- destination
-		doc[loai_fw] | "erro",  // <- source
-		sizeof(chuoi));         // <- destination's capacity
-		// Serial.println("Version 4G LMD =" + String(chuoi));
-		// Serial.println("Version device_status_printer" + String(device_status.vs_printer));
-		// if ( String (device_status.vs_printer) != "NOT")
-		// {	
-		if(String(chuoi)=="erro")
-		{
-		Serial.printf("printer version erro check");
-			sprintf(check_fw_printer,"%s",device_status.vs_printer);
-		}
-		else if(String(chuoi)==String(device_status.vs_printer))
-		{
-		Serial.printf("Firmware printer latest :%s\n", String(device_status.vs_printer));
-		sprintf(check_fw_printer,"%s",chuoi);
-		}
-		else
-		{
-		Serial.printf("new firmware printer is %s\n",chuoi);
-		sprintf(check_fw_printer,"%s",chuoi);
-		kq =2;
-		}
-	}
-
-// 	if(device_status.vs_printer[2] == '1'||kt_fwversion=="1")
-// 	{
-// 		strlcpy(chuoi,                  // <- destination
-// 		doc["PRT1"] | "erro",  // <- source
-// 		sizeof(chuoi));         // <- destination's capacity
-// 		// SerialDEBUG.println("Version wifi LMD =" + String(chuoi[0]));
-// 		// SerialDEBUG.println("Version device_status_printer" + String(device_status.vs_printer));
-// 		// if ( String (device_status.vs_printer) != "NOT")
-// 		// {	
-// 		if(String(chuoi)=="erro")
-// 		{
-// 			SerialDEBUG.printf("printer version erro check");
-// 			sprintf(check_fw_printer,"%s",device_status.vs_printer);
-// 		}
-// 		else if(String(chuoi)==String(device_status.vs_printer))
-// 		{
-// 			SerialDEBUG.printf("Firmware printer latest :%s\n", String(device_status.vs_printer));
-// 			sprintf(check_fw_printer,"%s",chuoi);
-// 		}
-// 		else
-// 		{
-// 			SerialDEBUG.printf("new firmware printer is %s\n",chuoi);
-// 			sprintf(check_fw_printer,"%s",chuoi);
-// 			kq =2;
-// 		}
-// 		// }	
-// 	}
-
-// 	else if(device_status.vs_printer[2] == '2'||kt_fwversion=="2")
-// 	{
-// 		strlcpy(chuoi,                  // <- destination
-// 		doc["PRT2"] | "erro",  // <- source
-// 		sizeof(chuoi));         // <- destination's capacity
-// 		// SerialDEBUG.println("Version wifi LMD =" + String(chuoi[0]));
-// 		// SerialDEBUG.println("Version device_status_printer" + String(device_status.vs_printer));
-// 		// if ( String (device_status.vs_printer) != "NOT")
-// 		// {	
-// 		if(String(chuoi)=="erro")
-// 		{
-// 			SerialDEBUG.printf("printer version erro check");
-// 			sprintf(check_fw_printer,"%s",device_status.vs_printer);
-// 		}
-// 		else if(String(chuoi)==String(device_status.vs_printer))
-// 		{
-// 			SerialDEBUG.printf("Firmware printer latest :%s\n", String(device_status.vs_printer));
-// 			sprintf(check_fw_printer,"%s",chuoi);
-// 		}
-// 		else
-// 		{
-// 			SerialDEBUG.printf("new firmware printer is %s\n",chuoi);
-// 			sprintf(check_fw_printer,"%s",chuoi);
-// 			kq =2;
-// 		}
-// 	}
-	
-// 	else if(device_status.vs_printer[2] == '3'||kt_fwversion=="3")
-// 	{
-// 		strlcpy(chuoi,                  // <- destination
-// 		doc["PRT3"] | "erro",  // <- source
-// 		sizeof(chuoi));         // <- destination's capacity
-// 		// SerialDEBUG.println("Version wifi LMD =" + String(chuoi[0]));
-// 		// SerialDEBUG.println("Version device_status_printer" + String(device_status.vs_printer));
-// 		// if ( String (device_status.vs_printer) != "NOT")
-// 		// {	
-// 		if(String(chuoi)=="erro")
-// 		{
-// 			SerialDEBUG.printf("printer version erro check");
-// 			sprintf(check_fw_printer,"%s",device_status.vs_printer);
-// 		}
-// 		else if(String(chuoi)==String(device_status.vs_printer))
-// 		{
-// 			SerialDEBUG.printf("Firmware printer latest :%s\n", String(device_status.vs_printer));
-// 			sprintf(check_fw_printer,"%s",chuoi);
-// 		}
-// 		else
-// 		{
-// 			SerialDEBUG.printf("new firmware printer is %s\n",chuoi);
-// 			sprintf(check_fw_printer,"%s",chuoi);
-// 			kq =2;
-// 		}
-// 	}
-
-// 	else if(device_status.vs_printer[2] == '4'||kt_fwversion=="4")
-//   {
-//     strlcpy(chuoi,                  // <- destination
-//     doc["PRT4"] | "erro",  // <- source
-//     sizeof(chuoi));         // <- destination's capacity
-//     // Serial.println("Version 4G LMD =" + String(chuoi));
-//     // Serial.println("Version device_status_printer" + String(device_status.vs_printer));
-//     // if ( String (device_status.vs_printer) != "NOT")
-//     // {	
-//     if(String(chuoi)=="erro")
-//     {
-//       Serial.printf("printer version erro check");
-//       sprintf(check_fw_printer,"%s",device_status.vs_printer);
-//     }
-//     else if(String(chuoi)==String(device_status.vs_printer))
-//     {
-//       Serial.printf("Firmware printer latest :%s\n", String(device_status.vs_printer));
-//       sprintf(check_fw_printer,"%s",chuoi);
-//     }
-//     else
-//     {
-//       Serial.printf("new firmware printer is %s\n",chuoi);
-//       sprintf(check_fw_printer,"%s",chuoi);
-//       kq =2;
-//     } 
-//   }
-
-//   else if(device_status.vs_printer[2] == '5'||kt_fwversion=="5")
-//   {
-//     strlcpy(chuoi,                  // <- destination
-//     doc["PRT5"] | "erro",  // <- source
-//     sizeof(chuoi));         // <- destination's capacity
-//     // Serial.println("Version 4G LMD =" + String(chuoi));
-//     // Serial.println("Version device_status_printer" + String(device_status.vs_printer));
-//     // if ( String (device_status.vs_printer) != "NOT")
-//     // {	
-//     if(String(chuoi)=="erro")
-//     {
-//       Serial.printf("printer version erro check");
-//       sprintf(check_fw_printer,"%s",device_status.vs_printer);
-//     }
-//     else if(String(chuoi)==String(device_status.vs_printer))
-//     {
-//       Serial.printf("Firmware printer latest :%s\n", String(device_status.vs_printer));
-//       sprintf(check_fw_printer,"%s",chuoi);
-//     }
-//     else
-//     {
-//       Serial.printf("new firmware printer is %s\n",chuoi);
-//       sprintf(check_fw_printer,"%s",chuoi);
-//       kq =2;
-//     } 
-//   }
-
-//   else if(device_status.vs_printer[2] == '6'||kt_fwversion=="6")
-//   {
-//     strlcpy(chuoi,                  // <- destination
-//     doc["PRT6"] | "erro",  // <- source
-//     sizeof(chuoi));         // <- destination's capacity
-//     // Serial.println("Version 4G LMD =" + String(chuoi));
-//     // Serial.println("Version device_status_printer" + String(device_status.vs_printer));
-//     // if ( String (device_status.vs_printer) != "NOT")
-//     // {	
-//     if(String(chuoi)=="erro")
-//     {
-//       Serial.printf("printer version erro check");
-//       sprintf(check_fw_printer,"%s",device_status.vs_printer);
-//     }
-//     else if(String(chuoi)==String(device_status.vs_printer))
-//     {
-//       Serial.printf("Firmware printer latest :%s\n", String(device_status.vs_printer));
-//       sprintf(check_fw_printer,"%s",chuoi);
-//     }
-//     else
-//     {
-//       Serial.printf("new firmware printer is %s\n",chuoi);
-//       sprintf(check_fw_printer,"%s",chuoi);
-//       kq =2;
-//     } 
-//   }
-
-//   else if(device_status.vs_printer[2] == '7'||kt_fwversion=="7")
-//   {
-//     strlcpy(chuoi,                  // <- destination
-//     doc["PRT7"] | "erro",  // <- source
-//     sizeof(chuoi));         // <- destination's capacity
-//     // Serial.println("Version 4G LMD =" + String(chuoi));
-//     // Serial.println("Version device_status_printer" + String(device_status.vs_printer));
-//     // if ( String (device_status.vs_printer) != "NOT")
-//     // {	
-//     if(String(chuoi)=="erro")
-//     {
-//       Serial.printf("printer version erro check");
-//       sprintf(check_fw_printer,"%s",device_status.vs_printer);
-//     }
-//     else if(String(chuoi)==String(device_status.vs_printer))
-//     {
-//       Serial.printf("Firmware printer latest :%s\n", String(device_status.vs_printer));
-//       sprintf(check_fw_printer,"%s",chuoi);
-//     }
-//     else
-//     {
-//       Serial.printf("new firmware printer is %s\n",chuoi);
-//       sprintf(check_fw_printer,"%s",chuoi);
-//       kq =2;
-//     } 
-//   }
-
-//   else if(device_status.vs_printer[2] == '8'||kt_fwversion=="8")
-//   {
-//     strlcpy(chuoi,                  // <- destination
-//     doc["PRT8"] | "erro",  // <- source
-//     sizeof(chuoi));         // <- destination's capacity
-//     // Serial.println("Version 4G LMD =" + String(chuoi));
-//     // Serial.println("Version device_status_printer" + String(device_status.vs_printer));
-//     // if ( String (device_status.vs_printer) != "NOT")
-//     // {	
-//     if(String(chuoi)=="erro")
-//     {
-//       Serial.printf("printer version erro check");
-//       sprintf(check_fw_printer,"%s",device_status.vs_printer);
-//     }
-//     else if(String(chuoi)==String(device_status.vs_printer))
-//     {
-//       Serial.printf("Firmware printer latest :%s\n", String(device_status.vs_printer));
-//       sprintf(check_fw_printer,"%s",chuoi);
-//     }
-//     else
-//     {
-//       Serial.printf("new firmware printer is %s\n",chuoi);
-//       sprintf(check_fw_printer,"%s",chuoi);
-//       kq =2;
-//     } 
-//   }
-
-	#if (DF_USING_BARCODE)
-	strlcpy(chuoi,                  // <- destination
-	doc["BCD"] | "erro",  // <- source
-	sizeof(chuoi));         // <- destination's capacity
-	// Serial.println("Version 4G LMD =" + String(chuoi));
-	// Serial.println("version barcode=" + String(mybarcode));
-	// Serial.println("Version device_status_printer" + String(device_status.vs_printer));
-	// if ( String (device_status.vs_printer) != "NOT")
-	// {	
-	if(String(chuoi)=="erro")
-	{
-		Serial.printf("printer version erro check");
-		sprintf(check_fw_upbarcode,"%s",device_status.vs_barcode);
-	}
-	else if(String(chuoi)==String(device_status.vs_barcode))
-	{
-		Serial.printf("Firmware barcode latest :%s\n", String(device_status.vs_barcode));
-		sprintf(check_fw_upbarcode,"%s",chuoi);
-	}
-	else
-	{
-		Serial.printf("new firmware barcode is %s\n",chuoi);
-		sprintf(check_fw_upbarcode,"%s",chuoi);
-		kq =3;
-	}
-	#endif
-
-
-	// }
-	// else
-	// {
-	// 	SerialDEBUG.printf("not load printer version");
-	// }
-	/*
-	if (payload.equals(versionname)) {
+    if (payload.equals(versionname)) {
       Serial.printf("\nDevice already on latest firmware version:%s\n", versionname);
       return 0;
     } 
@@ -8069,10 +5847,8 @@ int FirmwareVersionCheck(void)
       Serial.println("New firmware detected");
       return 1;
     }
-	*/
-
   } 
-  return kq;
+  return 2;  //have erro
 }
 
 /**checkfirmware
@@ -8080,120 +5856,22 @@ hàm tự động kiểm tra version và cập nhật
 
 
 */
-void checkfirmware()
-{
+
+void checkfirmware(){
 	
-	// if(system_connection_mode != BYWIFI) return;
-	// if(system_connection_mode != BYSIM4G) return;
-	if(ui8_kiemtra_header==1) return;
+
 	if(millis()<u32check_firmware) return;
-	// if(server_modem.busy==0) return;
 	
-	if (ui8_busy_rec_printer == 1 || ui8_need_upload ==1 || ui8_danggui_thongtin_board == 1 || inforeget_sniff.index == 1) 
-	{
-		Serial.println("nhay vao update fw nhung ban in nen out roi nha");
-		u32check_firmware = millis() + df_time_upgrade_ms;
-		return;
-	}
+	if (FirmwareVersionCheck()==1) {
+      	// firmwareUpdate();
+		Serial.println("connect update wifi");
+		Serial.println("save file bin for STM32");
+		connected_server(sclient, test_root_ca, "raw.githubusercontent.com", 443, "Danh555/file_code/main/STM32F107RCT6_new.bin");
+		ui8_update_fw_wifi=1;
+		ui8_update_fw_STM32=1;
+    }
 	
-	if(system_connection_mode == BYWIFI)
-	{
-		int luachon = FirmwareVersionCheck();
-	/* =1: update server, =2; update printer else: undefined */
-
-		if (luachon == 1) 
-		{
-			Serial.println("up date to server controller");
-			firmwareUpdate(); /*up date cho server controller*/
-		}
-		else if (luachon == 2) 
-		{
-			// firmwareUpdate();
-			Serial.println("connect update wifi");
-			Serial.println("save file bin for STM32");
-			ui8_ketnoi_github=1;
-			
-		}
-
-		#if (DF_USING_BARCODE)
-		else if (luachon == 3) 
-		{
-			// firmwareUpdate();
-			Serial.println("update to barcode controller");
-			// Serial.println("connect update wifi");
-			// Serial.println("save file bin for STM32");
-			// connected_server(sclient, test_root_ca, "raw.githubusercontent.com", 443, "Danh555/file_code/main/STM32F107RCT6_new.bin");
-			// ui8_update_fw_wifi=1;
-			// ui8_update_fw_STM32=1;
-			ui8_ketnoi_github_4G_barcode=1;
-		}
-		#endif
-		u32check_firmware=millis() + df_time_upgrade_ms;
-	}
-
-	if(system_connection_mode == BYSIM4G)
-	{
-		if(ui8_truycap_mqtt==1) return;
-		// ui32_timeout_check_barcode = millis() + 40000;
-		// ui8_candisconnectmqtt=1;
-		// ui32_timeout_disconnect_mqtt=millis();
-		// disconnect_MQTT();
-		ui32_timeout_connectmqtt = millis() + 20000;
-		select_uart(UART_4G);
-		server_modem.busy=1;
-		// delay(10);
-		// ui8_check_disconnect_mqtt=1;
-		// if(ui8_check_disconnect_mqtt==1)
-		// {	
-			int luachon_SIM4G = FirmwareVersionCheck_4G(mysclient_gsm,"raw.githubusercontent.com",443,"Danh555/file_code/main/file_version.txt",mynamedevice,versionname,device_status.vs_printer,device_status.vs_barcode);
-		
-			Serial.printf("fw_printer sau khi copy %s\n",check_fw_printer);
-			Serial.printf("fw_server sau khi copy %s\n",check_fw_server);
-			Serial.printf("fw_barcode sau khi copy %s\n",check_fw_upbarcode);
-		/* =1: update server, =2; update printer else: undefined */
-			if (luachon_SIM4G == 1) 
-			{
-				// disconnect_MQTT();
-				// ui8_dangupdate_esp=1;
-				Serial.println("up date to server controller");
-				// update_ESP32_4G(mysclient_gsm,"raw.githubusercontent.com",443,"Danh555/file_code/main/MultiSerial.ino.bin");
-				char duonglink_dow_server[100];
-				sprintf(duonglink_dow_server,"Danh555/file_code/main/ITB_ServerV%s.ino.bin",check_fw_server);
-				Serial.println(duonglink_dow_server);
-				Serial.println("up date to server controller");
-				update_ESP32_4G(mysclient_gsm,"raw.githubusercontent.com",443,duonglink_dow_server);
-			}
-			else if (luachon_SIM4G == 2) 
-			{
-				// firmwareUpdate();
-				ui8_dangupdate_printer=1;
-				Serial.println("connect update 4G");
-				Serial.println("save file bin for STM32");
-				ui8_ketnoi_github_4G=1;
-			}
-
-			// else 
-			// {
-			// 	setup_mqtt_atcmd(systeminfo.name_domain,systeminfo.username_mqtt,systeminfo.password_mqtt,inforeget_setting.name_topic,mynamedevice);
-			// 	ui8_check_disconnect_mqtt=0;	
-			// }
-
-			#if (DF_USING_BARCODE)
-			else if (luachon_SIM4G == 3) 
-			{
-				// firmwareUpdate();
-				ui8_dangupdate_barcode=1;
-				Serial.println("update to barcode controller");
-				ui8_ketnoi_github_4G_barcode = 1;
-			}
-			#endif
-			// server_modem.busy = 1;
-			// select_uart(UART_4G);
-			// server_modem.busy=0;
-			u32check_firmware=millis() + df_time_upgrade_ms;
-		// }
-	}
-	
+	u32check_firmware=millis() + df_time_upgrade_ms;
 }
 
 void firmwareUpdate(void) {
@@ -8204,15 +5882,7 @@ void firmwareUpdate(void) {
 
  	Serial.println("processing upgrade fw...");
 
-	Serial.println("up date to server controller by wifi");
-	// update_ESP32_4G(mysclient_gsm,"raw.githubusercontent.com",443,"Danh555/file_code/main/MultiSerial.ino.bin");
-	char duonglink_dow_server[100];
-	sprintf(duonglink_dow_server,"https://raw.githubusercontent.com/Danh555/file_code/main/ITB_ServerV%s.ino.bin",check_fw_server);
-	Serial.println(duonglink_dow_server);
-	Serial.println("up date to server controller");
-	// update_ESP32_4G(mysclient_gsm,"raw.githubusercontent.com",443,duonglink_dow_server);
-
-  t_httpUpdate_return ret = httpUpdate.update(client, duonglink_dow_server);
+  t_httpUpdate_return ret = httpUpdate.update(client, URL_fw_Bin);
 
   switch (ret) {
     case HTTP_UPDATE_FAILED:
@@ -8273,24 +5943,6 @@ void connect_mqtt()
 	
 	int count =0;
 	network_status =MY_ERRO;
-	// if(ui8_ketnoimqtt_ok==0) return;
-	if(ui8_init_stm32_printer==1)
-	{
-		return;
-	}
-
-	// if(ui8_demsolan_ketnoi_mqtt>=5) return;
-
-	// if(server_modem.busy==0)
-	// {
-	// 	return;
-	// }
-
-	// if(ui8_truycap_mqtt == 1)
-	// {
-	// 	return;
-	// }
-	// if(ui8_kiemtra_header == 0) return;
 	switch (system_connection_mode)
 	{
 		case BYETHERNET:
@@ -8303,7 +5955,6 @@ void connect_mqtt()
 		case BYSIM4G:
 		{			
 			network_status = server_modem.status;
-			Serial.println("mqtt 4g");
 			break;
 		}
 		default:
@@ -8316,142 +5967,30 @@ void connect_mqtt()
 			break;
 		}
 	}
-	int tam = strlen(inforeget_setting.name_topic);
-	if(ui8_kiemtra_header==0 && tam <= 0 )
-	{
-		String tam_test = "PRINTER";
-		tam_test.toCharArray(inforeget_setting.name_topic,100);
-		EEPROM.put(0,inforeget_setting.name_topic);
-		EEPROM.commit();
-	}
 
-	if (network_status == MY_ERRO)
-	{
-		setup_modem();
-		return;
-	} 
+	if (network_status == MY_ERRO) return;
 		
-		char datastatus[] = "offline";
-		char au_topic_pub[100];
-		char au_topic_onl[100];
-		char au_topic_query[100];
-		char au_topic_set[100];
-		char au_topic_sniff[100];
-		char au_topic_printer_fw[100];
-		char au_topic_barcode_fw[100];
-		char au_topic_server_fw[100];
-		char au_topic_resetserver[100];
-		char au_topic_resetprinter[100];
-		char au_topic_resetbarcode[100];
+	char datastatus[] = "offline";
+	char au_topic_pub[100];
 
-		// sprintf(au_topic_pub, "PRINTER/%s/STATUS", mynamedevice); // cua Anh Cong
-		sprintf(au_topic_pub, "%s/%s/STATUS",inforeget_setting.name_topic ,mynamedevice);	
-		Serial.println(au_topic_pub);
-		clientmqtt.setWill(au_topic_pub, datastatus , 1, 2);
-		ui8_demsolan_ketnoi_mqtt++;
-		Serial.println(ui8_demsolan_ketnoi_mqtt++);
-		if(ui8_demsolan_ketnoi_mqtt >= 5 && system_connection_mode == BYSIM4G)
-		{
-			Serial.println("ket noi that bai");
-			ESP.restart();
-			// ui8_demsolan_ketnoi_mqtt=0;
-			ui32_timeout_connectmqtt = millis() + 50000;
-			return;
-		}
-		// if (clientmqtt.connect(mqtt.client_id, mqtt.username , mqtt.pwdMqtt))
+	sprintf(au_topic_pub, "PRINTER/%s/STATUS", mynamedevice);	
+	clientmqtt.setWill(au_topic_pub, datastatus , 1, 2);
 
-		char test[100];
-	// sprintf(test, "\"client test%s\"", myname_device);
+	
+	// if (clientmqtt.connect(mqtt.client_id, mqtt.username , mqtt.pwdMqtt))
+	if (clientmqtt.connect(mynamedevice, "altamedia" , "Altamedia"))
+	{
+		char datastatus[] = "online";
+		sprintf(au_topic_pub, "PRINTER/%s/STATUS", mynamedevice);
+		clientmqtt.publish(au_topic_pub, datastatus, 1, 2);
+		Serial.println("Online");
 
-		snprintf(test, 23, "CLT_%lld", ESP.getEfuseMac());
-		if (clientmqtt.connect(test, systeminfo.username_mqtt , systeminfo.password_mqtt))
-		{
-			
-			ui8_demsolan_ketnoi_mqtt=0;
-			ui8_ketnoithanhcong_mqtt=1;
-			Serial.println("connect thanh cong mqtt");
-			// updatemqtt_func(2024);
-			char datastatus[] = "online";
-			Serial.println("Online");
-			// sprintf(au_topic_pub, "%s/%s/STATUS",inforeget_setting.name_topic, mynamedevice);
-			sprintf(au_topic_set, "%s/%s/SET",inforeget_setting.name_topic, mynamedevice);
-			sprintf(au_topic_sniff, "%s/%s/SNIFF",inforeget_setting.name_topic, mynamedevice);
-			sprintf(au_topic_printer_fw, "%s/%s/PRINTER_FW",inforeget_setting.name_topic, mynamedevice); //cấu hình update loại máy IN
-			sprintf(au_topic_barcode_fw, "%s/%s/BARCODE_FW",inforeget_setting.name_topic, mynamedevice);
-			sprintf(au_topic_server_fw, "%s/%s/SERVER_FW",inforeget_setting.name_topic, mynamedevice);
-			sprintf(au_topic_resetserver, "%s/%s/RS_SERVER",inforeget_setting.name_topic, mynamedevice);
-			sprintf(au_topic_resetprinter, "%s/%s/RS_PRINTER",inforeget_setting.name_topic, mynamedevice);
-			sprintf(au_topic_resetbarcode,"%s/%s/RS_BARCODE",inforeget_setting.name_topic, mynamedevice);
-			clientmqtt.publish(au_topic_pub, datastatus, 1, 2);
-			
-
-			sprintf(au_topic_query, "%s/%s/QUERY",inforeget_setting.name_topic, mynamedevice);
-			// send_at("ATE1");
-			// init_MQTT();
-			// connect_MQTT_ATCMD();
-			// send_at("AT+CMQTTCFG=\"checkUTF8\",0,0");
-			// sprintf(au_topic_pub, "PRINTER/ITB_5079184315124/QUERY");
-			clientmqtt.subscribe(au_topic_query, 2);
-			clientmqtt.subscribe(au_topic_set, 2);
-			clientmqtt.subscribe(au_topic_sniff, 2);
-			clientmqtt.subscribe(au_topic_printer_fw, 2);
-			clientmqtt.subscribe(au_topic_barcode_fw, 2);
-			clientmqtt.subscribe(au_topic_server_fw, 2);
-			clientmqtt.subscribe(au_topic_resetserver, 2);
-			clientmqtt.subscribe(au_topic_resetprinter, 2);
-			clientmqtt.subscribe(au_topic_resetbarcode, 2);
-			ui32_time_allow_upfile = millis() + 1000; /*sau 1s up part tiếp theo */
-			u32_time_resend_opu = millis() + 10000;
-			// if(ui8_check_disconnect_mqtt == 0)
-			// {
-			// 	ui8_candisconnectmqtt=1;
-			// 	ui32_timeout_disconnect_mqtt=millis() + 3000;
-			// }
-		}
-
-		else 
-		{
-			Serial.println("offline hoai nen reset");
-			ui32_timeout_checksleepbox = millis() + 5000;
-		}
-}
-
-void sub_topic()
-{
-	char au_topic_onl[100];
-		char au_topic_query[100];
-		char au_topic_set[100];
-		char au_topic_sniff[100];
-		char au_topic_printer_fw[100];
-		char au_topic_barcode_fw[100];
-		char au_topic_server_fw[100];
-		char au_topic_resetserver[100];
-		char au_topic_resetprinter[100];
-		char au_topic_resetbarcode[100];
-
-		sprintf(au_topic_query, "%s/%s/QUERY",inforeget_setting.name_topic, mynamedevice);
-		sprintf(au_topic_set, "%s/%s/SET",inforeget_setting.name_topic, mynamedevice);
-		sprintf(au_topic_sniff, "%s/%s/SNIFF",inforeget_setting.name_topic, mynamedevice);
-		sprintf(au_topic_printer_fw, "%s/%s/PRINTER_FW",inforeget_setting.name_topic, mynamedevice); //cấu hình update loại máy IN
-		sprintf(au_topic_barcode_fw, "%s/%s/BARCODE_FW",inforeget_setting.name_topic, mynamedevice);
-		sprintf(au_topic_server_fw, "%s/%s/SERVER_FW",inforeget_setting.name_topic, mynamedevice);
-		sprintf(au_topic_resetserver, "%s/%s/RS_SERVER",inforeget_setting.name_topic, mynamedevice);
-		sprintf(au_topic_resetprinter, "%s/%s/RS_PRINTER",inforeget_setting.name_topic, mynamedevice);
-		sprintf(au_topic_resetbarcode,"%s/%s/RS_BARCODE",inforeget_setting.name_topic, mynamedevice);
-
-
-		subscribeTopic(au_topic_resetserver);
-		// clientmqtt.subscribe(au_topic_query, 2);
-		// clientmqtt.subscribe(au_topic_set, 2);
-		// clientmqtt.subscribe(au_topic_sniff, 2);
-		// clientmqtt.subscribe(au_topic_printer_fw, 2);
-		// clientmqtt.subscribe(au_topic_barcode_fw, 2);
-		// clientmqtt.subscribe(au_topic_server_fw, 2);
-		// clientmqtt.subscribe(au_topic_resetserver, 2);
-		// clientmqtt.subscribe(au_topic_resetprinter, 2);
-		// clientmqtt.subscribe(au_topic_resetbarcode, 2);
-
-
+		sprintf(au_topic_pub, "PRINTER/%s/QUERY", mynamedevice);
+		
+		// sprintf(au_topic_pub, "PRINTER/ITB_5079184315124/QUERY");
+        clientmqtt.subscribe(au_topic_pub, 2);
+		ui32_time_allow_upfile = millis() + 1000; /*sau 1s up part tiếp theo */
+	}
 }
 
 void connect_bywifi()
@@ -8487,27 +6026,15 @@ void setup_modem ()
     MODEM_PWRKEY IO:4 The power-on signal of the modulator must be given to it,
     otherwise the modulator will not reply when the command is sent
     */
-	digitalWrite( led_sign, 1);//ON led
-	// server_modem.busy=1;
-	// select_uart(UART_4G);
-    // pinMode(6,INPUT_PULLUP);
-	delay(500);
+   digitalWrite( led_sign, 1);//ON led
+   
+   select_uart(UART_4G);
+
     digitalWrite(PWRKEY_MODEM, HIGH);
-    delay(500); //Need delay
+    delay(300); //Need delay
     digitalWrite(PWRKEY_MODEM, LOW);
 
-// 	if(digitalRead(6) == 1)
-//   	{
-// 		digitalWrite(PWRKEY_MODEM, HIGH);
-// 		while(digitalRead(6)==1)
-//     {
-//       delay(1);
-//     }
-//     digitalWrite(PWRKEY_MODEM, LOW);  
-//   }
-
-	// TESTMODEM();
-	setup_pp();
+	TESTMODEM();
 }
 void light_sleep(uint32_t sec )
 {
@@ -8524,21 +6051,6 @@ void TESTMODEM()
     if (!modem.init()) {
       if (!modem.restart()) {
         DBG("Failed to restart modem, delaying 10s and retrying");
-		ui8_dem_sl_ketnoi_4g++;
-		if(ui8_dem_sl_ketnoi_4g<=3)
-		{
-			// if(ui8_dem_sl_ketnoi_4g<3)
-			// {
-			// 	ui8_sim_erro=0;
-			// }
-			// if(ui8_dem_sl_ketnoi_4g==3)
-			// {
-				// Serial.println("ket noi sim lai");
-				// ui8_sim_erro=1;
-				// ui32_timeout_resetsim=millis()+60000;
-			// }
-			setup_modem ();
-		}
         // restart autobaud in case GSM just rebooted
         return;
       }
@@ -8565,7 +6077,7 @@ void TESTMODEM()
       */
     String ret;
     do {
-        ret = modem.setNetworkMode(2);
+        ret = modem.setNetworkMode(54);
         delay(500);
     } while (!ret);
 
@@ -8584,7 +6096,6 @@ void TESTMODEM()
 	{		
 		DBG("Waiting for network...");
 		int kq =0;
-		// int ketnoi=0;
 		int tt=1;
 		digitalWrite( led_sign, tt);
 		for(int i =0;i<30;i++)
@@ -8593,72 +6104,26 @@ void TESTMODEM()
 			if (!modem.waitForNetwork(1000L)) {//100 = 10s
 				// light_sleep(10);
 				// return;
-				
 			}
 			else
 			{
 				kq =1;
-				// ketnoi=1;
-				// Serial.println("vo cho cho 10s ne");
 				break;
 			}		
 
 			tt=!tt;
 			digitalWrite( led_sign, tt); 
 		}
-		if (kq ==0)
-		{
-			Serial.println("bi lap o for khong ra");
-			ui8_dem_sl_ketnoi_4g++;
-			if(ui8_dem_sl_ketnoi_4g<=3)
-			{
-				// ui8_dem_sl_ketnoi_4g++;
-				// if(ui8_dem_sl_ketnoi_4g<3)
-				// {
-				// 	ui8_sim_erro=0;
-				// }
-				// if(ui8_dem_sl_ketnoi_4g==3)
-				// {
-					// Serial.println("ket noi sim lai");
-					// ui8_sim_erro=1;
-					// ui32_timeout_resetsim=millis()+60000;
-				// }
-				setup_modem ();
-				// ui8_sim_erro=1;
-				// ui32_timeout_resetsim=millis()+30000;
-			}
-			return;
-		} 
+		if (kq ==0) return;
 		
 
 		if (modem.isNetworkConnected()) {
 			DBG("Network connected");
-			ui8_dem_sl_ketnoi_4g=0;
 		}
 	}
 	else
 	{
 		DBG("Simcard erro: exit");
-		// ui8_dem_sl_ketnoi_4g++;
-		// if(ui8_dem_sl_ketnoi_4g<=3)
-		// {
-			ui8_dem_sl_ketnoi_4g++;
-			if(ui8_dem_sl_ketnoi_4g<=3)
-			{
-				// if(ui8_dem_sl_ketnoi_4g<3)
-				// {
-				// 	ui8_sim_erro=0;
-				// }
-				// if(ui8_dem_sl_ketnoi_4g==3)
-				// {
-				// 	Serial.println("qua so lan ket noi");
-				// 	ui8_sim_erro=1;
-				// 	ui32_timeout_resetsim=millis()+30000;
-				// }
-				setup_modem ();
-			}
-			
-		// }
 		return;
 	}
 #endif
@@ -8668,7 +6133,6 @@ void TESTMODEM()
     // DBG("Connecting to", apn);
     DBG("Connecting to", systeminfo.apn);
     if (!modem.gprsConnect(systeminfo.apn, gprsUser, gprsPass)) {
-		// if (!modem.gprsConnect("internet", gprsUser, gprsPass)) {
         light_sleep(10);
         return;
     }
@@ -8750,33 +6214,53 @@ void TESTMODEM()
 	DBG("minute:", minute_);
 	DBG("second:", second_);
 	DBG("timezone:", timezone_);
-	// setup_modem();
+
 
     // Retrieve Temperature
     float temp;
-    do 
-	{
+    do {
         temp = modem.getTemperature();
         delay(100);
     } while (!temp);
     DBG("Modem Temp:", temp);
 
-    if (!modem.isGprsConnected()) 
-	{
-		// ui8_dem_sl_ketnoi_4g=0;
+    if (!modem.isGprsConnected()) {
         server_modem.status = MY_ERRO;
 		DBG("... not connected");
-		ui8_dem_sl_ketnoi_4g++;
-		if(ui8_dem_sl_ketnoi_4g<=3)
-		{
-			setup_modem ();
-		}
-    } 
-	else 
-	{
+    } else {
         DBG("4G init OK");
 		server_modem.status = MY_OK;
-		ui8_sim_erro=0;
+
+		// Serial.println("\n Test upload file ");
+		// char VALUE[10];
+		// for(int i =0;i<10;i++)
+		// {
+			// VALUE[i]='0' + i;
+		// }
+		// VALUE[9]='\0';
+		// char ten[200];
+		// int index_up =0;
+		// sprintf(ten,"/esp-iot-2023/printer_device_test/Printerdata_%d.txt",index_up);
+		// sprintf(ten,"/esp-iot-2023/Congtest4G/modem_%d.txt",index_up);
+		// upload_files4G(VALUE, ten);
+
+		#if (0) 
+		DBG("Connecting to ", server);
+        // Make a HTTPS POST request:
+        Serial.println("Making POST request securely");
+        String contentType = "Content-Type: application/json";
+        String postData = "{\"time\": \""+ time + "\", \"temp\": \"" + temp + "\"}";        
+        mysclient_gsm.post(resource, contentType, postData);
+        int status_code = mysclient_gsm.responseStatusCode();
+        String response = mysclient_gsm.responseBody();
+        
+        Serial.print("Status code: ");
+        Serial.println(status_code);
+        Serial.print("Response: ");
+        Serial.println(response);
+
+        mysclient_gsm.stop();      
+		#endif   
     }
 #endif
     
@@ -8798,6 +6282,7 @@ void TESTMODEM()
 #endif
 
     SerialMon.printf("End of init \n");
+	
 
     //Wait moden power off
     // light_sleep(5);
@@ -8874,7 +6359,7 @@ String makePage(String title, String contents) {
   s += "<meta name=\"viewport\" content=\"width=device-width,user-scalable=0\"/>";
   s += "<title >";
   s += title;
-  s += "</title></head><body text=#ffffff bgcolor=##000000 align=\"center\">";
+  s += "</title></head><body text=#ffffff bgcolor=##4da5b9 align=\"center\">";
   s += contents;
   s += "</body></html>";
   return s;
@@ -8896,8 +6381,8 @@ void handleFlash()
 
 //   FileName = "/STM32FW.dat";
 
-  FileName = device_upgrade.filename;
-// FileName=file_update_wifi_stm32;
+//   FileName = device_upgrade.filename;
+FileName=file_update_wifi_stm32;
   
 //   int t= getszie(device_upgrade.filename);
   
@@ -8998,89 +6483,9 @@ String pitem = FPSTR(HTTP_FORM_PARAM);
       pitem.replace("{v}", systeminfo.apn);    
 	  page += pitem;
 
-	//   page += "<br/><h3>Network connection by</h3>";
+	  page += "<br/><h3>Network connection by</h3>";
 
-	  page += "<br/><h3>CONFIG_SAVE_FILE</h3>";
-	  pitem = FPSTR(HTTP_FORM_PARAM);
-      pitem.replace("{i}", "p4");
-      pitem.replace("{n}", "p4");
-      pitem.replace("{p}", "YOUR CHOOSE");
-      snprintf(parLength, 2, "%d", sizeof(systeminfo.wifi_pass));
-      pitem.replace("{l}", parLength);
-      pitem.replace("{v}", systeminfo.save_file_config);    
-	  page += pitem;
-
-	//   page += "<br/><h3>NEW_USERNAME</h3>";
-	//   pitem = FPSTR(HTTP_FORM_PARAM);
-    //   pitem.replace("{i}", "p5");
-    //   pitem.replace("{n}", "p5");
-    //   pitem.replace("{p}", "YOUR CHOOSE");
-    //   snprintf(parLength, 2, "%d", sizeof(systeminfo.USERNAME));
-    //   pitem.replace("{l}", parLength);
-    //   pitem.replace("{v}", systeminfo.USERNAME);    
-	//   page += pitem;
-
-	//   page += "<br/><h3>NEW_PASSWORD</h3>";
-	//   pitem = FPSTR(HTTP_FORM_PARAM);
-    //   pitem.replace("{i}", "p6");
-    //   pitem.replace("{n}", "p6");
-    //   pitem.replace("{p}", "YOUR CHOOSE");
-    //   snprintf(parLength, 2, "%d", sizeof(systeminfo.PASSWORD));
-    //   pitem.replace("{l}", parLength);
-    //   pitem.replace("{v}", systeminfo.PASSWORD);    
-	//   page += pitem;
-
-	//   page += "<br/><h3>Just support WIFI</h3>";
-
-	page += "<br/><h3>DOMAIN_MQTT</h3>";
-	  pitem = FPSTR(HTTP_FORM_PARAM);
-      pitem.replace("{i}", "p5");
-      pitem.replace("{n}", "p5");
-      pitem.replace("{p}", "DOMAIN MQTT");
-      snprintf(parLength, 2, "%d", sizeof(systeminfo.name_domain));
-      pitem.replace("{l}", parLength);
-      pitem.replace("{v}", systeminfo.name_domain);    
-	  page += pitem;
-
-	  page += "<br/><h3>USERNAME_MQT</h3>";
-	  pitem = FPSTR(HTTP_FORM_PARAM);
-      pitem.replace("{i}", "p6");
-      pitem.replace("{n}", "p6");
-      pitem.replace("{p}", "USERNAME MQTT");
-      snprintf(parLength, 2, "%d", sizeof(systeminfo.username_mqtt));
-      pitem.replace("{l}", parLength);
-      pitem.replace("{v}", systeminfo.username_mqtt);    
-	  page += pitem;
-
-	  page += "<br/><h3>PASSWORD_MQTT</h3>";
-	  pitem = FPSTR(HTTP_FORM_PARAM);
-      pitem.replace("{i}", "p7");
-      pitem.replace("{n}", "p7");
-      pitem.replace("{p}", "PASSWORD MQTT");
-      snprintf(parLength, 2, "%d", sizeof(systeminfo.password_mqtt));
-      pitem.replace("{l}", parLength);
-      pitem.replace("{v}", systeminfo.password_mqtt);    
-	  page += pitem;
-
-	  page += "<br/><h3>HEADER_MQTT</h3>";
-	  pitem = FPSTR(HTTP_FORM_PARAM);
-      pitem.replace("{i}", "p8");
-      pitem.replace("{n}", "p8");
-      pitem.replace("{p}", "HEADER_MQTT");
-      snprintf(parLength, 2, "%d", sizeof(systeminfo.header_ID));
-      pitem.replace("{l}", parLength);
-      pitem.replace("{v}", systeminfo.header_ID);    
-	  page += pitem;
-
-	  page += "<br/><h3>NEW ID BOX</h3>";
-	  pitem = FPSTR(HTTP_FORM_PARAM);
-      pitem.replace("{i}", "p9");
-      pitem.replace("{n}", "p9");
-      pitem.replace("{p}", "NEW ID BOX");
-      snprintf(parLength, 2, "%d", sizeof(mynamedevice));
-      pitem.replace("{l}", parLength);
-      pitem.replace("{v}", mynamedevice);    
-	  page += pitem;
+	  page += "<br/><h3>Just support WIFI</h3>";
 
 	  pitem = FPSTR(HTTP_NW_MODE_SELECTION);
 	  page += pitem;
@@ -9141,18 +6546,12 @@ void handleWifiSave()
 server.arg("p1").toCharArray(systeminfo.wifi_name, sizeof(systeminfo.wifi_name));
 server.arg("p2").toCharArray(systeminfo.wifi_pass, sizeof(systeminfo.wifi_pass));
 server.arg("p3").toCharArray(systeminfo.apn, sizeof(systeminfo.apn));
-server.arg("p4").toCharArray(systeminfo.save_file_config, sizeof(systeminfo.save_file_config));
 // server.arg("p4").toCharArray(systeminfo.use_ethernet, sizeof(systeminfo.use_ethernet));
 // server.arg("p5").toCharArray(systeminfo.use_wifi, sizeof(systeminfo.use_wifi));
 // server.arg("p6").toCharArray(systeminfo.use_modem, sizeof(systeminfo.use_modem));
-server.arg("p5").toCharArray(systeminfo.name_domain,sizeof(systeminfo.name_domain));
-server.arg("p6").toCharArray(systeminfo.username_mqtt,sizeof(systeminfo.username_mqtt));
-server.arg("p7").toCharArray(systeminfo.password_mqtt,sizeof(systeminfo.password_mqtt));
-server.arg("p8").toCharArray(systeminfo.header_ID,sizeof(systeminfo.header_ID));
-server.arg("p9").toCharArray(mynamedevice,sizeof(mynamedevice));
 server.arg("modef1").toCharArray(systeminfo.use_network, sizeof(systeminfo.use_network));
 
-//   systeminfo.use_network[0] = '2';
+  systeminfo.use_network[0] = '1';
   
   SerialDebug.print("ssid = ");
   SerialDebug.println(systeminfo.wifi_name);
@@ -9163,23 +6562,6 @@ server.arg("modef1").toCharArray(systeminfo.use_network, sizeof(systeminfo.use_n
   SerialDebug.print("use_network = ");
   SerialDebug.println(systeminfo.use_network);
 
-  SerialDebug.print("save_file = ");
-  SerialDebug.println(systeminfo.save_file_config);
-
-  SerialDebug.print("domain mqtt = ");
-  SerialDebug.println(systeminfo.name_domain);	
-
-  SerialDebug.print("username mqtt = ");
-  SerialDebug.println(systeminfo.username_mqtt);
-
-  SerialDebug.print("password mqtt = ");
-  SerialDebug.println(systeminfo.password_mqtt);
-
-  SerialDebug.print("header MQTT = ");
-  SerialDebug.println(systeminfo.header_ID);
-
-  SerialDebug.print("BOX ID = ");
-  SerialDebug.println(mynamedevice);
 //   SerialDebug.print("use_ethernet = ");
 //   SerialDebug.println(systeminfo.use_ethernet);
 //   SerialDebug.print("use_wifi = ");
@@ -9193,7 +6575,7 @@ server.arg("modef1").toCharArray(systeminfo.use_network, sizeof(systeminfo.use_n
   load_values();
 
   
-	server.send(200, "text/html", makePage("Run", "<h2> saved setting <br><br><a style=\"color:white\" href=\"/Login\">Home </a></h2>"));
+	server.send(200, "text/html", makePage("Run", "<h2> saved setting <br><br><a style=\"color:white\" href=\"/\">Home </a></h2>"));
 }
 // String filenametam;
 
@@ -9284,15 +6666,7 @@ void server_init()
 {
 
 	MDNS.begin("stm32-ota");
-
-	server.on("/", HTTP_GET, []() {
-	ui8_dangvao_web=1;
-    server.sendHeader("Connection", "close");
-    server.send(200, "text/html", loginIndex);
-  });
-
-
-	server.on("/up", HTTP_GET, []() {
+  server.on("/up", HTTP_GET, []() {
     server.send(200, "text/html", makePage("Select file", serverIndex));
   });
   server.on("/list", HTTP_GET, handleListFiles);
@@ -9314,8 +6688,7 @@ void server_init()
 	server.sendHeader("Connection", "close");
     server.send(200, "text/html", serverIndexprinter);
   });
-   	server.on("/exit", HTTP_GET, []() {    
-	ui8_dangvao_web=0;
+   server.on("/exit", HTTP_GET, []() {    
 	server.sendHeader("Connection", "close");
     server.send(200, "text/html", "I've gone out!!!");
 	ESP.restart();
@@ -9373,7 +6746,7 @@ void server_init()
 
       RunMode();
 
-    server.send(200, "text/html", makePage("Run", "<h2>" + Runstate + "<br><br><a style=\"color:white\" href=\"/Login\">Home </a></h2>"));
+    server.send(200, "text/html", makePage("Run", "<h2>" + Runstate + "<br><br><a style=\"color:white\" href=\"/\">Home </a></h2>"));
   });
   
   server.on("/setting", HTTP_GET, handlesetting);
@@ -9444,7 +6817,7 @@ void server_init()
     server.send(200, "text/html", makePage("Erase page", stringtmp));
   });
   server.on("/flash", HTTP_GET, []() {
-    stringtmp = "<h1>FLASH MENU</h1><h2><a style=\"color:white\" href=\"/initchip\">Init Chip</a><br><br><a style=\"color:white\" href=\"/erase\">Erase Chip</a><br><br><a style=\"color:white\" href=\"/programm\">Flash Chip</a><br><br><a style=\"color:white\" href=\"/run\">Run Chip</a><br><br><a style=\"color:white\" href=\"/Login\">Home </a></h2>";
+    stringtmp = "<h1>FLASH MENU</h1><h2><a style=\"color:white\" href=\"/initchip\">Init Chip</a><br><br><a style=\"color:white\" href=\"/erase\">Erase Chip</a><br><br><a style=\"color:white\" href=\"/programm\">Flash Chip</a><br><br><a style=\"color:white\" href=\"/run\">Run Chip</a><br><br><a style=\"color:white\" href=\"/\">Home </a></h2>";
     server.send(200, "text/html", makePage("Flash page", stringtmp));
   });
   server.on("/esp-ota", HTTP_GET, []() {
@@ -9461,8 +6834,8 @@ void server_init()
   server.on("/upload", HTTP_POST, []() {
     server.send(200, "text/html", makePage("FileList", "<h1> Upload file Finished </h1><br><br><h2><a style=\"color:white\" href=\"/flash\">Next step </a></h2>"));
   });
-  server.on("/Login", HTTP_GET, []() {
-	// ui8_dangvao_web=1;
+  server.on("/", HTTP_GET, []() {
+    
     device_upgrade.deviceselect = UPDATE_NONE;	
 	String starthtml = "<h1>Intercept Box Menu</h1><h2>" + String(versionname) + "<br><br><a style=\"color:white\" href=\"/setting\">Setting Parameters</a><br><br><a style=\"color:white\" href=\"/upesp\">Update Server Controller</a><br><br><a style=\"color:white\" href=\"/upprinter\">Update Printer Controller </a><br><br><a style=\"color:white\" href=\"/upbarcode\">Update Barcode Controller </a><br><br><br/><div class=\"c\"><a href=\"/exit\">Exit</a></div></h2>";
     server.send(200, "text/html", makePage("Start Page", starthtml));
@@ -9522,7 +6895,7 @@ void RunMode()  {    //Tested  Change to runmode
 		delay(50);
 		digitalWrite(RESET_PRINTER, HIGH);
 		delay(200);
-	} 
+	}
 	else if (device_upgrade.deviceselect == UPDATE_BARCODE)
 	{
 		Serial.println("Enter RunMode Barcode");
@@ -9698,159 +7071,75 @@ int updatebarcode_func()
 	// Serial.println(dataBuffer);
 	
 	char channel_[100];  
-	sprintf(channel_,"%s/%s/BARCODE",inforeget_setting.name_topic,mynamedevice);
+	sprintf(channel_,"PRINTER/%s/BARCODE",mynamedevice);
 
 	// bool publish(const char topic[], const char payload[], int length, bool retained, int qos);
 	
 	#if (DF_DEBUG_NOUPLOAD_TO_SERVER)	
 		kq =1;
-		Serial.println("debug no upload barcode");
-	// #elif (DF_MQTT_UP_4G)	
-	// 	String data_get = "";
-	// 	Serial.println("Load data");
-	// 	for(uint64_t i = 0; i<len ; i++)
-	// 	{	  	  
-	// 		// VALUE[u] = i;
-	// 		// u++;
-	// 		// j++;  
-	// 		// // VALUE[u] = 'A';
-	// 		// data_get+=VALUE[u];
-
-	// 		data_get += dataBuffer[i];
-	// 	}
-	// 	Serial.println(data_get.length());
-	// 	pulic_data(data_get,len,channel_);
-	// 	// Serial.write(value_moi,strlen(value_moi));
-	// 	// int need_upload_opu = res_command(500, "+CMQTTPUB: 0,0");
-	// 	kq = gsm_send_serial("AT+CMQTTPUB=0,1,60",500);
-	// #else 
-	// 	kq = clientmqtt.publish(channel_,dataBuffer,len,1,2);
-	#endif 
-
-	if(system_connection_mode==BYSIM4G)
-	{
-		if(ui8_check_disconnect_mqtt==1)
-		{
-			Serial.println("dang disconect can connect lai_up barcode");
-			// init_MQTT(inforeget_setting.name_topic, mynamedevice);
-			// send_at("AT+CMQTTCFG=\"checkUTF8\",0,0");
-			// connect_MQTT_ATCMD();
-			setup_mqtt_atcmd(systeminfo.name_domain,systeminfo.username_mqtt,systeminfo.password_mqtt,inforeget_setting.name_topic,mynamedevice);
-			ui32_timeout_disconnect_mqtt=millis()+5000;
-			ui8_check_disconnect_mqtt=0;
-		}
-		// server_modem.busy=1;
-		// select_uart(UART_4G);
-		// delay(10);
-		else
-		{
-			String data_get = "";
-			// ui32_timeout_check_barcode = millis() + 50000;
-			Serial.println("Load data");
-			Serial.println("up profile barcode");
-			for(uint64_t i = 0; i<len ; i++)
-			{	  	  
-				// VALUE[u] = i;
-				// u++;
-				// j++;  
-				// // VALUE[u] = 'A';
-				// data_get+=VALUE[u];
-
-				data_get += dataBuffer[i];
-			}
-			Serial.println(data_get.length());
-			// if(ui8_check_disconnect_mqtt==0)
-			// {
-				// kq = clientmqtt.publish(channel_,dataBuffer,len,1,2);
-				kq=pulic_data(data_get,len,channel_);
-			// Serial.write(value_moi,strlen(value_moi));
-			// int need_upload_opu = res_command(500, "+CMQTTPUB: 0,0");
-			// kq = gsm_send_serial("AT+CMQTTPUB=0,1,60",500);
-				// kq = gsm_send_serial("AT+CMQTTPUB=0,1,100,1",500);
-				// kq=ui8_check_pub;
-			// }	
-		}
-		
-	}
-
-	else
-	{
+		Serial.println("debug no upload barcode");	
+	#else 
 		kq = clientmqtt.publish(channel_,dataBuffer,len,1,2);
-	}
+	#endif 
 
 	// Serial.println("\n\n!!!!!!!!!!!!!!!!!!!!!!!!!debug nen co dong nay 5596\n");
 	// kq =1;
 	Serial.print("pub barcode = ");
 	Serial.println(kq);
-	// server_modem.busy=0;
 	return kq;
 }
 
 void process_upbarcode()
 {
-	if(ui8_dangupdate_esp==1) return;
 	if (ui8_need_pub_barcode == 0) return;
-	if(ui8_dangconnect_mqtt==1) return;
-	// if(ui8_truycap_mqtt==1) return;
+
 	if (millis() < u32_time_resend_barcode) return;
-	if(server_modem.busy == 0 || ui8_ketnoithanhcong_mqtt==0) return;
+	
 	// select_uart(UART_4G);
 	// kiểm tra kết nối
-	// if (!clientmqtt.connected()) return;
-	#ifndef DF_MQTT_UP_4G
-		if (!clientmqtt.connected()) return;
-	#endif
+	if (!clientmqtt.connected()) return;
 
 	if(ui8_busy_rec_printer == 1) return;
-	// ui8_dangupbarcode=1;
+
 	int kq =updatebarcode_func();
 	if (kq ==1)
 	{
 		ui8_need_pub_barcode =0;
-		// ui8_candisconnectmqtt=1;
-		// ui32_timeout_disconnect_mqtt = millis() + TG_DISCONNECT_MQTT;
-		// ui8_dangupbarcode=0;
-		// server_modem.busy=0;
 	}
 	else
 	{
 		//sau 2 giay up lai
 		u32_time_resend_barcode = millis()+2000;
-		ui8_candisconnectmqtt=1;
-		ui32_timeout_disconnect_mqtt=millis()+1000;
 	}
 }
-void updatemqtt_func(int check_buffer)
+void updatemqtt_func()
 {
-	select_uart(UART_4G);
+	// select_uart(UART_4G);
 	Serial.println("Load data");
-	uint64_t u = 0;
-	uint64_t j = 0;
-	
+
+	int u = 0;
+	uint8_t j = 0;
 	/*
 	16k không publish được
 	
 	*/
-	for(int i =0; i< check_buffer; i++)
+	for(int i =0; i< 8*1024; i++)
 	{	  	  
-		VALUE[u] = i;
+		VALUE[u] = j; 
 		u++;
 		j++;
 		// if( j >'z') j ='a';	  
 	}
-	
 	VALUE[u] = '\0';
 	Serial.print("\n buffer pub = ");
 	Serial.println(u);	
-	Serial.println(strlen(VALUE));
 	
 	char channel_[100];  
-	sprintf(channel_,"PRINTER/%s/BILL",ten_id);
-	Serial.println(channel_);
+	sprintf(channel_,"PRINTER/%s/BILL",mynamedevice);
+
 	// bool publish(const char topic[], const char payload[], int length, bool retained, int qos);
 	uint32_t tam = millis();
-	// int kq = mqtt_gsm.publish(channel_,VALUE,u);
-	int kq = clientmqtt.publish(channel_,VALUE,u,0,0);
+	int kq = clientmqtt.publish(channel_,VALUE,u,0,2);
 
 	tam = millis() - tam;
 	Serial.print("\n pub result = ");
@@ -9859,148 +7148,13 @@ void updatemqtt_func(int check_buffer)
 	Serial.println(tam);
 }
 
-void update_func_TEST(int check_buffer)
-{
-	select_uart(UART_4G);
-	Serial.println("Load data");
-	uint64_t u = 0;
-	uint64_t j = 0;
-	String data="";
-	/*
-	16k không publish được
-	
-	*/
-	for(int i =0; i< check_buffer; i++)
-	{	  	  
-		VALUE[u] = i;
-		u++;
-		j++;
-		if( j >'z') j ='a';	  
-	}
-	char channel_[100];  
-	sprintf(channel_,"PRINTER/%s/BILL",ten_id);
-	Serial.println(channel_);
-	// bool publish(const char topic[], const char payload[], int length, bool retained, int qos);
-	uint32_t tam = millis();
-
-	VALUE[u] = '\0';
-	Serial.print("\n buffer pub = ");
-	Serial.println(u);	
-	// pulic_data_TEST(VALUE,u,channel_);
-	// Serial.println(strlen(VALUE));
-	// data = Serial.write(VALUE,u);
-	// Serial.println();
-	// Serial.println();
-	// Serial.println();
-	// Serial.println(VALUE);
-}
-
-void test_upload_file_new()
-{
-	String data_get = "";
-	Serial.println("Load data");
-	uint64_t u = 0;
-	uint64_t j = 0;
-	char value_moi[15*1024];
-	/*
-	16k không publish được
-	
-	*/
-	for(uint64_t i = 0; i<(10*1024) ; i++)
-	{	  	  
-		// VALUE[u] = i;
-		// u++;
-		// j++;  
-		// // VALUE[u] = 'A';
-		// data_get+=VALUE[u];
-		value_moi[i] = 'A';
-
-		data_get += value_moi[i];
-	}
-	
-	
-	Serial.print("\n buffer pub = ");
-	
-	Serial.println(u);	
-	VALUE[u]='/0';
-	int kiemtra=0;
-	char channel_[100];  
-	sprintf(channel_,"JERI/%s/BILL",ten_id);
-	Serial.println(channel_);
-	for(int j = 0; j<10; j++)
-	{
-		kiemtra=pulic_data(data_get,data_get.length(),channel_);
-		// kiemtra = gsm_send_serial("AT+CMQTTPUB=0,1,60",500);
-		Serial.print("kiem tra up du lieu: ");
-		Serial.println(kiemtra);
-		delay(100);
-	}
-	
-	// Serial.write(value_moi,strlen(value_moi));
-	Serial.println(data_get.length());
-}
-
-void test_upload_data_SPIFFS()
-{
-	String data_chu;
-	char value[10*1024];
-	uint64_t index=0;
-	File data = SPIFFS.open("/test_upload_https.txt");
-	if (data)
-	{
-		Serial.println("open done");
-		while(data.available())
-		{
-			char c = data.read();
-			value[index] = c;
-			data_chu+=value[index];
-			index++;
-		}
-
-		Serial.println(data_chu);
-
-		// send_data_mqtt(data_chu,strlen(value),mynamedevice);
-		data.close();
-	}
-}
-
 void send_opu_status()
 {			
 	//kiểm tra
-	// last_check_rssi=millis()+10;
-	if(ui8_rs_server==1||ui8_rs_printer==1||ui8_rs_barcode==1||ui8_upfw_server==1||ui8_upfw_barcode==1||ui8_luafw_printer==1||ui8_kt_sniff==1||ui8_kt_chunk==1||ui8_sim_erro==1)
-	{
-		u32_time_resend_opu=millis()+60000;
-		return;
-	}
-	// last_check_rssi=millis()+20;
-	ui8_dangupdate_mqtt=1;
-	// if(ui32_timeout_checkprinter < millis()) return;
-	// if(ui8_dangin==1) return;
-	// if(ui8_dangupdate_esp==1) return;
 	if (millis() < u32_time_resend_opu) return;
-	// if(ui8_dangconnect_mqtt==1) return;
-	// if(server_modem.busy == 0 || ui8_ketnoithanhcong_mqtt==0) return;
-	// if(ui8_truycap_mqtt==1) return;
-	// if(ui8_kiemtra_header == 0) return;
-	// if(ui8_busy_rec_printer == 1)
-	// {
-	// 	u32_time_resend_opu = millis() + 60*1000;
-	// 	return;
-	// }
-	// int tam = strlen(inforeget_setting.name_topic);
-	// if(ui8_kiemtra_header==0 && tam <= 0 )
-	// {
-	// 	String tam = "PRINTER";
-	// 	tam.toCharArray(inforeget_setting.name_topic,100);
-	// }
-
-	#ifndef DF_MQTT_UP_4G
-		if (!clientmqtt.connected()) return;
-	#endif
-
-	ui8_danggui_thongtin_board = 1;
-
+	
+	if (!clientmqtt.connected()) return;
+		
 	// publish a message roughly every minutes
 	// if (millis() - lastMillis > df_time_send_opu) {
 		// lastMillis = millis();
@@ -10036,13 +7190,10 @@ void send_opu_status()
 		}
 		*/
 		doc["code"] = String (mynamedevice);
-		// doc["printerModel"] = "TM-T88IV";	//Product
-		// doc["printerBrand"] = "EPSON";	//Manufacturer
-		// doc["printerSerial"] = "L9LF023112";	//Manufacturer
-		doc["printerModel"] = String(header_file_doing.model);	//Product
-		doc["printerBrand"] = String(header_file_doing.brand_name);	//Manufacturer
-		doc["printerSerial"] = String(Serial_number);	//Manufacturer
-		 
+		doc["printerModel"] = "TM-T88IV";	//Product
+		doc["printerBrand"] = "EPSON";	//Manufacturer
+		doc["printerSerial"] = "L9LF023112";	//Manufacturer
+		
 		if (device_status.printer == 2)
 		{
 			doc["printerStatus"] = 0;
@@ -10052,31 +7203,8 @@ void send_opu_status()
 			doc["printerStatus"] = device_status.printer;
 		}
 
-		if(systeminfo.use_network[0] == '2')
-		{
-			doc["network"] = "4G";	//Manufacturer
-		}
-
-		else if(systeminfo.use_network[0] == '1')
-		{
-			doc["network"] = "WIFI";	//Manufacturer
-			doc["ip"] = "192.168.80.121";	//Manufacturer
-		}
-
-		else 
-		{	
-			doc["network"] = "ETHERNET";
-		}
-		
-		// if(device_status.log_debug == 1)
-		// {
-		// 	doc["MODE PRINTER"] = "log debug";
-		// }
-
-		// else 
-		// {
-		// 	doc["MODE PRINTER"] = "bill";
-		// }
+		doc["network"] = "WIFI";	//Manufacturer
+		doc["ip"] = "192.168.80.121";	//Manufacturer
 		// doc["mode"] = "S3";
 		doc["mode"] = "MQTT";
 		
@@ -10093,95 +7221,28 @@ void send_opu_status()
 			doc["barcodeStatus"] = device_status.barcode;
 		}
 		
-		doc["firmware_barcode"] = String (device_status.vs_barcode);
-		doc["firmware_printer"] = String (device_status.vs_printer);
-		doc["firmware_network"] = String (versionname);
-		struct tm tmstruct ;		
-		tmstruct.tm_year = 0;
-		getLocalTime(&tmstruct, 5000);
 		char msg[500];
 		serializeJson(doc, msg);
-		// %d%02d%02d%02d%02d%02d",(tmstruct.tm_year+1900),( tmstruct.tm_mon+1), tmstruct.tm_mday,tmstruct.tm_hour , tmstruct.tm_min, tmstruct.tm_sec
+		
+		char channel_[100];  
+		sprintf(channel_,"PRINTER/%s/INFO",mynamedevice);
 
-		DateTime now = rtc.now();
-		// sprintf(bill_media_info.nameofbill,"BIL%d%02d%02d%02d%02d%02d",now.year(),now.month(), now.day(),now.hour() , now.minute(), now.second());	
-		char channel_[200];  
-		sprintf(channel_,"%s_%s_INFO_%d%02d%02d%02d%02d%02d",inforeget_setting.name_topic,mynamedevice,now.year(),now.month(), now.day(),now.hour() , now.minute(), now.second());
-		Serial.println(channel_);
-
-		int need_upload_opu=0;
-		if(system_connection_mode == BYSIM4G)
-		{
-
-				String data_get = "";
-				// ui32_timeout_check_barcode = millis() + 50000;
-				Serial.println("Load data");
-				Serial.println("INFO MQTT");
-				for(uint64_t i = 0; i<(strlen(msg)) ; i++)
-				{	  	  
-					// VALUE[u] = i;
-					// u++;
-					// j++;  
-					// // VALUE[u] = 'A';
-					// data_get+=VALUE[u];
-
-					data_get += msg[i];
-				}
-				need_upload_opu=guifile_pp(data_get,channel_);
-		}
-
-		else
-		{
-			need_upload_opu  = clientmqtt.publish(channel_,msg,1,2);
-		}
+		// bool publish(const char topic[], const char payload[], int length, bool retained, int qos);
+		
+		int need_upload_opu  = clientmqtt.publish(channel_,msg,1,2);
 
 		if(need_upload_opu == 1)
 		{
 			/*ok: init long time*/
-			// ui32_timeout_check_barcode = millis() + 60000;
-			Serial.println("gui info thanh cong");
-			ui8_danggui_thongtin_board=0;
 			u32_time_resend_opu = millis() + 20*60*60*1000; /*20h*/
-			// u32_time_resend_opu = millis() + 60*1000;; /*20h*/
-			ui8_demsolanguisai_info=0;
-			ui8_dangupdate_mqtt=0;
-			lastNetworkCheck = millis()+5000;
-			gui_onl=1;
-			// ui8_candisconnectmqtt=1;
-			// ui32_timeout_disconnect_mqtt = millis() + TG_DISCONNECT_MQTT;
-			// if(ui8_check_disconnect_mqtt == 0)
-			// {
-			// 	ui8_candisconnectmqtt=1;
-			// 	ui32_timeout_disconnect_mqtt=millis() + 3000;
-			// }
-			// server_modem.busy=0;
-			// u32_time_resend_opu = millis() + 3000;
 		}
 		else
 		{
 			/*fail: init short time*/
-			// ui32_timeout_check_barcode = millis() + 60000;z
-			Serial.println("gui info khong thanh cong");
-			u32_time_resend_opu = millis() + 60*1000;
-			gui_onl=1;
-			ui8_demsolanguisai_info++;
-			if(ui8_demsolanguisai_info>3)
-			{
-				// u32_time_resend_opu = millis() + 20*60*60*1000;
-				u32_time_resend_opu = millis() + 60*1000;; /*20h*/
-				ui8_demsolanguisai_info=0;
-				ui8_dangupdate_mqtt=0;
-				lastNetworkCheck = millis()+5000;
-				gui_onl=1;
-				// ui8_candisconnectmqtt=1;
-				// ui32_timeout_disconnect_mqtt=millis()+50;
-			}
-			
-			// ui8_sim_erro=1;
-			// ui32_timeout_resetsim=millis()+300;
-			// server_modem.busy=0;
+			u32_time_resend_opu = millis() + 5000;
 		}
- 
+
+  	// }	
 }
 
 
@@ -10193,136 +7254,12 @@ void messageReceived(String &topic, String &payload)
   // sending and receiving acknowledgments. Instead, change a global variable,
   // or push to a queue and handle it in the loop after calling `client.loop()`.
 	// Serial.print(F(">>>>************>>>IN\n"));
-	if(ui8_busy_rec_printer == 1) return;
-	// if(topic!="" && payload!="") return;
-	if(ui8_comess==0) return;
 	SerialDEBUG.println("incoming: ");
 	SerialDEBUG.println(topic);
 	SerialDEBUG.println(payload);
-
-	int index = topic.lastIndexOf('/');
-    int length = topic.length();
-	String test_topic = topic.substring(index+1,length);
-	Serial.print("topic test: ");
-	Serial.println(test_topic);
-	String test="";
-	if(test_topic=="SET")
-	{
-		test = payload.substring(2,13);
-		if(test == "prefixTopic")
-		{
-			Serial.println("nhay vao CHECK prefixTopic");
-			ui8_kt_chunk_header = 1;
-		}
-		test_topic="";
-	}
-
-	else if(test_topic=="SNIFF")
-	{
-		test = payload.substring(2,7);
-		if(test=="SNIFF")
-		{
-			Serial.print("payload sniff: ");
-			Serial.println(test);
-			Serial.println("nhay vao sniff");
-			ui8_kt_sniff = 1;
-		}
-		test_topic="";
-	}
-
-	else if(test_topic == "PRINTER_FW")
-	{
-		test = payload.substring(2,9);
-		if(test=="printer")
-		{
-			device_status.vs_printer[0] ='N';/* xóa version cũ, để cập nhật tên version mới */
-			device_status.vs_printer[1] ='O';/* xóa version cũ, để cập nhật tên version mới */
-			device_status.vs_printer[2] ='T';/* xóa version cũ, để cập nhật tên version mới */
-			device_status.vs_printer[3] ='\0';/* xóa version cũ, để cập nhật tên version mới */
-			Serial.print("payload printer: ");
-			Serial.println(test);
-			Serial.println("nhay vao lua fw may in");
-			// ui8_kt_sniff = 1;
-			ui8_luafw_printer=1;
-		}
-		test_topic="";
-	}
-
-	else if(test_topic == "BARCODE_FW")
-	{
-		test = payload.substring(2,9);
-		if(test == "barcode")
-		{
-			device_status.vs_barcode[0] ='N';/* xóa version cũ, để cập nhật tên version mới */
-			device_status.vs_barcode[1] ='O';/* xóa version cũ, để cập nhật tên version mới */
-			device_status.vs_barcode[2] ='T';/* xóa version cũ, để cập nhật tên version mới */
-			device_status.vs_barcode[3] ='\0';/* xóa version cũ, để cập nhật tên version mới */
-			Serial.print("payload printer: ");
-			Serial.println(test);
-			Serial.println("update fw cho barcode");
-			ui8_upfw_barcode=1;
-		}
-		test_topic="";
-	}
-
-	else if(test_topic == "SERVER_FW")
-	{
-		test = payload.substring(2,8);
-		if(test=="server")
-		{
-			versionname="NOT";
-			Serial.print("payload printer: ");
-			Serial.println(test);
-			Serial.println("update fw cho esp32");
-			ui8_upfw_server=1;
-		}
-		test_topic="";
-	}
-
-	else if(test_topic == "RS_SERVER")
-	{
-		Serial.println("nhay vao rs server");
-		ui8_rs_server=1;
-		test_topic="";
-	}
-
-	else if(test_topic == "RS_PRINTER")
-	{
-		Serial.println("nhay vao rs printer");
-		ui8_rs_printer=1;
-		test_topic = "";
-	}
-
-	else if(test_topic == "RS_BARCODE")
-	{
-		Serial.println("nhay vao rs barcode");
-		ui8_rs_barcode=1;
-		test_topic = "";
-	}	
-
-	else if(test_topic == "FORMAT_DISK")
-	{
-		Serial.println("nhay vao format");
-		ui8_format_disk=1;
-		test_topic = "";
-	}
-
-	// else if(test_topic == "QUERY")
-	// {
-	// 	Serial.println("nhay vo check query");
-	// 	ui8_kt_chunk=1;
-	// 	test_topic="";
-	// 	return;
-	// }
-	// String test_sniff = payload.substring(5,10);
-	Serial.print("payload test: ");
-	Serial.println(test);
-
-	
 	StaticJsonDocument<1024> doc;
     // Deserialize the JSON document
   	DeserializationError error = deserializeJson(doc, payload);
-
     if (error)
 	{
 		// #ifdef use_debug_serial
@@ -10333,198 +7270,28 @@ void messageReceived(String &topic, String &payload)
 	
 	//{"name":"BIL20231218043438","chunk":5,"time":1703316283}
 	
-	if(inforeget.status ==0 && ui8_kt_chunk == 1)
+	if(inforeget.status ==0)
 	{
-		Serial.println("nhay vao name");
 		String strtam = doc["name"].as<String>();
 		int chunk_tam		= doc["chunk"] | 1000;
 
 		strtam.toCharArray(inforeget.name_tofind, 24);
 		inforeget.chunk = chunk_tam;
 		inforeget.status =1;
-		ui8_kt_chunk = 0;
 		inforeget.index =0;
-		test="";
+		
 		SerialDEBUG.print(F("\n"));
 		SerialDEBUG.print(F("name reget ="));
 		SerialDEBUG.println(String(inforeget.name_tofind));
 		SerialDEBUG.print(F("chunk reget ="));
 		SerialDEBUG.println(inforeget.chunk);
-		ui8_comess=0;
 	}
-
-	else if(inforeget_setting.status_set == 0 && ui8_kt_chunk_header == 1)
-	{
-		
-		Serial.println("nhay vao prefixTopic");
-		String strtam = doc["prefixTopic"].as<String>();
-		Serial.println(strtam);
-		if(strtam == inforeget_setting.name_topic)
-		{
-			inforeget_setting.index = 1;
-			ui8_kt_chunk_header=0;
-			ui8_comess=0;
-			SerialDEBUG.println("KHONG XU LY");
-			return;
-		}
-		strtam.toCharArray(inforeget_setting.name_topic, 24);
-		SerialDEBUG.print(F("name topic ="));
-		SerialDEBUG.println(String(inforeget_setting.name_topic));
-		inforeget_setting.status_set = 1;
-		inforeget_setting.index = 0;
-		ui8_kt_chunk_header = 0;
-		test="";
-		ui8_comess=0;
-		// if(millis()>u32check_firmware)
-		// {
-		// 	u32check_firmware=millis() + 5000;
-		// }
-	}
-
-	else if(ui8_kt_sniff == 1)
-	{
-		String strtam = doc["SNIFF"].as<String>();
-		Serial.print("gia trị của sniff: ");
-		Serial.println(strtam);
-		if(strtam =="1")
-		{
-			// inforeget_sniff.index=1;
-			Serial.println("bat sniff len nhe");
-			start_log();
-		}
-
-		// else if(strtam == "0")
-		// {
-		// 	Serial.println("tat sniff len nhe");
-		// 	end_log();
-		// }
-		// test_sniff="";
-		// inforeget_sniff.status_set=1;
-		ui8_kt_sniff=0;
-		ui8_comess=0;
-	}
-
-	else if(ui8_format_disk==1)
-	{
-		String strtam = doc["format"].as<String>();
-		Serial.print("gia tri cua format: ");
-		if(strtam =="1")
-		{
-			formatdisk_func();
-		}
-		ui8_format_disk=0;
-		ui8_comess=0;
-	}
-
-	else if(ui8_luafw_printer == 1)
-	{
-		String strtam = doc["printer"].as<String>();
-		Serial.print("gia tri cua PRINTER: ");
-		// Serial.println(strtam);
-		kt_fwversion=strtam;
-		Serial.println(kt_fwversion);
-		u32check_firmware = millis() + 1000;
-		ui8_luafw_printer=0;
-		ui8_comess=0;
-	}
-
-	else if(ui8_upfw_barcode==1)
-	{
-		String strtam = doc["barcode"].as<String>();
-		Serial.print("gia tri cua BARCODE: ");
-		Serial.println(strtam);
-		if(strtam == "1")
-		{
-			u32check_firmware = millis() + 1000;
-			
-		}
-		ui8_upfw_barcode=0;
-		ui8_comess=0;
-	}
-	else if(ui8_upfw_server==1)
-	{
-		String strtam = doc["server"].as<String>();
-		Serial.print("gia tri cua SERVER: ");
-		Serial.println(strtam);
-		if(strtam == "1")
-		{
-			u32check_firmware = millis() + 1000;
-			
-		}
-
-		ui8_upfw_server=0;
-		ui8_comess=0;
-	}
-
-	/*LỆNH RESET ESP32 TỪ GỬI LỆNH MQTT*/
-	else if(ui8_rs_server==1)
-	{
-		String strtam = doc["reset_server"].as<String>();
-		Serial.print("gia tri cua reset server: ");
-		Serial.println(strtam);
-		if(strtam=="1")
-		{
-			ESP.restart();
-		}
-		ui8_rs_server=0;
-		ui8_comess=0;
-	}
-
-	else if(ui8_rs_printer==1)
-	{
-		String strtam = doc["reset_printer"].as<String>();
-		Serial.print("gia tri cua reset printer: ");
-		Serial.println(strtam);
-		if(strtam=="1")
-		{
-			 ui32_timeout_checkprinter = millis() + 1000; 
-		}
-		ui8_rs_printer=0;
-		ui8_comess=0;
-	}
-
-	else if(ui8_rs_barcode==1)
-	{
-		String strtam = doc["reset_barcode"].as<String>();
-		Serial.print("gia tri cua reset barcode: ");
-		Serial.println(strtam);
-		if(strtam=="1")
-		{
-			//  ui32_timeout_checkprinter = millis() + 1000; 
-			
-			server_modem.busy=0;
-			// uint32_t ui32_timeout_thoat = millis() + 1500;
-			// ui8_checkbarcode_landau=0;
-			// while(ui8_checkbarcode_landau==0 && ui32_timeout_thoat>millis())
-			// {
-			// 	// Serial.println("GET CODE");
-			// 	SerialToBarcodeModem.println("#GET$");
-			// 	check_serial_qcode_Scanner();
-			// 	server_modem.busy=1;
-			// }
-			Serial.println("RESET BARCODE");
-			/*reset barcode here*/
-			digitalWrite(RESET_BARCODE,0);
-			delay(100);
-			digitalWrite(RESET_BARCODE,1);
-
-			SerialToBarcodeModem.println("#GET$");
-			check_serial_qcode_Scanner();
-		}
-		server_modem.busy=1;
-		ui8_rs_barcode=0;
-		ui8_comess=0;
-	}
-	/*LỆNH RESET ESP32 TỪ GỬI LỆNH MQTT*/
-
 	else
 	{
-		ui8_comess=0;
 		SerialDEBUG.print(F("busy, ignore this cmd \n"));
 	}
-		
-}
 
+}
 
 /*------------------------------------MQTT FUNTIONS END------------------------------------------------*/
 
@@ -10564,13 +7331,12 @@ check_format_disk
 điều kiện format disk:
 	-khác ngày
 	-không còn file để upload
-
+	
 	-trên 130 file
 */
 
 void check_format_disk()
 {
-	// if(ui8_busy_rec_printer==1) return;
 	if (ui8_force_format == 1)
 	{
 		if (millis() > u32_time_force_format)
@@ -10584,8 +7350,7 @@ void check_format_disk()
 	if (upload_manager_info.mid < upload_manager_info.tot) return;
 	if (upload_manager_info.mode == 1) return;
 	
-	// if (upload_manager_info.tot > max_file_save -1)
-	if (upload_manager_info.tot > 40)
+	if (upload_manager_info.tot > max_file_save -1)
 	{
 		Serial.println(F("Format cause file reach memory"));
 		formatdisk_func();		
@@ -10599,1255 +7364,6 @@ void check_format_disk()
 			formatdisk_func();
 			SSD_info.last_day = SSD_info.new_day;			
 			spiff_putSSD_info(name_disk_info, &SSD_info);
-			ui8_reset_box=1;
 		}
 	}
 }
-
-
-
-
-/*-------------------------------FUNCTIONS DANH THEM VAO--------------------*/
-void init_STM32_printer()
-{
-	device_upgrade.deviceselect=UPDATE_PRINTER;
-	FlashMode();
-	ui8_init_stm32_printer=1;
-	for(int i =0;i<3;i++)
-	{
-		Serial1.write(STM32INIT);		
-		uint32_t u32tam = millis() + 4000;
-		while (!Serial1.available())
-		{
-			if(millis() >u32tam)
-			{
-				SerialDebug.println("chip no respone timeout");
-				ui8_check_kiemtraupcode=0;
-				ui8_init_stm32_printer=0;
-				break;
-			}
-		}
-
-		if(millis() < u32tam)
-		{
-			SerialDebug.println("chip has respone");			
-			i=10;
-			ui8_dem_solanketnoi_printer++;
-			if(ui8_dem_solanketnoi_printer >= 3)
-			{
-				Serial.println("ngung");
-				ui8_dem_solanketnoi_printer=0;
-			}
-			break;
-		}
-
-	}
-
-	// Serial.println(ui8_dem_solanketnoi_printer);
-	/*init chip*/
-	stringtmp = "ERROR";
-		
-	while (Serial1.available())
-	{
-		rdtmp = Serial1.read();
-
-		if (rdtmp == STM32ACK)
-		{
-			stringtmp = STM32_CHIPNAME[stm32GetId()];
-			res_printer =1;
-			SerialDebug.print("stringtmp = ");
-			SerialDebug.println(stringtmp);
-		}		
-	}
-	if(res_printer==1) 
-	{
-		ui8_check_kiemtraupcode=0;
-		ui8_upload_codeSTM32=1;
-		ui8_init_stm32_printer=0;
-	}
-}
-// int m =0;
-
-void init_STM32_barcode()
-{
-	device_upgrade.deviceselect=UPDATE_BARCODE;
-	FlashMode();
-	ui8_init_stm32_barcode=1;
-	for(int i =0;i<3;i++)
-	{
-		Serial1.write(STM32INIT);		
-		uint32_t u32tam = millis() + 4000;
-		while (!Serial1.available())
-		{
-			if(millis() >u32tam)
-			{
-				SerialDebug.println("chip no respone timeout");				
-				break;
-			}
-		}
-
-		if(millis() < u32tam)
-		{
-			SerialDebug.println("chip has respone");			
-			i=10;
-			ui8_dem_solanketnoi_barcode++;
-			if(ui8_dem_solanketnoi_barcode >= 3)
-			{
-				Serial.println("ngung barcode");
-				ui8_dem_solanketnoi_barcode=0;
-			}
-			break;
-		}
-
-	}
-
-	Serial.println(ui8_dem_solanketnoi_barcode);
-	/*init chip*/
-	stringtmp = "ERROR";
-		
-	while (Serial1.available())
-	{
-		rdtmp = Serial1.read();
-
-		if (rdtmp == STM32ACK)
-		{
-			stringtmp = STM32_CHIPNAME[stm32GetId()];
-			res_barcode = 1;
-			// ui8_uploadfile_STM32_barcode=0;
-			// ui8_upload_codeSTM32_barcode = 1;
-			SerialDebug.print("stringtmp = ");
-			SerialDebug.println(stringtmp);
-		}		
-	}
-
-	if(res_barcode==1)
-	{
-		ui8_uploadfile_STM32_barcode=0;
-		ui8_upload_codeSTM32_barcode=1;
-		ui8_init_stm32_barcode = 1;
-	}	
-}
-void upload_fw_STM32_printer()
-{
-	/*------------------------SAVE FILE SU DUNG ETHERNET--------------------*/
-	if(ui8_update_fw_eth==1 && ui8_update_eth_esp32 == 1)
-	{
-		save_fileOTA_ETHERNET(mysclient,file_update_eth_esp32);
-		ui8_update_fw_eth=0;   
-		ui8_update_eth_esp32=0;
-	}
-
-	else if(ui8_update_fw_eth==1 && ui8_update_eth_STM32 == 1)
-	{
-		save_fileOTA_ETHERNET(mysclient_gsm,file_update_eth_stm32);
-		ui8_update_fw_eth=0;   
-		ui8_update_eth_STM32=0;
-	}
-	/*------------------------END SAVE FILE SU DUNG ETHERNET--------------------*/
-
-	/*------------------------SAVE FILE SU DUNG WIFI--------------------*/
-	if(ui8_ketnoi_github == 1)
-	{
-		if(dem_thatbai<=5)
-		{
-			if(ui8_ketnoithatbai == 1 || (ui8_ketnoithatbai==0 && ui8_ketnoithanhcong == 0))
-			{
-				// char duonglink_dow_printer[100];
-				// connected_server(sclient, test_root_ca, "raw.githubusercontent.com", 443, "Danh555/file_code/main/ITB_Printer_1M.bin");
-				char duonglink_dow_printer[100];
-				if(check_fw_printer=="")
-				{
-					// firmwareUpdate_4G(mysclient_gsm,"raw.githubusercontent.com",443,"Danh555/file_code/main/ITB_PrinterV3.4.3.bin");
-					connected_server(sclient, test_root_ca, "raw.githubusercontent.com", 443, "Danh555/file_code/main/ITB_PrinterV3.4.3.bin");
-				}
-
-				else
-				{
-					sprintf(duonglink_dow_printer,"Danh555/file_code/main/ITB_PrinterV%s.bin",check_fw_printer);
-					Serial.println(duonglink_dow_printer);
-					// firmwareUpdate_4G(mysclient_gsm,"raw.githubusercontent.com",443,duonglink_dow_printer);
-					connected_server(sclient, test_root_ca, "raw.githubusercontent.com", 443, duonglink_dow_printer);
-				}
-			}
-
-			if(ui8_ketnoithanhcong == 1)
-			{
-				ui8_update_fw_wifi=1;
-				ui8_update_fw_STM32=1;
-				ui8_ketnoi_github = 0;
-			}
-		}
-
-		else if(dem_thatbai>5)
-		{
-			dem_thatbai=0;
-			ui8_ketnoi_github = 0;
-			Serial.println("KHONG THE KET NOI TOI SEVER");
-		}
-		
-	}
-
-	if(ui8_update_fw_wifi==1 && ui8_update_fw_ESP32==1)
-	{
-		Serial.println("dang luu file cho ESP32");
-		save_file(sclient,file_update_wifi_esp32);
-		ui8_update_fw_wifi=0;
-		ui8_update_fw_ESP32=0;
-	}
-
-	else if(ui8_update_fw_wifi==1 && ui8_update_fw_STM32==1)
-	{
-		Serial.println("dang luu file cho STM32");
-		save_file(sclient,file_update_wifi_stm32);
-		Serial1.end();
-		Serial2.end();
-		// upload_code_STM32_printer();
-		// resetchip_printer();
-		// ui8_check_kiemtraupcode=1;
-		device_status.vs_printer[0] ='N';/* xóa version cũ, để cập nhật tên version mới */
-		device_status.vs_printer[1] ='O';/* xóa version cũ, để cập nhật tên version mới */
-		device_status.vs_printer[2] ='T';/* xóa version cũ, để cập nhật tên version mới */
-		device_status.vs_printer[3] ='\0';/* xóa version cũ, để cập nhật tên version mới */
-		u32_time_resend_opu = millis() + 10*60*1000;/*sau 10' gửi thông tin chung lên server*/
-		ui8_check_kiemtraupcode = 1;
-		ui8_update_fw_wifi = 0;
-		ui8_update_fw_STM32 = 0;
-	}
-	/*------------------------END SAVE FILE SU DUNG WIFI--------------------*/
-
-	/*------------------------SAVE FILE SU DUNG 4G--------------------*/
-	if(ui8_ketnoi_github_4G == 1)
-	{
-		server_modem.busy = 1;
-		select_uart(UART_4G);
-		delay(1);
-		char duonglink_dow_printer[100];
-		if(check_fw_printer=="")
-		{
-			firmwareUpdate_4G(mysclient_gsm,"raw.githubusercontent.com",443,"Danh555/file_code/main/ITB_PrinterV3.4.3.bin");
-		}
-
-		else
-		{
-			sprintf(duonglink_dow_printer,"Danh555/file_code/main/ITB_PrinterV%s.bin",check_fw_printer);
-			Serial.println(duonglink_dow_printer);
-			firmwareUpdate_4G(mysclient_gsm,"raw.githubusercontent.com",443,duonglink_dow_printer);
-		}
-		
-		// if(device_status.vs_printer[2] == '1')
-		// {
-		// 	firmwareUpdate_4G(mysclient_gsm,"raw.githubusercontent.com",443,"Danh555/file_code/main/ICB_PrinterV1.1.0.bin");
-		// }
-
-		// else if(device_status.vs_printer[2] == '2')
-		// {
-		// 	firmwareUpdate_4G(mysclient_gsm,"raw.githubusercontent.com",443,"Danh555/file_code/main/ITB_Printer_0.0.3.bin");
-		// }
-
-		// // if(device_status.vs_printer[2] == '3')
-		// else
-		// {
-		// 	firmwareUpdate_4G(mysclient_gsm,"raw.githubusercontent.com",443,"Danh555/file_code/main/ITB_Printer_1M.bin");
-		// }
-		
-		ui8_update_fw_4G_STM32=1;
-		ui8_update_fw_4G=1;
-		ui8_ketnoi_github_4G = 0;
-	}
-
-	if(ui8_update_fw_4G_STM32==1 && ui8_update_fw_4G==1)
-	{
-		Serial.println("dang luu file cho STM32");
-		save_fileOTA_4G(mysclient_gsm,file_update_wifi_stm32);
-		Serial1.end();
-		Serial2.end();
-		// upload_code_STM32_printer();
-		// resetchip_printer();
-		
-		// ui8_check_kiemtraupcode=1;
-		device_status.vs_printer[0] ='N';/* xóa version cũ, để cập nhật tên version mới */
-		device_status.vs_printer[1] ='O';/* xóa version cũ, để cập nhật tên version mới */
-		device_status.vs_printer[2] ='T';/* xóa version cũ, để cập nhật tên version mới */
-		device_status.vs_printer[3] ='\0';/* xóa version cũ, để cập nhật tên version mới */
-		u32_time_resend_opu = millis() + 10*60*1000;/*sau 10' gửi thông tin chung lên server*/
-		ui8_check_kiemtraupcode = 1;
-		ui8_update_fw_4G_STM32 = 0;
-		ui8_update_fw_4G = 0;
-		server_modem.busy = 0;
-	}
-	/*------------------------END SAVE FILE SU DUNG 4G--------------------*/
-	if(ui8_check_kiemtraupcode==1)
-	{
-		init_STM32_printer();
-	}
-
-	if(ui8_upload_codeSTM32==1)
-	{
-		upload_code_STM32_printer();
-		RunMode();
-		ui32_timeout_restart_esp32 = millis();
-		ui8_restart_esp32=1;
-		ui8_ketnoithanhcong=0;
-		ESP.restart();
-		ui8_upload_codeSTM32=0;
-		ui8_init_stm32_printer=0;
-		ui8_dangupdate_printer=0;
-
-	}
-
-
-	if(ui8_ketnoi_esp_4G==1)
-	{
-		server_modem.busy = 1;
-		select_uart(UART_4G);
-		delay(1);
-		firmwareUpdate_4G(mysclient_gsm,"raw.githubusercontent.com",443,"Danh555/file_code/main/MultiSerial.ino.bin");
-		ui8_ketnoi_esp_4G=0;
-		ui8_update_esp_4G = 1;
-	}
-
-	if(ui8_update_esp_4G==1)
-	{
-		Serial.println("dang luu file cho ESP32");
-		save_fileOTA_4G(mysclient_gsm,"/file_update_4g_esp32.bin");
-		// ui8_update_esp_4G=0;
-		// ui8_haynap_esp=1;
-	}
-
-	if(ui8_haynap_esp==1)
-	{
-		update_ESP32_SPIFFS_4G(mysclient_gsm,"/file_update_4g_esp32.bin");
-		ui8_haynap_esp=0;
-	}
-
-}
-
-void upload_code_STM32_barcode()
-{
-	if(ui8_ketnoi_github_4G_barcode == 1)
-	{
-		server_modem.busy = 1;
-		select_uart(UART_4G);
-		delay(1);
-		// firmwareUpdate_4G(mysclient_gsm,"raw.githubusercontent.com",443,"Danh555/file_code/main/STM32F107RCT6.bin");
-		// firmwareUpdate_4G(mysclient_gsm,"raw.githubusercontent.com",443,"Danh555/file_code/main/ICB_Barcode.bin");
-		// ui8_update_fw_4G_STM32=1;
-		char duonglink_dow_Barcode[100];
-		sprintf(duonglink_dow_Barcode,"Danh555/file_code/main/ICB_BarcodeV%s.bin",check_fw_upbarcode);
-		Serial.println(duonglink_dow_Barcode);
-		if(system_connection_mode==BYSIM4G)
-		{
-			firmwareUpdate_4G(mysclient_gsm,"raw.githubusercontent.com",443,duonglink_dow_Barcode);
-		}
-		else if(system_connection_mode==BYWIFI)
-		{
-			if(check_fw_upbarcode=="")
-			{
-				connected_server(sclient, test_root_ca, "raw.githubusercontent.com", 443, "Danh555/file_code/main/ICB_BarcodeV2.0.3.bin");	
-			}
-			else
-			{
-				connected_server(sclient, test_root_ca, "raw.githubusercontent.com", 443, duonglink_dow_Barcode);
-			}
-			
-		}
-		ui8_update_fw_4G=1;
-		ui8_ketnoi_github_4G_barcode=0;
-		ui8_update_fw_4G_STM32_barcode = 1;
-	}
-
-	if(ui8_update_fw_4G == 1 && ui8_update_fw_4G_STM32_barcode == 1)
-	{
-		Serial.println("dang luu file cho STM32");
-		save_fileOTA_4G(mysclient_gsm,file_update_wifi_stm32);
-
-		Serial1.end();
-		Serial2.end();
-		// device_status.vs_printer[0] ='N';/* xóa version cũ, để cập nhật tên version mới */
-		// device_status.vs_printer[1] ='O';/* xóa version cũ, để cập nhật tên version mới */
-		// device_status.vs_printer[2] ='T';/* xóa version cũ, để cập nhật tên version mới */
-		// device_status.vs_printer[3] ='\0';/* xóa version cũ, để cập nhật tên version mới */
-		u32_time_resend_opu = millis() + 10*60*1000;/*sau 10' gửi thông tin chung lên server*/
-		ui8_update_fw_4G = 0;
-		ui8_update_fw_4G_STM32_barcode = 0;
-		ui8_uploadfile_STM32_barcode = 1;
-		server_modem.busy = 0;
-	}
-
-	if(ui8_uploadfile_STM32_barcode==1)
-	{
-		select_uart(UART_BARCODE);
-		delay(2);
-		Serial.println("nhay vo uploadfile stm32");
-		init_STM32_barcode();
-	}
-
-	if(ui8_upload_codeSTM32_barcode == 1)
-	{
-		Serial.println("up code stm32 barcode");
-		upload_code_STM32barcode();
-		// reset_chip();
-		RunMode();
-		// delay(1);
-		server_modem.busy = 1;
-		select_uart(UART_4G);
-		ui8_upload_codeSTM32_barcode=0;
-		ui8_dangupdate_barcode=0;
-		ESP.restart();
-	}
-}
-
-void check_dataluu()
-{
-	if(String(systeminfo.save_file_config) == "EEPROM")
-	{
-		Serial.println("luu EEPROM nha");
-		ui8_kiemtra_biensavefile = 1;
-	}
-
-	else
-	{
-		Serial.println("luu SD CARD");
-		ui8_kiemtra_biensavefile = 0;
-		if(!SD.begin()){
-        Serial.println("Card Mount Failed");
-        return;
-    }
-    uint8_t cardType = SD.cardType();
-
-    if(cardType == CARD_NONE){
-        Serial.println("No SD card attached");
-        return;
-    }
-
-    Serial.print("SD Card Type: ");
-    if(cardType == CARD_MMC){
-        Serial.println("MMC");
-    } else if(cardType == CARD_SD){
-        Serial.println("SDSC");
-    } else if(cardType == CARD_SDHC){
-        Serial.println("SDHC");
-    } else {
-        Serial.println("UNKNOWN");
-    }
-
-    uint64_t cardSize = SD.cardSize() / (1024 * 1024);
-    Serial.printf("SD Card Size: %lluMB\n", cardSize);
-	}
-}
-
-/*PHAN CODE DANH THEM*/
-void connect_MQTT_ATCMD()
-{
-	// if(millis() < u32_time_connected_mqtt) 
-	// {
-	// 	return;
-	// }
-
-	// connected_MQTT("offline",mynamedevice);
-	// server_modem.busy = 1;
-	// select_uart(UART_4G);
-	// kt_connect = gsm_send_serial("AT+CMQTTCONNECT=0,\"tcp://mqtt.altacloud.biz:1883\",300,1,\"altamedia\",\"Altamedia\"", 500);
-	// "AT+CMQTTTOPIC=0,"+(String) (size_channel))
-
-	char domain_name[100];
-	char username[100];
-	char password[100];
-	// init_MQTT();
-	sprintf(domain_name,"\"tcp://%s:1883\"",systeminfo.name_domain);
-	sprintf(username,"\"%s\"",systeminfo.username_mqtt);
-	sprintf(password,"\"%s\"",systeminfo.password_mqtt);
-	Serial.println(domain_name);
-	Serial.println(username);
-	Serial.println(password);
-	// send_at("AT+CMQTTCONNECT=0,"+(String) (domain_name)+",64800,0,"+(String) (username)+","+(String) (password));
-	// connectToMQTTBroker(domain_name, username, password);
-	// kt_connect=wRespon(500);
-	kt_connect = sendATCommand("AT+CMQTTCONNECT=0,"+(String) (domain_name)+",180,0,"+(String) (username)+","+(String) (password),500);
-	Serial.println(kt_connect);
-	if(kt_connect == 1)
-	{
-		// ui8_ketnoimqtt_ok=1;
-		// sub_topic();
-		Serial.println("ket noi duoc roi");
-		// connect_mqtt();// nho mo lai nha
-	}
-
-	else if(kt_connect==0)
-	{
-		// ui8_ketnoimqtt_ok=0;
-		Serial.println("ko ket noi duoc roi");
-	}
-
-	// else
-	// {
-
-	// }
-	// u32_timeout_checkinfo_printer = millis() + 2000;
-	// u32_timeout_checkstatus_printer = millis() + 1500;
-	// u32_timeout_checkserinumber_printer = millis() + 1000;
-}
-
-void response_Manufacturer_STM()
-{
-	Serial2.write("#G 1$");
-}
-
-void response_Product_STM()
-{
-	Serial2.write("#G 2$");
-}
-
-void response_Serialnumber_STM()
-{
-	Serial2.write("#G 3$");
-}
-
-void start_log()
-{
-	Serial2.write("#S 1$");
-	device_status.log_debug=1;
-	// ui32_timeout_printsniff = millis() + TG_CHECK_SNIFF;
-	Serial.println("#S 1$");
-}
-
-void end_log()
-{
-	Serial2.write("#S 2$");
-	Serial.println("#S 2$");
-	inforeget_sniff.status_set=0;
-}
-
-
-void check_manufacturer()
-{
-	if(millis() < u32_timeout_checkinfo_printer)
-	{
-		return;
-	}
-	// if(server_modem.busy==0) return;
-	if(ui8_truycap_mqtt == 1) return;
-	if(ui8_dangin==1 || ui8_busy_rec_printer==1)
-	{
-		u32_timeout_checkinfo_printer = millis() + 6000;
-		return;
-	}
-	// if(ui8_khoicheck_manufacturer == 1) return;
-	// Serial.println("vo check manufacturer");
-	response_Manufacturer_STM();
-	u32_timeout_checkinfo_printer = millis() + 6000;
-	// dem_solan_checkmanu++;
-	// if(dem_solan_checkmanu >= 3)
-	// {
-	// 	ui8_check_manufacturer=1;
-	// }
-}
-
-void check_product_printer()
-{
-	if(millis() < u32_timeout_checkstatus_printer)
-	{
-		return;
-	}
-	if(ui8_truycap_mqtt == 1) return;
-	if(ui8_dangin==1 || ui8_busy_rec_printer==1)
-	{
-		u32_timeout_checkstatus_printer = millis() + 5500;
-		return;
-	}
-	// if(server_modem.busy==0) return;
-	// if(millis() < u32_timeout_checkinfo_printer)
-	// {
-	// 	return;
-	// }
-	// if(ui8_khoicheck_product_printer == 1) return;
-	response_Product_STM();
-	u32_timeout_checkstatus_printer = millis() + 5500;
-	// dem_solan_checkstatus_printer++;
-	// if(dem_solan_checkstatus_printer >= 3)
-	// {
-	// 	ui8_check_product_printer = 1;	
-	// }
-}
-
-void check_serialnmber_printer()
-{
-	if(millis() <= u32_timeout_checkserinumber_printer)
-	{
-		return;
-	}
-	if(ui8_dangin==1 || ui8_busy_rec_printer==1)
-	{
-		u32_timeout_checkserinumber_printer = millis() + 5000;
-		return;
-	}
-	if(ui8_truycap_mqtt == 1) return;
-	// if(server_modem.busy==0) return;
-	// if(millis() < u32_timeout_checkinfo_printer)
-	// {
-	// 	return;/
-	// }
-
-	// if(ui8_khoicheck_serialnumber_printer == 1) return;
-	response_Serialnumber_STM();
-	u32_timeout_checkserinumber_printer = millis() + 5000;
-	// dem_solan_checkserialnumber_printer++;
-	// if(dem_solan_checkserialnumber_printer >= 3)
-	// {
-	// 	ui8_check_serialnumber_printer = 1;
-	// }
-}
-
-void process_get_header_topicmqtt()
-{
-	// if(ui8_check_disconnect_mqtt==1)
-	// {
-	// 	Serial.println("dang disconect can connect lai");
-	// 	ui32_timeout_disconnect_mqtt=millis()+5000;
-	// 	ui8_check_disconnect_mqtt=0;
-	// }
-	if(ui8_truycap_mqtt==1) return;
-	String name_topic = "";
-	String name_tam = "";
-	if(inforeget_setting.status_set == 0) return;
-	if(server_modem.busy == 0) return;
-
-	#ifndef DF_MQTT_UP_4G
-		if (!clientmqtt.connected()) return;
-	#endif
-
-	if(inforeget_setting.index == 0)
-	{
-		// for(int i=0; i<=strlen(inforeget_setting.name_topic); i++)
-		// {
-		// 	name_topic += inforeget_setting.name_topic;
-		// }
-		// int j = name_topic.indexOf('<');
-		// int i = name_topic.indexOf('>');
-		// name_tam = name_topic;
-		Serial.println(String(inforeget_setting.name_topic));
-		// name_tam.toCharArray(name_topic_header,100);
-		// Serial.println(String(name_topic_header));
-		EEPROM.put(0, inforeget_setting.name_topic);
-		EEPROM.commit();
-		sprintf(systeminfo.header_ID,"%s",inforeget_setting.name_topic);
-		Serial.print("header_ID SAU KHI DOI: ");
-		Serial.println(String(systeminfo.header_ID));
-		// ESP.restart();
-		// ui8_candisconnectmqtt=1;
-		// ui32_timeout_disconnect_mqtt=millis()+10;
-		disconnect_MQTT();
-		setup_mqtt_atcmd(systeminfo.name_domain,systeminfo.username_mqtt,systeminfo.password_mqtt,inforeget_setting.name_topic,mynamedevice);
-		ui8_check_disconnect_mqtt=0;
-		ui32_timeout_check_set = millis() + 10000;
-		inforeget_setting.index=1;
-		inforeget_setting.status_set=0;
-		
-	}
-	// ui32_timeout_check_barcode = millis() + 60000;
-	ui8_kiemtra_header = 1;
-	u32_time_resend_opu = millis() + 60*10*1000;
-}
-
-void xuly_info_printer()
-{
-
-	if(ui8_checkketnoi_manufacturer==1 && ui8_checkketnoi_product_printer == 1 && ui8_checkketnoi_serialnumber_printer == 1)
-	{
-		u32_timeout_checkinfo_printer = millis() + 30000;
-		u32_timeout_checkstatus_printer = millis() + 29500;
-		u32_timeout_checkserinumber_printer = millis() + 29000;
-		ui8_check_manufacturer=0;
-		ui8_check_product_printer=0;
-		ui8_check_serialnumber_printer=0;
-		ui8_checkketnoi_manufacturer=0;
-		ui8_checkketnoi_product_printer=0;
-		ui8_checkketnoi_serialnumber_printer=0;
-	}
-
-	// if(ui8_guiinfo_manu == 1 && ui8_guistatus_manu==1 && ui8_guiseri_manu==1)
-	// {
-	// 	u32_time_resend_opu = millis() + 15000;
-	// 	ui8_guiinfo_manu = 0;
-	// 	ui8_guistatus_manu = 0;
-	// 	ui8_guiseri_manu = 0;
-	// }
-}
-
-void chuyen_mode()
-{
-	if (server_modem.busy == 1)
-	{
-		select_uart(UART_4G);
-	}
-	else 
-	{
-		select_uart(UART_BARCODE);
-	}
-}
-
-void SWITCH_BARCODE()
-{
-	if(ui8_dangconnect_mqtt==1 && (millis() > ui32_timeout_check_barcode))
-	{
-		Serial.println("cb cap nhat barcode");
-		/*reset other device*/
-		digitalWrite(RESET_BARCODE,0);
-		delay(300);
-		digitalWrite(RESET_BARCODE,1);
-		server_modem.busy=0;
-		ui8_truycap_mqtt=1;
-		// ui32_timeout_check_barcode = millis() + 2000;
-		ui8_dangconnect_mqtt=0;
-	}
-}
-
-void connect_MQTT()
-{
-	if (system_connection_mode!=BYSIM4G)
-	{
-		clientmqtt.loop();
-		if (!clientmqtt.connected()||ui8_kiemtra_header == 1) 
-		{
-			// Serial.println("mat ket noi mqtt");
-			// server_modem.busy=1;
-			if (ui8_busy_rec_printer != 1)
-			{
-				connect_mqtt();
-			}
-			ui8_kiemtra_header=0;
-		}
-	}
-
-	else 
-	{
-		// if(ui8_truycap_mqtt == 0 && (millis() > ui32_timeout_connectmqtt))
-		// {
-			// clientmqtt.loop();
-			if(ui8_check_disconnect_mqtt==1||ui8_kiemtra_header == 1)
-			{
-				ui8_ketnoithanhcong_mqtt=1;
-				if (ui8_busy_rec_printer != 1)
-				{
-					init_MQTT(inforeget_setting.name_topic,mynamedevice);
-					// send_at("AT+CMQTTCFG=\"checkUTF8\",0,0");
-					connect_MQTT_ATCMD();
-
-				}
-				u32_timeout_checkinfo_printer = millis() + 2000;
-				u32_timeout_checkstatus_printer = millis() + 1500;
-				u32_timeout_checkserinumber_printer = millis() + 1000;
-				if(ui8_ketnoimqtt_ok==1)
-				{
-					ui8_kiemtra_header=0;
-					ui8_check_disconnect_mqtt=0;
-					ui8_ketnoimqtt_ok=0;
-				}
-
-				
-			}
-			// subscribeTopics(au_topic_resetserver);
-			// connect_mqtt();// nho mo lai nha
-			
-			// if(ui8_ketnoimqtt_ok==0)
-			// {
-			// 	checkForIncomingMessages();
-			// }
-			// if (!clientmqtt.connected()||ui8_kiemtra_header == 1) 
-			// {
-			// 	// Serial.println("mat ket noi mqtt");
-			// 	// server_modem.busy=1;
-			// 	ui8_ketnoithanhcong_mqtt=0;
-			// 	// server_modem.busy=1;
-			// 	// select_uart(UART_4G);
-			// 	// disconnect_MQTT();
-			// 	if (ui8_busy_rec_printer != 1)
-			// 	{
-					// connect_mqtt();// nho mo lai nha
-			// 	}
-			// 	u32_timeout_checkinfo_printer = millis() + 2000;
-			// 	u32_timeout_checkstatus_printer = millis() + 1500;
-			// 	u32_timeout_checkserinumber_printer = millis() + 1000;
-			// 	// ui8_candisconnectmqtt=1;
-			// 	// ui32_timeout_disconnect_mqtt = millis() + TG_DISCONNECT_MQTT;
-			// 	ui8_kiemtra_header=0;
-			// }
-		// }
-	}
-}
-
-void xuly_thongtin_mayin()
-{
-	if(ui8_check_manufacturer != 1)
-	{
-		check_manufacturer();
-	}
-	// check_thongso_printer();
-	if(ui8_check_serialnumber_printer != 1)
-	{
-		check_serialnmber_printer();
-	}
-
-	if(ui8_check_product_printer != 1)
-	{
-		check_product_printer();
-	}
-}
-
-void check_reset_printer()
-{
-	if(ui32_timeout_checkprinter > millis())
-	{
-		// Serial.println("chua du thoi gian");
-		return;
-	}
-
-	// if(u32_time_resend_opu<millis())
-	// {
-	// 	u32_time_resend_opu = millis() + 30000;
-	// 	return;
-	// }
-	if(ui32_timeout_checkprinter < millis())
-	{
-		Serial.println("reset printer");
-		// ui8_candisconnectmqtt=0;
-		// ui32_timeout_disconnect_mqtt=millis() + 60*1000;
-		
-		// if(ui8_check_disconnect_mqtt!=1)
-		// {
-		// 	Serial.println("nhay vao disconnected");	
-		// 	disconnect_MQTT();
-		// 	ui8_check_disconnect_mqtt=1;
-		// }	
-		ui32_timeout_checkprinter=millis() + TG_SLEEP_PRINTER;
-		digitalWrite(RESET_PRINTER,0);
-		delay(100);
-		digitalWrite(RESET_PRINTER,1);	
-	}
-}
-
-void sleep_box()
-{
-	if(ui32_timeout_checksleepbox > millis()||ui8_chophep_reset==0)
-	{
-		// Serial.println("chua du thoi gian");
-		return;
-	}
-	
-	if(ui32_timeout_checksleepbox < millis() && ui8_chophep_reset==1)
-	{
-		Serial.println("ngu thoi");
-		// ui32_timeout_checksleepbox = millis() + TG_SLEEP_BOX;
-		ESP.restart();
-		ui8_chophep_reset=0;
-	}
-}
-
-void print_sniff()
-{
-	if(inforeget_sniff.index==1)
-	{
-		if(ui32_timeout_printsniff < millis())
-		{
-			end_log();
-			inforeget_sniff.index=0;
-		}
-	}
-}
-
-// void check_khinaocheckota()
-// {
-// 	int luachon_kq = FirmwareVersionCheck_4G(mysclient_gsm,"raw.githubusercontent.com",443,"Danh555/file_code/main/file_version.txt",mynamedevice,versionname,device_status.vs_printer,device_status.vs_barcode);
-// 	if(luachon_kq != 0)
-// 	{
-// 		disconnect_MQTT();
-// 	}
-// }
-
-void check_disconnectmqtt()
-{
-	// if(ui8_busy_rec_printer == 1)
-	// {
-	// 	ui8_candisconnectmqtt=1;
-	// 	ui32_timeout_disconnect_mqtt=millis();
-	// }
-
-	// if(ui8_connect_mqtt_atcmd==1)
-	// {
-	// 	ui8_candisconnectmqtt=0;
-	// 	return;
-	// }
-	if(ui8_candisconnectmqtt==1)
-	{
-		if(ui32_timeout_disconnect_mqtt<=millis())
-		{
-			ui8_ketnoimqtt_ok=0;
-			disconnect_MQTT();
-			Serial.println("nhay vao disconnected");
-			ui8_check_disconnect_mqtt=1;
-			ui32_timeout_check_barcode = millis() + 2000;
-			// ui8_sim_erro=1;
-			// ui32_timeout_resetsim=millis()+30000;
-			ui8_candisconnectmqtt=0;
-		}
-	}
-}
-
-void sleep_nguon()
-{
-	int docreadpower = analogRead(READ_POWER);
-	if(docreadpower>=100)
-	{
-		ui32_timeout_checkpower=millis() + TG_KICHPIN;	
-		ui8_solan_kt=0;
-		// ui8_check_power=0;
-	}	
-
-	else if(docreadpower<100 && ui8_solan_kt==0)
-	{
-		ui8_check_power=1;
-		ui8_solan_kt=1;
-	}
-}
-
-void reset_sim()
-{
-	if(ui8_sim_erro==0 ||  mqttConnected==true || ui8_busy_rec_printer == 1)
-	{
-		// if(ui16_counterfail!=0 && ui8_uploi==1)
-		// {
-		// 	ui32_time_allow_upfile = millis() + 500;
-		// 	ui8_uploi=0;
-			
-		// }
-		if(ui8_busy_rec_printer==1)
-		{
-			ui32_timeout_resetsim=millis()+20000;
-		}
-		return;
-	}
-	 	
-	if(ui32_timeout_resetsim <= millis())
-	{
-		Serial.println("reset sim nha");
-		ui8_dem_sl_ketnoi_4g=0;
-		setup_modem();
-		ui32_timeout_resetsim=millis()+60000;
-		// ui8_sim_erro=0;
-	}
-	
-}
-
-void check_reset_box()
-{
-	if(ui8_reset_box==1)
-	{
-		// ESP.restart();
-		ui8_chophep_reset=1;
-		ui32_timeout_checksleepbox = millis() + 2000;
-		ui8_reset_box=0;
-		
-	}
-}
-
-void setup_pp()
-{
-	 // Khởi động modem
-	// modem.restart();
-	Serial.println("Đang tìm mạng...");
-
-	if (!modem.waitForNetwork(50000)) {
-		Serial.println("Không tìm thấy mạng.");
-		return;
-	}
-
-	Serial.println("Đã thấy mạng. Bắt đầu PPP...");
-
-	// Thay đổi APN theo nhà mạng của bạn:
-	const char apn[] = "v-internet"; // Viettel: v-internet, Vina: internet, Mobi: m-wap
-
-	if (!modem.gprsConnect(apn, "", "")) {
-		Serial.println("Không kết nối được mạng di động (PPP).");
-		return;
-	}
-
-	Serial.println("Đã kết nối Internet (PPP).");
-	Serial.print("IP cấp phát: ");
-	Serial.println(modem.localIP());
-}
-
-void saveToSPIFFS(const char* filename, const char* data) {
-  File file = SPIFFS.open(filename, FILE_WRITE);
-  if (!file) {
-    Serial.println("❌ Không thể mở file để ghi");
-    return;
-  }
-
-  size_t bytesWritten = file.write((const uint8_t*)data, strlen(data));
-  file.close();
-
-  Serial.printf("✅ Đã ghi %u byte vào %s\n", bytesWritten, filename);
-}
-
-void dayfile()
-{
-	unsigned long startTime = millis(); // Lấy thời gian bắt đầu
-	
-	// Mở file
-
-  const size_t fileSize = 200000;
-//   File file = SPIFFS.open("/data100kb.txt", FILE_WRITE);
-//   if (!file) {
-//     Serial.println("❌ Không thể tạo file");
-//     return;
-//   }
-
-  // Ghi từng khối nhỏ để tránh dùng quá nhiều RAM
-  const size_t chunkSize = 1024;
-  char buffer[chunkSize];
-  memset(buffer, 'C', chunkSize);
-
-  size_t written = 0;
-  while (written < fileSize) {      
-    size_t toWrite = min(chunkSize, fileSize - written);
-    // file.write((const uint8_t*)buffer, toWrite);
-    written += toWrite;
-  }
-
-//   file.close();
-  Serial.printf("✅ Đã ghi file %d byte thành công: /data100kb.txt\n", fileSize);
-
-
-	// File f = SPIFFS.open("/data100kb.txt", "r");
-	// if (!f) {
-	// 	Serial.println("Không mở được file");
-	// 	return;
-	// }
-	size_t contentLength = fileSize;
-  	Serial.println(contentLength);
-	
-	
-	// Tạo tên file theo số lần upload
-	String fileName = "data_testfile_lan" + String(uploadCounter) + ".txt";
-	
-	String boundary = "----ESP32Boundary";
-	String header = String("--") + boundary + "\r\n"
-					+ "Content-Disposition: form-data; name=\"fileToUpload\"; filename=\"" + fileName + "\"\r\n"
-					+ "Content-Type: application/octet-stream\r\n\r\n";
-	String footer = "\r\n--" + boundary + "--\r\n";
-	
-	if (!base_client_gsm.connect(host, port)) {
-		Serial.println("Không kết nối được tới server");
-		// f.close();
-		return;
-	}
-	Serial.println("Đã kết nối tới server");
-
-	// Gửi request line và headers
-	base_client_gsm.print(String("POST ") + serverPath + " HTTP/1.1\r\n");
-	base_client_gsm.print(String("Host: ") + host + "\r\n");
-	base_client_gsm.print("Connection: close\r\n");
-	base_client_gsm.print("Content-Type: multipart/form-data; boundary=" + boundary + "\r\n");
-
-	// Tổng độ dài body = header + file + footer
-	size_t totalLength = header.length() + contentLength + footer.length();
-	base_client_gsm.print("Content-Length: " + String(totalLength) + "\r\n\r\n");
-
-	// Gửi phần header multipart
-	base_client_gsm.print(header);
-
-	// // Stream file theo chunk 1024 byte
-	// const size_t bufSize = 1024;
-	// uint8_t buf[bufSize];
-	// while (size_t len = f.read(buf, bufSize)) {
-	// 	base_client_gsm.write(buf, len);
-	// }
-	// base_client_gsm.print(String(buffer));
-	// ======== GỬI DỮ LIỆU GIẢ TRỰC TIẾP TỪ RAM THEO CHUNK ========
-	size_t sent = 0;
-	while (sent < 200000) {
-	size_t toSend = min(chunkSize, fileSize - sent);
-	base_client_gsm.write((const uint8_t*)buffer, toSend);
-	sent += toSend;
-	}
-
-	// Gửi phần footer
-	base_client_gsm.print(footer);
-
-	// Đọc phản hồi
-	Serial.println("------ Server phản hồi ------");
-	while (base_client_gsm.connected() || base_client_gsm.available()) {
-		if (base_client_gsm.available()) {
-		String line = base_client_gsm.readStringUntil('\n');
-		Serial.println(line);
-		}
-	}
-	Serial.println("------ Kết thúc ------");
-	base_client_gsm.stop();
-	unsigned long endTime = millis();
-	Serial.print("Tổng thời gian gửi file: ");
-	Serial.print((endTime - startTime) / 1000.0);
-	Serial.println(" giây");
-}
-
-int guifile_pp(String data_get,const char* channel_)
-{
-	unsigned long startTime = millis(); // Lấy thời gian bắt đầu
-	size_t contentLength = data_get.length();
-
-
-
-	// Tạo tên file theo số lần upload
-	String fileName = String(channel_) + ".txt";
-	
-	String boundary = "----ESP32Boundary";
-	String header = String("--") + boundary + "\r\n"
-					+ "Content-Disposition: form-data; name=\"fileToUpload\"; filename=\"" + fileName + "\"\r\n"
-					+ "Content-Type: application/octet-stream\r\n\r\n";
-	String footer = "\r\n--" + boundary + "--\r\n";
-	
-	if (!base_client_gsm.connect(host, port)) {
-		Serial.println("Không kết nối được tới server");
-		// f.close();
-		return 0;
-	}
-	Serial.println("Đã kết nối tới server");
-
-	// Gửi request line và headers
-	base_client_gsm.print(String("POST ") + serverPath + " HTTP/1.1\r\n");
-	base_client_gsm.print(String("Host: ") + host + "\r\n");
-	base_client_gsm.print("Connection: close\r\n");
-	base_client_gsm.print("Content-Type: multipart/form-data; boundary=" + boundary + "\r\n");
-
-	// Tổng độ dài body = header + file + footer
-	size_t totalLength = header.length() + contentLength + footer.length();
-	base_client_gsm.print("Content-Length: " + String(totalLength) + "\r\n\r\n");
-	Serial.println("Content-Length: " + String(totalLength) + "\r\n\r\n");
-	// Gửi phần header multipart
-	base_client_gsm.print(header);
-
-	base_client_gsm.print(data_get);
-	// Gửi phần footer
-	base_client_gsm.print(footer);
-
-	// Đọc phản hồi
-	Serial.println("------ Server phản hồi ------");
-	String response = "";
-	while (base_client_gsm.connected() || base_client_gsm.available()) {
-		if (base_client_gsm.available()) {
-		String line = base_client_gsm.readStringUntil('\n');
-		Serial.println(line);
-		 response += line + "\n";  // Thêm dòng vào response (kèm newline)
-		}
-	}
-
-	// In ra toàn bộ phản hồi
-	// Serial.println("📨 Phản hồi từ server:");
-	// Serial.println(response);
-
-	// Kiểm tra thành công
-	response.toLowerCase();  // Đưa về chữ thường hết
-	if (response.indexOf("uploaded") >= 0) {
-	Serial.println("✅ Upload thành công!");
-	return 1;
-	} else {
-	Serial.println("❌ Upload thất bại hoặc server không trả về đúng định dạng.");
-	return 0;
-	}
-	Serial.println("------ Kết thúc ------");
-	base_client_gsm.stop();
-	unsigned long endTime = millis();
-	Serial.print("Tổng thời gian gửi file: ");
-	Serial.print((endTime - startTime) / 1000.0);
-	Serial.println(" giây");
-
-}
-
-
-int guifile_pp_theolaptrinh(String data_get, const char* channel_)
-{
-    unsigned long startTime = millis();
-
-    String boundary = "----ESP32Boundary";
-
-    // 🔥 Dữ liệu multipart cần gửi đúng theo API
-    String body = "";
-
-    body += "--" + boundary + "\r\n";
-    body += "Content-Disposition: form-data; name=\"PART\"\r\n\r\n";
-    body += "3\r\n";
-
-    body += "--" + boundary + "\r\n";
-    body += "Content-Disposition: form-data; name=\"PRINTER_MODEL\"\r\n\r\n";
-    body += "Epson-LX310\r\n";
-
-    body += "--" + boundary + "\r\n";
-    body += "Content-Disposition: form-data; name=\"PRINTER_BRAND\"\r\n\r\n";
-    body += "Epson\r\n";
-
-    body += "--" + boundary + "\r\n";
-    body += "Content-Disposition: form-data; name=\"VOUCHER_CODE\"\r\n\r\n";
-    body += "VN-INV-00045\r\n";
-
-    body += "--" + boundary + "--\r\n";
-
-    size_t contentLength = body.length();
-
-    Serial.println("=== BODY SEND ===");
-    Serial.println(body);
-
-    // ⭐ Gửi HTTPS raw (qua TinyGSM)
-    if (!base_client_gsm.connect(host, port)) {
-        Serial.println("❌ Không kết nối được tới server");
-        return 0;
-    }
-    Serial.println("✅ Đã kết nối tới server");
-
-    // ============================
-    // Gửi HTTP HEADER
-    // ============================
-    base_client_gsm.print(String("POST ") + serverPath + " HTTP/1.1\r\n");
-    base_client_gsm.print(String("Host: ") + host + "\r\n");
-    base_client_gsm.print("Connection: close\r\n");
-    base_client_gsm.print("X-API-KEY: 59ac5be1333a7b1247deb8f36609b25f41d781efbc7f06e7d485b04d8b3d9101\r\n");
-    base_client_gsm.print("Content-Type: multipart/form-data; boundary=" + boundary + "\r\n");
-    base_client_gsm.print("Content-Length: " + String(contentLength) + "\r\n\r\n");
-
-    // ============================
-    // Gửi BODY
-    // ============================
-    base_client_gsm.print(body);
-
-    // ============================
-    // Đọc phản hồi
-    // ============================
-    Serial.println("------ Server phản hồi ------");
-
-    String response = "";
-    while (base_client_gsm.connected() || base_client_gsm.available()) {
-        if (base_client_gsm.available()) {
-            String line = base_client_gsm.readStringUntil('\n');
-            Serial.println(line);
-            response += line + "\n";
-        }
-    }
-
-    response.toLowerCase();
-
-    if (response.indexOf("success") >= 0) {
-        Serial.println("✅ Gửi dữ liệu thành công!");
-        return 1;
-    } else {
-        Serial.println("❌ Thất bại. Server không trả success.");
-        return 0;
-    }
-
-    base_client_gsm.stop();
-
-    unsigned long endTime = millis();
-    Serial.print("⏱ Tổng thời gian gửi: ");
-    Serial.println((endTime - startTime) / 1000.0);
-}
-
-/*-------------------------------END FUNCTIONS DANH THEM VAO--------------------*/
-
