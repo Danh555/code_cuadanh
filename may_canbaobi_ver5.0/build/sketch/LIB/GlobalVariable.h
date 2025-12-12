@@ -1,3 +1,4 @@
+#line 1 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\LIB\\GlobalVariable.h"
 #include <HX711.h>
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
@@ -160,7 +161,7 @@ const long pauseTime = 5000;       // dừng giữa (ms)
 
 bool isPaused = false;
 unsigned long pauseStart = 0;
-float ui8_gioihan_do=0;
+uint8_t ui8_gioihan_do=0;
 uint8_t ui8_setting_gioihan=0;
 uint8_t ui8_hienthiled=0;
 uint8_t ui8_mode_calib=0;

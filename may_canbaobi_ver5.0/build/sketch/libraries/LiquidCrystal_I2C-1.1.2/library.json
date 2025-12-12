@@ -1,0 +1,16 @@
+#line 1 "E:\\1.Data\\1.AutoCad\\1_Nam 2025\\May thu bao nylon\\Code\\may_canbaobi_ver3.0\\libraries\\LiquidCrystal_I2C-1.1.2\\library.json"
+{
+  "name": "LiquidCrystal_I2C",
+  "keywords": "LCD, liquidcrystal, I2C",
+  "description": "A library for DFRobot I2C LCD displays",
+  "repository":
+  {
+    "type": "git",
+    "url": "https://github.com/marcoschwartz/LiquidCrystal_I2C.git"
+  },
+  "frameworks": "arduino",
+  "platforms":
+  [
+    "atmelavr"
+  ]
+}

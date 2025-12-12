@@ -166,6 +166,10 @@ uint8_t ui8_hienthiled=0;
 uint8_t ui8_mode_calib=0;
 uint8_t ui8_modedebug=0;
 uint8_t ui8_modeset_bat=0;
+uint8_t ui8_nut2_bam=0;
+uint8_t ui8_solan_bamnut_nut2=0;
+uint8_t ui8_increase=0;
+uint8_t ui8_decrease=0;
 
 int pos = 0;
 
