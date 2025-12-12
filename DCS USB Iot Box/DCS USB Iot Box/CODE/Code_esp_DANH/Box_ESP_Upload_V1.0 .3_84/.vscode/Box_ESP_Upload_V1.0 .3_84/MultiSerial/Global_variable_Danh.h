@@ -143,8 +143,14 @@ info_mqtt info_of_mqtt;
 
 // const char* ssid       = "Wifi";
 // const char* password   = "@12345678";
-const char* host       = "upload-test.dev-altamedia.com";    // không kèm http://
-const uint16_t port    = 80;
+// const char* host       = "upload-test.dev-altamedia.com";    // không kèm http://
+// const uint16_t port    = 80;
+// const char* serverPath = "/upload.php";
+// const char* filePath   = "/data.txt";
+// static int uploadCounter = 50;
+
+const char* host       = "prtceptor-ai.altacloud.biz";    // không kèm http://
+const uint16_t port    = 443;
 const char* serverPath = "/upload.php";
 const char* filePath   = "/data.txt";
 static int uploadCounter = 50;

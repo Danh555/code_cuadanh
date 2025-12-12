@@ -34,6 +34,6 @@ const char *name_disk_info = "/disk.sys";
 #define DF_DEBUG_NOUPLOAD_TO_SERVER 0 /* =1: no upload, =0: normal*/
 #define DF_DEBUG_PRINT_EXT_FLASH 0
 #define DF_USING_BARCODE 0 /* =0: disbale barcode, =1: normal*/
-#define DF_USING_CHECKTIME 1 /* =0: disbale checktime, =1: normal*/
+#define DF_USING_CHECKTIME 0 /* =0: disbale checktime, =1: normal*/
 
 #endif

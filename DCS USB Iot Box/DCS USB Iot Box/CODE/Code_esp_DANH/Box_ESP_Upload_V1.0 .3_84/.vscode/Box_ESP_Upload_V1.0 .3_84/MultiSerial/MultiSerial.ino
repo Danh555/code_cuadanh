@@ -338,7 +338,6 @@ SPIFlash flash(CS_EXTROM);
 #include "mymemory.h"
 
 /*--------------End Extern Flash memory----------------*/
-
 // Enter a MAC address for your controller below.
 // Newer Ethernet shields have a MAC address printed on a sticker on the shield
 byte mac[] = {
@@ -350,7 +349,7 @@ byte mac[] = {
 //IPAddress server(54,85,55,79);  // numeric IP for Google (no DNS)
 
 
-// Choose the analog pin to get semi-random data from for SSL
+// Choose the analog pin to get semi-random data from for  
 // Pick a pin that's not connected or attached to a randomish voltage source
 // const int rand_pin = 33;
 // đã chỉnh lại thư viện dùng random-->nên chân này đưa vào cho đủ chức năng
@@ -1045,7 +1044,7 @@ void  setup() {
 	/*init RTC*/
  	// Wire.begin();
 	Wire.begin(42, 41,5000);
-
+	esp_log_level_set("wifi", ESP_LOG_NONE);
 	
  	//Wire.setClock(100000);
 	
@@ -1417,18 +1416,18 @@ lastNetworkCheck = millis()+60000;
 	Serial.println(String(inforeget_setting.name_topic));
 	delay(50);
 
-	// setup_mqtt_atcmd(systeminfo.name_domain,systeminfo.username_mqtt,systeminfo.password_mqtt,inforeget_setting.name_topic,mynamedevice);
-	// // delay(200);
+	setup_mqtt_atcmd(systeminfo.name_domain,systeminfo.username_mqtt,systeminfo.password_mqtt,inforeget_setting.name_topic,mynamedevice);
+	// delay(200);
 	
-	// for(int i=0;i<=5;i++)
-	// {
-	// 	if(public_online==1)
-	// 	{
-	// 		setup_modem();
-	// 		disconnect_MQTT_ATCMD();
-	// 		setup_mqtt_atcmd(systeminfo.name_domain,systeminfo.username_mqtt,systeminfo.password_mqtt,inforeget_setting.name_topic,mynamedevice);
-	// 	}
-	// }
+	for(int i=0;i<=5;i++)
+	{
+		if(public_online==1)
+		{
+			setup_modem();
+			disconnect_MQTT_ATCMD();
+			setup_mqtt_atcmd(systeminfo.name_domain,systeminfo.username_mqtt,systeminfo.password_mqtt,inforeget_setting.name_topic,mynamedevice);
+		}
+	}
 	
 //   EEPROM.put(0,inforeget_setting.name_topic);
 //   EEPROM.commit();
@@ -1436,6 +1435,7 @@ lastNetworkCheck = millis()+60000;
 //   server_modem.busy=0;
 	/*reset other device*/
   ui8_truycap_mqtt=0;	
+  
 //   if(ui8_checkbarcode_landau==1)
 //   {
 	// select_uart(UART_4G);
@@ -1468,10 +1468,10 @@ void loop()
 
 		check_format_disk();
 		
-		// checkfirmware();
+		checkfirmware();
 
 		//phan danh them
-		// xuly_info_printer();
+		xuly_info_printer();
 		// #if (DF_USING_BARCODE)
 		// SWITCH_BARCODE();
 		// #endif
@@ -1479,17 +1479,17 @@ void loop()
 		sleep_nguon();
 		checkpower();
 		tat_pin();
-		// reset_sim();
-		// check_reset_box();
-		// check_song();
-		// if(ui8_datgioihanfile==1 && ui8_canformatdisk==1)
-		// {
-		// 	Serial.println("format disk");
-		// 	formatdisk_func();
-		// 	ui32_timeout_formatdisk=millis()+240*60*1000;
-		// 	ui8_canformatdisk=0;
-		// 	ui8_datgioihanfile=0;
-		// }
+		reset_sim();
+		check_reset_box();
+		check_song();
+		if(ui8_datgioihanfile==1 && ui8_canformatdisk==1)
+		{
+			Serial.println("format disk");
+			formatdisk_func();
+			ui32_timeout_formatdisk=millis()+240*60*1000;
+			ui8_canformatdisk=0;
+			ui8_datgioihanfile=0;
+		}
 		
 	}
 
@@ -1513,15 +1513,15 @@ void loop()
 		// if(ui8_modebusy_printer==1)
 		// {
 		// check_reset_printer();
-		// sleep_box();
+		sleep_box();
 		// connect_mqtt_atcmd();
-		// check_disconnectmqtt();
-		// if(ui8_busy_rec_printer == 0 && ui8_sim_erro==0 && ui16_counterfail==0)
-		// {
-		// 	// if(u32check_firmware<millis() || ui8_dangupdate_mqtt==1) return;
-		// 	reconnect(systeminfo.name_domain,systeminfo.username_mqtt,systeminfo.password_mqtt,inforeget_setting.name_topic,mynamedevice);	
-		// }
-		// messageReceived(topic_mqtt,payload_mqtt);
+		check_disconnectmqtt();
+		if(ui8_busy_rec_printer == 0 && ui8_sim_erro==0 && ui16_counterfail==0)
+		{
+			// if(u32check_firmware<millis() || ui8_dangupdate_mqtt==1) return;
+			reconnect(systeminfo.name_domain,systeminfo.username_mqtt,systeminfo.password_mqtt,inforeget_setting.name_topic,mynamedevice);	
+		}
+		messageReceived(topic_mqtt,payload_mqtt);
 	}
 	else
 	{
@@ -8506,7 +8506,8 @@ void setup_modem ()
 //     digitalWrite(PWRKEY_MODEM, LOW);  
 //   }
 
-	// TESTMODEM();
+	TESTMODEM();
+	delay(2000);
 	setup_pp();
 }
 void light_sleep(uint32_t sec )
@@ -10096,17 +10097,19 @@ void send_opu_status()
 		doc["firmware_barcode"] = String (device_status.vs_barcode);
 		doc["firmware_printer"] = String (device_status.vs_printer);
 		doc["firmware_network"] = String (versionname);
-		struct tm tmstruct ;		
-		tmstruct.tm_year = 0;
-		getLocalTime(&tmstruct, 5000);
+		// struct tm tmstruct ;		
+		// tmstruct.tm_year = 0;
+		// getLocalTime(&tmstruct, 5000);
 		char msg[500];
 		serializeJson(doc, msg);
-		// %d%02d%02d%02d%02d%02d",(tmstruct.tm_year+1900),( tmstruct.tm_mon+1), tmstruct.tm_mday,tmstruct.tm_hour , tmstruct.tm_min, tmstruct.tm_sec
+		// // %d%02d%02d%02d%02d%02d",(tmstruct.tm_year+1900),( tmstruct.tm_mon+1), tmstruct.tm_mday,tmstruct.tm_hour , tmstruct.tm_min, tmstruct.tm_sec
 
-		DateTime now = rtc.now();
+		// DateTime now = rtc.now();
 		// sprintf(bill_media_info.nameofbill,"BIL%d%02d%02d%02d%02d%02d",now.year(),now.month(), now.day(),now.hour() , now.minute(), now.second());	
-		char channel_[200];  
-		sprintf(channel_,"%s_%s_INFO_%d%02d%02d%02d%02d%02d",inforeget_setting.name_topic,mynamedevice,now.year(),now.month(), now.day(),now.hour() , now.minute(), now.second());
+		char channel_[500];  
+		// sprintf(channel_,"%s_%s_INFO_%d%02d%02d%02d%02d%02d",inforeget_setting.name_topic,mynamedevice,now.year(),now.month(), now.day(),now.hour() , now.minute(), now.second());
+		// sprintf(channel_,"%s/%s/INFO/%d%02d%02d%02d%02d%02d",mynamedevice,now.year(),now.month(), now.day(),now.hour() , now.minute(), now.second());
+		sprintf(channel_,"%s/%s/INFO",inforeget_setting.name_topic,mynamedevice);
 		Serial.println(channel_);
 
 		int need_upload_opu=0;
@@ -10127,7 +10130,9 @@ void send_opu_status()
 
 					data_get += msg[i];
 				}
-				need_upload_opu=guifile_pp(data_get,channel_);
+				// need_upload_opu=guifile_pp(data_get,channel_);
+				// need_upload_opu=guifile_pp_theolaptrinh(data_get,channel_);
+				need_upload_opu=publish_data(data_get,data_get.length(),channel_);
 		}
 
 		else
@@ -11698,7 +11703,7 @@ int guifile_pp(String data_get,const char* channel_)
 
 
 	// Tạo tên file theo số lần upload
-	String fileName = String(channel_) + ".txt";
+	String fileName = String(channel_)+".txt";
 	
 	String boundary = "----ESP32Boundary";
 	String header = String("--") + boundary + "\r\n"
@@ -11715,6 +11720,7 @@ int guifile_pp(String data_get,const char* channel_)
 
 	// Gửi request line và headers
 	base_client_gsm.print(String("POST ") + serverPath + " HTTP/1.1\r\n");
+	// base_client_gsm.print(String("POST ") + channel_ + " HTTP/1.1\r\n");
 	base_client_gsm.print(String("Host: ") + host + "\r\n");
 	base_client_gsm.print("Connection: close\r\n");
 	base_client_gsm.print("Content-Type: multipart/form-data; boundary=" + boundary + "\r\n");
@@ -11764,31 +11770,138 @@ int guifile_pp(String data_get,const char* channel_)
 }
 
 
+// int guifile_pp_theolaptrinh(String data_get, const char* channel_)
+// {
+//     unsigned long startTime = millis();
+
+//     // String boundary = "----ESP32Boundary";
+
+//     // BODY multipart-form-data
+//     String body = "";
+
+// 	// Tạo tên file theo số lần upload
+// 	String fileName = String(channel_)+".txt";
+	
+// 	String boundary = "----ESP32Boundary";
+// 	String header = String("--") + boundary + "\r\n"
+// 					+ "Content-Disposition: form-data; name=\"fileToUpload\"; filename=\"" + fileName + "\"\r\n"
+// 					+ "Content-Type: application/octet-stream\r\n\r\n";
+// 	String footer = "\r\n--" + boundary + "--\r\n";
+
+
+//     body += "--" + boundary + "\r\n";
+//     body += "Content-Disposition: form-data; name=\"part\"\r\n\r\n";
+//     body += "3\r\n";
+
+//     body += "--" + boundary + "\r\n";
+//     body += "Content-Disposition: form-data; name=\"PRINTER_MODEL\"\r\n\r\n";
+//     body += "Epson-LX310\r\n";
+
+//     body += "--" + boundary + "\r\n";
+//     body += "Content-Disposition: form-data; name=\"PRINTER_BRAND\"\r\n\r\n";
+//     body += "Epson\r\n";
+
+//     body += "--" + boundary + "\r\n";
+//     body += "Content-Disposition: form-data; name=\"VOUCHER_CODE\"\r\n\r\n";
+//     body += "VN-INV-00045\r\n";
+
+//     body += "--" + boundary + "--\r\n";
+
+//     size_t contentLength = body.length();
+
+//     Serial.println("=== BODY SEND ===");
+//     Serial.println(body);
+	
+//     // Kết nối HTTPS
+//     if (!mysclient_gsm.connect(host, port)) {
+//         Serial.println("❌ Không kết nối được tới server");
+//         return 0;
+//     }
+//     Serial.println("✅ Đã kết nối tới server");
+// 	Serial.println(String("POST ") + channel_ + " HTTP/1.1\r\n");
+
+//     //===== HEADER HTTP =====
+//     mysclient_gsm.print(String("POST ") + channel_ + " HTTP/1.1\r\n");
+//     mysclient_gsm.print(String("Host: ") + host + "\r\n");
+//     mysclient_gsm.print("X-API-KEY: 59ac5be1333a7b1247deb8f36609b25f41d781efbc7f06e7d485b04d8b3d9101\r\n");
+// 	mysclient_gsm.print("Connection: close\r\n");
+//     mysclient_gsm.print("Content-Type: multipart/form-data; boundary=" + boundary + "\r\n");
+//     mysclient_gsm.print("Content-Length: " + String(contentLength) + "\r\n\r\n");
+
+// 	// size_t totalLength = header.length() + contentLength + footer.length();
+// 	// mysclient_gsm.print("Content-Length: " + String(totalLength) + "\r\n\r\n");
+// 	// Serial.println("Content-Length: " + String(totalLength) + "\r\n\r\n");
+	
+// 	// mysclient_gsm.print(String("POST ") + channel_ + " HTTP/1.1\r\n" +
+//     //               "Host: " + host + "\r\n" +
+// 	// 			  "X-API-KEY: 59ac5be1333a7b1247deb8f36609b25f41d781efbc7f06e7d485b04d8b3d9101\r\n"	+
+// 	// 			  "Content-Type: multipart/form-data; boundary=" + boundary + "\r\n" +
+// 	// 			  "Content-Length: " + String(contentLength) + "\r\n\r\n" +
+//     //               "Connection: close\r\n\r\n");
+
+//     // ===== BODY =====
+// 	// mysclient_gsm.println();      // <<< dòng trống bắt buộc
+//     // mysclient_gsm.print(body);
+// 	// mysclient_gsm.print(header);
+
+// 	mysclient_gsm.print(body);
+// 	// Gửi phần footer
+// 	// mysclient_gsm.print(footer);
+
+//     // ===== READ RESPONSE =====
+//     Serial.println("------ Server phản hồi ------");
+
+//     String response = "";
+//     while (mysclient_gsm.connected() || mysclient_gsm.available()) {
+//         if (mysclient_gsm.available()) {
+//             String line = mysclient_gsm.readStringUntil('\n');
+//             Serial.println(line);
+//             response += line + "\n";
+//         }
+//     }
+
+//     response.toLowerCase();
+
+//     if (response.indexOf("success") >= 0) {
+//         Serial.println("✅ Gửi dữ liệu thành công!");
+//         return 1;
+//     } else {
+//         Serial.println("❌ Thất bại. Server không trả success.");
+//         return 0;
+//     }
+
+//     mysclient_gsm.stop();
+// }
+
+
 int guifile_pp_theolaptrinh(String data_get, const char* channel_)
 {
     unsigned long startTime = millis();
 
-    String boundary = "----ESP32Boundary";
-
-    // 🔥 Dữ liệu multipart cần gửi đúng theo API
+    String boundary = "ESP32Boundary";     // <--- Tên sạch
     String body = "";
 
+    // ---- FIELD 1: PART ----
     body += "--" + boundary + "\r\n";
     body += "Content-Disposition: form-data; name=\"PART\"\r\n\r\n";
     body += "3\r\n";
 
+    // ---- FIELD 2: PRINTER_MODEL ----
     body += "--" + boundary + "\r\n";
     body += "Content-Disposition: form-data; name=\"PRINTER_MODEL\"\r\n\r\n";
     body += "Epson-LX310\r\n";
 
+    // ---- FIELD 3: PRINTER_BRAND ----
     body += "--" + boundary + "\r\n";
     body += "Content-Disposition: form-data; name=\"PRINTER_BRAND\"\r\n\r\n";
     body += "Epson\r\n";
 
+    // ---- FIELD 4: VOUCHER_CODE ----
     body += "--" + boundary + "\r\n";
     body += "Content-Disposition: form-data; name=\"VOUCHER_CODE\"\r\n\r\n";
     body += "VN-INV-00045\r\n";
 
+    // ---- END ----
     body += "--" + boundary + "--\r\n";
 
     size_t contentLength = body.length();
@@ -11796,37 +11909,33 @@ int guifile_pp_theolaptrinh(String data_get, const char* channel_)
     Serial.println("=== BODY SEND ===");
     Serial.println(body);
 
-    // ⭐ Gửi HTTPS raw (qua TinyGSM)
-    if (!base_client_gsm.connect(host, port)) {
+    // ===== CONNECT =====
+    if (!mysclient_gsm.connect(host, port)) {
         Serial.println("❌ Không kết nối được tới server");
         return 0;
     }
+
     Serial.println("✅ Đã kết nối tới server");
 
-    // ============================
-    // Gửi HTTP HEADER
-    // ============================
-    base_client_gsm.print(String("POST ") + serverPath + " HTTP/1.1\r\n");
-    base_client_gsm.print(String("Host: ") + host + "\r\n");
-    base_client_gsm.print("Connection: close\r\n");
-    base_client_gsm.print("X-API-KEY: 59ac5be1333a7b1247deb8f36609b25f41d781efbc7f06e7d485b04d8b3d9101\r\n");
-    base_client_gsm.print("Content-Type: multipart/form-data; boundary=" + boundary + "\r\n");
-    base_client_gsm.print("Content-Length: " + String(contentLength) + "\r\n\r\n");
+    // ===== HEADER =====
+	Serial.println(String("POST ") + channel_ + " HTTP/1.1\r\n");
+    mysclient_gsm.print(String("POST ") + channel_ + " HTTP/1.1\r\n");
+    mysclient_gsm.print(String("Host: ") + host + "\r\n");
+    mysclient_gsm.print("X-API-KEY: 59ac5be1333a7b1247deb8f36609b25f41d781efbc7f06e7d485b04d8b3d9101\r\n");
+    mysclient_gsm.print("Connection: close\r\n");
+    mysclient_gsm.print("Content-Type: multipart/form-data; boundary=" + boundary + "\r\n");
+    mysclient_gsm.print("Content-Length: " + String(contentLength) + "\r\n\r\n");  // <--- dòng trống CỰC QUAN TRỌNG
 
-    // ============================
-    // Gửi BODY
-    // ============================
-    base_client_gsm.print(body);
+    // ===== BODY =====
+    mysclient_gsm.print(body);
 
-    // ============================
-    // Đọc phản hồi
-    // ============================
+    // ===== READ RESPONSE =====
     Serial.println("------ Server phản hồi ------");
 
     String response = "";
-    while (base_client_gsm.connected() || base_client_gsm.available()) {
-        if (base_client_gsm.available()) {
-            String line = base_client_gsm.readStringUntil('\n');
+    while (mysclient_gsm.connected() || mysclient_gsm.available()) {
+        if (mysclient_gsm.available()) {
+            String line = mysclient_gsm.readStringUntil('\n');
             Serial.println(line);
             response += line + "\n";
         }
@@ -11834,7 +11943,7 @@ int guifile_pp_theolaptrinh(String data_get, const char* channel_)
 
     response.toLowerCase();
 
-    if (response.indexOf("success") >= 0) {
+    if (response.indexOf("200 ok") >= 0) {
         Serial.println("✅ Gửi dữ liệu thành công!");
         return 1;
     } else {
@@ -11842,12 +11951,21 @@ int guifile_pp_theolaptrinh(String data_get, const char* channel_)
         return 0;
     }
 
-    base_client_gsm.stop();
+// 	if (response.indexOf("HTTP/1.1 200 OK") >= 0) {
+		
+//     Serial.println("✅ Gửi dữ liệu thành công!");
+//     return 1;
+// } else {
+//     Serial.println("❌ Thất bại. Server không trả success.");
+//     Serial.println("=== RAW RESPONSE ===");
+//     Serial.println(response);
+//     return 0;
+// }
 
-    unsigned long endTime = millis();
-    Serial.print("⏱ Tổng thời gian gửi: ");
-    Serial.println((endTime - startTime) / 1000.0);
+
+    mysclient_gsm.stop();
 }
+
 
 /*-------------------------------END FUNCTIONS DANH THEM VAO--------------------*/
 
