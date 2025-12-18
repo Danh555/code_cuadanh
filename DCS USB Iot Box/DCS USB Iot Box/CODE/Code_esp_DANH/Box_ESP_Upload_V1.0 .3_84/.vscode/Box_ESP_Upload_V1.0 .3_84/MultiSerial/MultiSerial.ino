@@ -790,7 +790,7 @@ str_update_manager device_upgrade;
 */
 
 // #define max_packagesize_uploadmqtt (16*1024)  //4096 = 4*1024 = 4k số byte mỗi part upload lên server MAX = 8*512
-#define max_packagesize_uploadmqtt (1*900)  //4096 = 4*1024 = 4k số byte mỗi part upload lên server MAX = 8*512
+#define max_packagesize_uploadmqtt (90*1024)  //4096 = 4*1024 = 4k số byte mỗi part upload lên server MAX = 8*512
 
 #define DF_NUM_OF_BYTES_READmqtt 512		//số bytes mỗi lần đọc ra từ flash
 
@@ -800,7 +800,7 @@ str_update_manager device_upgrade;
 
 // char VALUE [size_buffer] = {'\0'}; // Nhận tối đa 0.5Mb là 76569 // 45000 30*1024
 // char VALUE [50*1024] = {'\0'}; // Nhận tối đa 0.5Mb là 76569 // 45000 30*1024
-char VALUE [10*1024] = {'\0'}; // Nhận tối đa 0.5Mb là 76569 // 45000 30*1024
+char VALUE [100*1024] = {'\0'}; // Nhận tối đa 0.5Mb là 76569 // 45000 30*1024
 
 #define DF_LEN_PRINTER (4096+50)
 
@@ -2165,7 +2165,7 @@ void check_serial_debug()
 		// updatemqtt_func(1100);	
 		char filename[200];
 
-		test_dayfile("PRINTER/ITB_101873036526652/BIL20251217162604/2/CHUNK",(1*1024),"DANH_TEST_file");
+		test_dayfile("PRINTER/ITB_101873036526652/BIL20251217162604/3/CHUNK",(80*1024),"DANH_TEST_file");
 		// uploadCounter=100+1;
 		// sprintf(filename,"PRINTER_TEST_%d",uploadCounter);
 		// dayfile((10*1024),filename);
@@ -12399,7 +12399,7 @@ int test_dayfile(const char* channel_, uint64_t sizedata, const char* filename)
 
   // ========= QUAN TRỌNG: BIN thì KHÔNG strlen, KHÔNG '\0'
   const size_t fileSize = (size_t)sizedata;
-  Serial.printf("✅ Data size = %u bytes\n", (unsigned)fileSize);
+  Serial.printf("Data size = %u bytes\n", (unsigned)fileSize);
 
   String fileName = String(filename) + ".bin";
   String boundary = "----ESP32Boundary";
@@ -12415,10 +12415,11 @@ int test_dayfile(const char* channel_, uint64_t sizedata, const char* filename)
 
   // ========= CONNECT =========
   if (!mysclient_gsm.connect(host, port)) {
-    Serial.println("❌ Không kết nối được tới server");
+    Serial.println("Không kết nối được tới server");
     return 0;
   }
-  Serial.println("✅ Đã kết nối tới server");
+  Serial.println("Đã kết nối tới server");
+  mysclient_gsm.setTimeout(120000);  // 120 giây
 
   // ========= HTTP HEADERS =========
   // channel_ của bạn đang là dạng "PRINTER/.../CHUNK" => request line phải "POST /<channel_> HTTP/1.1"
@@ -12430,13 +12431,13 @@ int test_dayfile(const char* channel_, uint64_t sizedata, const char* filename)
   mysclient_gsm.print("Connection: keep-alive\r\n");
   mysclient_gsm.print("Content-Type: multipart/form-data; boundary=" + boundary + "\r\n");
   mysclient_gsm.print("Content-Length: " + String(totalLength) + "\r\n");
-  mysclient_gsm.print("Expect: 100-continue\r\n\r\n");   // ✅ rất quan trọng để debug
+  mysclient_gsm.print("Expect: 100-continue\r\n\r\n");   
 
   // ========= ĐỢI 100-continue / hoặc response =========
   int code = readStatusLine(mysclient_gsm, 15000);
 
   if (!mysclient_gsm.connected()) {
-    Serial.println("❌ Server đóng kết nối NGAY SAU HEADER (sai API key / sai path / server reject).");
+    Serial.println("Server đóng kết nối NGAY SAU HEADER (sai API key / sai path / server reject).");
     mysclient_gsm.stop();
     return 0;
   }
@@ -12450,13 +12451,13 @@ int test_dayfile(const char* channel_, uint64_t sizedata, const char* filename)
       // Một số server trả 200 luôn, vẫn OK
       drainHeaders(mysclient_gsm);
     } else {
-      Serial.printf("❌ Server từ chối trước khi gửi body. HTTP=%d\n", code);
+      Serial.printf("Server từ chối trước khi gửi body. HTTP=%d\n", code);
       mysclient_gsm.stop();
       return 0;
     }
   } else {
     // Server không support 100-continue, vẫn thử gửi body
-    Serial.println("⚠️ Không thấy 100-continue, vẫn gửi body...");
+    Serial.println("Không thấy 100-continue, vẫn gửi body...");
   }
 
   // ========= MULTIPART HEADER =========
@@ -12464,46 +12465,39 @@ int test_dayfile(const char* channel_, uint64_t sizedata, const char* filename)
 mysclient_gsm.print(mpHeader);
 delay(5); // nhỏ thôi
 
-const size_t chunkSize = 512;     // ✅ 128 ổn hơn 1024
 size_t sent = 0;
 
+
+size_t burst = 0;
 while (sent < fileSize) {
-  if (!mysclient_gsm.connected()) {
-    Serial.println("❌ Disconnected while sending body");
-    break;
-  }
-
-  size_t toSend = min(chunkSize, fileSize - sent);
+  size_t toSend = min((size_t)1024, fileSize - sent);
   size_t w = mysclient_gsm.write((const uint8_t*)VALUE + sent, toSend);
-
-  if (w == 0) {
-    Serial.printf("❌ write=0 at %u\n", (unsigned)sent);
-    break;
-  }
-
+  if (w == 0) break;
   sent += w;
 
-  // ✅ cực kỳ quan trọng: đừng delay lớn, đừng print liên tục
+  burst += w;
+  if (burst >= 512) {          // mỗi 512B bơm 1 lần
+    burst = 0;
+    (void)mysclient_gsm.available();
+  }
   yield();
 }
 
+
 // footer
 mysclient_gsm.print(mpFooter);
-// delay(50);  // đủ cho TLS đẩy nốt
-
 
   // ========= READ FINAL RESPONSE =========
-  int finalCode = readStatusLine(mysclient_gsm, 5000);
+  int finalCode = readStatusLine(mysclient_gsm, 500);
   if (finalCode != 0) drainHeaders(mysclient_gsm);
 
   // In thêm body response nếu có
   uint32_t t0 = millis();
-  while ((mysclient_gsm.connected() || mysclient_gsm.available()) && (millis() - t0 < 5000)) {
+  while ((mysclient_gsm.connected() || mysclient_gsm.available()) && (millis() - t0 < 1000)) {
     while (mysclient_gsm.available()) {
       Serial.println(mysclient_gsm.readStringUntil('\n'));
       t0 = millis();
     }
-    delay(10);
   }
 
   mysclient_gsm.stop();
@@ -12520,6 +12514,7 @@ mysclient_gsm.print(mpFooter);
 
   return finalCode;  // thường 200/201/204 nếu OK
 }
+
 
 
 
