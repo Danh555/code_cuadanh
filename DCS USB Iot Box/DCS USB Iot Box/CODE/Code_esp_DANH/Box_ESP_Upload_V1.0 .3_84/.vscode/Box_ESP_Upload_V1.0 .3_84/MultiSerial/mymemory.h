@@ -305,12 +305,12 @@ int write_data(uint32_t addr, uint8_t *reg_, uint32_t size_)
 }
 #endif 
 
-int read_data(uint32_t addr, uint8_t *reg_, uint32_t size_)
+int read_data(uint32_t addr, uint8_t *reg_, uint64_t size_)
 {
    int kq = 0;
-    uint16_t length = size_;    
+    uint64_t length = size_;    
     uint16_t writeBufSz;
-    uint16_t data_offset = 0;
+    uint64_t data_offset = 0;
     uint16_t maxBytes = 256;
     uint32_t addr_new = addr;
     bool ghi;
