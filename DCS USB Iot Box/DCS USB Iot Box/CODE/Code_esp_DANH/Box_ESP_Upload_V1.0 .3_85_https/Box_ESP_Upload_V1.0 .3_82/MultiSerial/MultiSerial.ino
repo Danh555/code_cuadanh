@@ -1,7 +1,7 @@
 /*
 version name MOI NHAT 1.0.27
 đang test version 1.0.28
-version nay la 1.0.58
+version nay la 1.0.57
 code dang test tại phòng
 version nay la tat barcode ko check barcode
 Emergency !!!!!!!!!!!!!
@@ -286,8 +286,6 @@ void reconnectMQTT() {
     Serial.println("Reconnected and subscribed to topic.");
   }
 }
-code HTTPS DANH MOI CODE
-
 
 
 
@@ -338,6 +336,7 @@ SPIFlash flash(CS_EXTROM);
 #include "mymemory.h"
 
 /*--------------End Extern Flash memory----------------*/
+
 // Enter a MAC address for your controller below.
 // Newer Ethernet shields have a MAC address printed on a sticker on the shield
 byte mac[] = {
@@ -349,7 +348,7 @@ byte mac[] = {
 //IPAddress server(54,85,55,79);  // numeric IP for Google (no DNS)
 
 
-// Choose the analog pin to get semi-random data from for  
+// Choose the analog pin to get semi-random data from for SSL
 // Pick a pin that's not connected or attached to a randomish voltage source
 // const int rand_pin = 33;
 // đã chỉnh lại thư viện dùng random-->nên chân này đưa vào cho đủ chức năng
@@ -411,24 +410,16 @@ EthernetClient netethernet;
 
 /*------------------------------modem 4G-------------------------*/
 #define TINY_GSM_MODEM_SIM7600  // SIM7600 AT 
-#define TINY_GSM_USE_PPP true
 #define SerialMon Serial
 #define SerialAT Serial1
-
-
-#define MODEM_RST 1
-// #define MODEM_PWR 4
-#define MODEM_TX 4
-#define MODEM_RX 5
-// #define SerialAT Serial1
 
 // Increase RX buffer to capture the entire response
 // Chips without internal buffering (A6/A7, ESP8266, M590)
 // need enough space in the buffer for the entire response
 // else data will be lost (and the http library will fail).
-// #if !defined(TINY_GSM_RX_BUFFER)
-// #define TINY_GSM_RX_BUFFER 2048
-// #endif
+#if !defined(TINY_GSM_RX_BUFFER)
+#define TINY_GSM_RX_BUFFER 650
+#endif
 
 // See all AT commands, if wanted
 // #define DUMP_AT_COMMANDS
@@ -438,8 +429,8 @@ EthernetClient netethernet;
 // #define LOGGING  // <- Logging is for the HTTP library
 
 // Range to attempt to autobaud
-// #define GSM_AUTOBAUD_MIN 9600
-// #define GSM_AUTOBAUD_MAX 115200
+#define GSM_AUTOBAUD_MIN 9600
+#define GSM_AUTOBAUD_MAX 115200
 
 // Add a reception delay - may be needed for a fast processor at a slow baud rate
 // #define TINY_GSM_YIELD() { delay(2); }
@@ -451,10 +442,10 @@ EthernetClient netethernet;
 #define TINY_GSM_TEST_GPRS          true
 #define TINY_GSM_TEST_TCP           true
 
-// #define TINY_GSM_USE_GPRS true
-// #define TINY_GSM_USE_WIFI false
+#define TINY_GSM_USE_GPRS true
+#define TINY_GSM_USE_WIFI false
 
-// // set GSM PIN, if any
+// set GSM PIN, if any
 #define GSM_PIN ""
 
 
@@ -481,18 +472,18 @@ const char gprsPass[] = "";
 #include <ArduinoHttpClient.h>
 
 // Just in case someone defined the wrong thing..
-// #if TINY_GSM_USE_GPRS && not defined TINY_GSM_MODEM_HAS_GPRS
-// #undef TINY_GSM_USE_GPRS
-// #undef TINY_GSM_USE_WIFI
-// #define TINY_GSM_USE_GPRS false
-// #define TINY_GSM_USE_WIFI true
-// #endif
-// #if TINY_GSM_USE_WIFI && not defined TINY_GSM_MODEM_HAS_WIFI
-// #undef TINY_GSM_USE_GPRS
-// #undef TINY_GSM_USE_WIFI
-// #define TINY_GSM_USE_GPRS true
-// #define TINY_GSM_USE_WIFI false
-// #endif
+#if TINY_GSM_USE_GPRS && not defined TINY_GSM_MODEM_HAS_GPRS
+#undef TINY_GSM_USE_GPRS
+#undef TINY_GSM_USE_WIFI
+#define TINY_GSM_USE_GPRS false
+#define TINY_GSM_USE_WIFI true
+#endif
+#if TINY_GSM_USE_WIFI && not defined TINY_GSM_MODEM_HAS_WIFI
+#undef TINY_GSM_USE_GPRS
+#undef TINY_GSM_USE_WIFI
+#define TINY_GSM_USE_GPRS true
+#define TINY_GSM_USE_WIFI false
+#endif
 
 #ifdef DUMP_AT_COMMANDS
 #include <StreamDebugger.h>
@@ -507,7 +498,7 @@ TinyGsm modem(SerialAT);
 // SSLClient secure_layer(&base_client);
 // HttpClient client = HttpClient(secure_layer, "raw.githubusercontent.com", 443);
 // TinyGsmClient base_client_gsm(modem,0);
-TinyGsmClient base_client_gsm(modem);
+TinyGsmClient base_client_gsm(modem,0);
 SSLClient mysclient_gsm(base_client_gsm, TAs, (size_t)TAs_NUM, rand_pin);
 // PubSubClient  mqtt_gsm(base_client_gsm);
 extern PubSubClient mqtt_gsm(base_client_gsm);
@@ -539,7 +530,7 @@ extern PubSubClient mqtt_gsm(base_client_gsm);
 // #define URL_fw_Bin "https://raw.githubusercontent.com/DaikCong/DCSPrinter/main/fw_ITB_svr.bin"
 #define URL_fw_Bin "https://raw.githubusercontent.com/Danh555/file_code/main/MultiSerial.ino.bin"
 
-const char *versionname="1.0.62";
+const char *versionname="1.0.57";
 
 // #define df_time_upgrade_ms 600000 //10minute*60second*1000ms
 // uint32_t u32check_firmware=120000;//2minute*60second*1000ms
@@ -790,7 +781,7 @@ str_update_manager device_upgrade;
 */
 
 // #define max_packagesize_uploadmqtt (16*1024)  //4096 = 4*1024 = 4k số byte mỗi part upload lên server MAX = 8*512
-#define max_packagesize_uploadmqtt (90*1024)  //4096 = 4*1024 = 4k số byte mỗi part upload lên server MAX = 8*512
+#define max_packagesize_uploadmqtt (10*1024)  //4096 = 4*1024 = 4k số byte mỗi part upload lên server MAX = 8*512
 
 #define DF_NUM_OF_BYTES_READmqtt 512		//số bytes mỗi lần đọc ra từ flash
 
@@ -800,7 +791,7 @@ str_update_manager device_upgrade;
 
 // char VALUE [size_buffer] = {'\0'}; // Nhận tối đa 0.5Mb là 76569 // 45000 30*1024
 // char VALUE [50*1024] = {'\0'}; // Nhận tối đa 0.5Mb là 76569 // 45000 30*1024
-char VALUE [130*1024] = {'\0'}; // Nhận tối đa 0.5Mb là 76569 // 45000 30*1024
+char VALUE [17*1024] = {'\0'}; // Nhận tối đa 0.5Mb là 76569 // 45000 30*1024
 
 #define DF_LEN_PRINTER (4096+50)
 
@@ -847,7 +838,7 @@ uint8_t au8BufferHeader[dflabel_header_length];
 struct mqtt_OPH_MEDIA_HTTP
 {    
 	uint8_t mid;	//id của bill đang xử lý
-	uint8_t tot;	//total bill daVALUE_test luu
+	uint8_t tot;	//total bill da luu
 	uint8_t part;	//part upload		
 	uint8_t mode;	//tình trạng upload file =0: không up, =1: đang upload	
 	uint32_t duration;//số lượng bytes đã up được
@@ -1036,418 +1027,9 @@ int lastButtonState=0;
 int flash_led=0;
 uint32_t lastDebounceTime =0;
 
-// void  setup() {
-
-//   // initialize both serial ports:
-//   Serial.begin(115200);
-//   EEPROM.begin(4096);
-// 	/*init RTC*/
-//  	// Wire.begin();
-// 	Wire.begin(42, 41,5000);
-// 	// esp_log_level_set("wifi", ESP_LOG_NONE);
-	
-//  	//Wire.setClock(100000);
-	
-// 	// WiFi.config(IP_LOCAL,IP_GATEWAY,SUBNET,DNS1,DNS2);
-// 	// digitalWrite(PWRKEY_MODEM, HIGH);
-// 	ui8_ketnoithanhcong_mqtt=1;
-// // Serial1.begin(115200);
-// // Serial2.begin(115200);
-
-// //   Serial1.begin(9600,SERIAL_8N1,26,27); /* test board*/
-// //   Serial2.begin(230400,SERIAL_8N1,17,16);
-// //   pinMode(led_sign,OUTPUT);
-// 	hardware_init();
-// 	harware_int_test();
-
-
-// 	pinMode(48,OUTPUT);
-//     digitalWrite(48,1);
-// 	/*----------------extern flash---------------*/
-// 	flash.begin();
-//     // reserve 200 bytes for the inputString:
-//   inputString.reserve(200);
-
-//   delay(10);
-  
-//    if(!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED))
-//    {
-// 		Serial.println("SPIFFS Moundt Failed");
-// 		return;
-//    }
-
-//   Serial.println("-----------------------------------");
-//   Serial.println("Test HW Interceptor box");
-//   Serial.printf("firmware version: %s\n", versionname);  
-//   Serial.println("-----------------------------------\n");
-  
-// //   ui8_datgioihanfile=1;
-// 	// formatdisk_func();
-// 	// for(int i=0; i<max_file_save; i++)
-// 	// {
-// 	// 	Serial.println("-----------------------------------\n");
-// 	// 	Serial.printf("save_bill_info_flash %d\n", i);
-		
-// 	// 	HEADER_FILE head_file_temp;
-		
-// 	// 	/*init values*/
-// 	// 	sprintf(head_file_temp.SOF,"SOF");
-// 	// 	// sprintf(head_file_temp.brand_name,"EPSON");
-// 	// 	// sprintf(head_file_temp.model,"TM-T88IV");
-// 	// 	// sprintf(head_file_temp.SOF,"SOF");
-// 	// 	sprintf(head_file_temp.brand_name,header_file_doing.brand_name);
-// 	// 	sprintf(head_file_temp.model,header_file_doing.model);
-// 	// 	strncpy(head_file_temp.name, bill_media_info.nameofbill, sizeof(bill_media_info.nameofbill));	
-// 	// 	head_file_temp.length = bill_media_info.sizedata;
-
-// 	// 	head_file_temp.addr = upload_manager_info.next_addr_data;
-// 	// 	write_header_index(i, head_file_temp);
-
-// 	// }
-
-// 	// while(1);
-
-// 	server_modem.busy=1;
-// 	select_uart(UART_4G);
-// 	/*load values*/
-// 	deleteallmdeia(SPIFFS, "/", 0);
-
-// 	uint32_t maxAddr = flash.getCapacity();
-// 	Serial.print(F("Flash memory capacity = "));
-// 	Serial.println(maxAddr);
-	
-// 	system_running_mode = 0;
-
-// 	load_values();
-	
-// 	// snprintf(mynamedevice, 20, "ITB_%lld", ESP.getEfuseMac());
-// 	Serial.print("Name of box: ");
-// 	Serial.println(mynamedevice);
-
-// 	setup_realtimeclock();
-	
-// 	// pinMode(48,OUTPUT);//key power nguon PIN
-// 	// digitalWrite(48,0);
-// 	/*thông báo khởi động*/
-// 	for(int i=0;i<5;i++)
-// 	{
-// 		digitalWrite( led_sign, LOW);
-// 		delay(200);
-// 		digitalWrite( led_sign, HIGH);
-// 		delay(200);
-// 	}
-	
-// 	/* setup ethernet */
-//     // start Ethernet and UDP
-// 	if(server_ethernet.enable == DEVICE_ENABLE)
-// 	{
-// 		//RESET chip internet
-
-// 		digitalWrite(RS_ETHERNET,0);		
-// 		digitalWrite( led_sign, LOW);
-// 		delay(200);			
-// 		digitalWrite(RS_ETHERNET,1);
-// 		digitalWrite( led_sign, HIGH);
-// 		delay(200);	
-// 		digitalWrite( led_sign, LOW);
-// 		delay(200);			
-// 		digitalWrite( led_sign, HIGH);
-// 		delay(200);	
-		
-// 		Serial.println("Init Ethernet...");
-// 		Ethernet.init(CS_ETHERNET);
-// 		if (Ethernet.begin(mac) == 0)  
-// 		{
-// 			Serial.println("Failed to configure Ethernet using DHCP");
-// 			// Check for Ethernet hardware present
-// 			if (Ethernet.hardwareStatus() == EthernetNoHardware) {
-// 				Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
-// 			} 
-// 			else if (Ethernet.linkStatus() == LinkOFF)
-// 			{
-// 				Serial.println("Ethernet cable is not connected.");
-// 			}
-// 			// no point in carrying on, so do nothing forevermore:
-// 			// while (true) {
-// 			//   delay(1);
-// 			// }
-// 			server_ethernet.status = MY_ERRO;
-// 		}
-// 		else
-// 		{
-// 			server_ethernet.status = MY_OK;
-// 			Serial.println("Ethernet connected, using DHCP");
-// 			Serial.println(systeminfo.wifi_name);
-// 			WiFi.begin(systeminfo.wifi_name, systeminfo.  wifi_pass);		
-// 			connect_bywifi();		
-// 			server_wifi.enable = MY_ERRO;
-// 			Serial.println("wifi: disable");
-// 		}
-// 	}
-// 	else
-// 	{
-// 		server_ethernet.status = MY_ERRO;
-// 		Serial.println("Ethernet: disable");
-// 	}
-    
-//   	/* setup wifi */
-//   	if( server_wifi.enable == DEVICE_ENABLE)
-//   	{
-// 		Serial.println(systeminfo.wifi_name);
-// 		WiFi.begin(systeminfo.wifi_name, systeminfo.wifi_pass);	
-// 		connect_bywifi();		
-// 	}
-// 	else if(server_ethernet.enable == DEVICE_ENABLE || server_modem.enable == DEVICE_ENABLE)
-// 	{
-// 		/* khởi tạo chỗ này để sử dụng wifi config */
-// 		Serial.println(systeminfo.wifi_name);
-// 		WiFi.begin(systeminfo.wifi_name, systeminfo.wifi_pass);		
-// 		connect_bywifi();		
-// 		server_wifi.enable = MY_ERRO;
-// 		Serial.println("wifi: disable");
-// 	}
-
-// 	if( server_modem.enable == DEVICE_ENABLE)
-// 	{
-// 		setup_modem();
-// 	}
-// 	else
-// 	{
-// 		Serial.println("4G: disable");
-// 	}
-
-// 	server_init(); /*mode config wifi*/	
-	
-// 	/*sum kq init*/
-
-// 	/* load upload info*/
-//     spiff_readfilemedia(name_up_manager, &upload_manager_info);
-    
-// 	totalup=upload_manager_info.duration;
-// 	updatepart=upload_manager_info.part;
-// 	ui8_need_upload =upload_manager_info.mode;
-// 	stt_storing_file =upload_manager_info.tot;
-	
-	
-// 	stt_storing_file++;//chọn file tiếp theo để lưu
-	
-// 	if (stt_storing_file > max_file_save)stt_storing_file=0;
-	
-// 	if (ui8_need_upload)
-// 	{
-// 		ui8_qcode_complete = 1;
-// 	}
-// 	Serial.print("mid : ");
-// 	Serial.println(upload_manager_info.mid);	
-// 	Serial.print("tot : ");
-// 	Serial.println(upload_manager_info.tot);	
-// 	Serial.print("up to part : ");
-// 	Serial.println(updatepart);
-// 	Serial.print("bytes up : ");
-// 	Serial.println(totalup);
-// 	Serial.print("mode : ");
-// 	Serial.println(ui8_need_upload);
-// 	Serial.print("next addr : ");
-// 	Serial.println(upload_manager_info.next_addr_data);
-// 	Serial.print("billname : ");
-// 	Serial.println(upload_manager_info.nameofbill);
-
-// 	spiff_getSSD_info(name_disk_info, &SSD_info);
-	
-// 	Serial.print("lastday : ");
-// 	Serial.println(SSD_info.last_day);
-
-// 	SSD_info.daystatus =0;
-	
-// 	get_lastbill_name(upload_manager_info.tot);
-	
-// 	/* end load upload info*/
-//  	 printhelp();
-
-
-// 	 info_time_system.mode = BYETHERNET;
-
-	
-	
-  
-//   #if (DF_DEBUG_NOUPLOAD_TO_SERVER > 0 )
-//   	Serial.println("\n !!!!!!!! DF_DEBUG_NOUPLOAD_TO_SERVER!!!!!!!!!!!!!!!\n");
-//   #endif 
-
- 
-//   	// send_at("ATE1");
-// 	if(String(systeminfo.name_domain) == "")
-// 	{
-// 		String tam_test = "mqtt.altacloud.biz";
-// 		tam_test.toCharArray(systeminfo.name_domain,40);
-// 	}
-
-// 	if(String(systeminfo.username_mqtt) == "")
-// 	{
-// 		String tam_test = "altamedia";
-// 		tam_test.toCharArray(systeminfo.username_mqtt,40);
-// 	}
-
-// 	if(String(systeminfo.password_mqtt) == "")
-// 	{
-// 		String tam_test = "altamedia";
-// 		tam_test.toCharArray(systeminfo.password_mqtt,40);
-// 	}
-
-
-// 	if (system_connection_mode == BYETHERNET)
-// 	{
-// 		// clientmqtt.begin("mqtt.altacloud.biz",1883,netethernet);
-// 		clientmqtt.begin(systeminfo.name_domain,1883,netethernet);
-// 		Serial.println("MQTT BANG ETHERNET");
-// 	}
-// #if (DF_mqtt_modem)
-// 	else if (system_connection_mode == BYSIM4G)
-// 	{
-// 		// send_at("ATE1");
-// 		// wRespon(100);
-// 		// init_MQTT();
-// 		// // send_at("AT+CMQTTCFG=\"checkUTF8\",0,0");
-// 		// connect_MQTT_ATCMD();
-
-// 		Serial.println("vo day ne");
-// 		ui8_check_disconnect_mqtt=0;
-// 		// connectMQTT();
-    
-
-// 		// send_at("ATE1");
-// 		// wRespon(100);
-// 		// init_MQTT(mynamedevice);
-// 		// // delay(500);
-// 		// connect_MQTT_ATCMD();
-// 		// ui8_connect_mqtt_atcmd=0;
-		
-// 		clientmqtt.begin(systeminfo.name_domain,1883,base_client_gsm);
-// 		Serial.println("mqtt bang 4g");
-// 	}
-// #endif 
-// 	else
-// 	{
-// 		// clientmqtt.begin("mqtt.altacloud.biz",1883,net);
-// 		clientmqtt.begin(systeminfo.name_domain,1883,net);
-// 		Serial.println("mqtt wifi");			
-// 	}
-
-// 	// #ifndef DF_MQTT_UP_4G
-
-// 		clientmqtt.setHost(systeminfo.name_domain,1883);
-// 		clientmqtt.setKeepAlive(180);//don vi la s
-// 		clientmqtt.setTimeout(5000);//don vi la ms
-// 		// // clientmqtt.onMessageAdvanced();
-// 		// clientmqtt.onMessage(messageReceived);
-// 		// setup_mqtt(mqtt_gsm,systeminfo.name_domain);
-
-// //    u32_time_resend_opu = millis() + 10*60*1000;/*sau 10' up len*/
-
-//   u32_time_resend_opu = millis() + 5*1000;
-//   deviceprinter.time = millis() + 120000;// 2 phút = 2*60*1000
-//   u32_time_connected_mqtt = millis()+60*1000;	
-//   ui32_timeout_check_set = millis() + 10000;
-// //   ui32_timeout_checksleepbox = millis() + TG_SLEEP_BOX;// 1 ngày
-//   ui32_timeout_checkprinter = millis() + TG_SLEEP_PRINTER; // 30 phut
-//   ui32_timeout_checkpower=millis() + TG_KICHPIN;	
-//   ui32_timeout_formatdisk=millis()+10000;
-// //   lastNetworkCheck = millis();
-// lastNetworkCheck = millis()+60000;
-//   check_dataluu();
-
-// 	#if (DF_USING_BARCODE)
-
-// 	digitalWrite(RESET_BARCODE,0);
-// 	delay(100);
-// 	digitalWrite(RESET_BARCODE,1);
-// 	// ui8_truycap_mqtt=1;
-// 	server_modem.busy=0;
-// 	// check_version_barcode();
-// 	// Serial.println("lai tro lai DEV_INIT reset bien");
-
-// 	uint32_t ui32_timeout_thoat = millis() + 1500;
-// 	while(ui8_checkbarcode_landau==0 && ui32_timeout_thoat>millis())
-// 	{
-// 		// Serial.println("GET CODE");
-// 		SerialToBarcodeModem.println("#GET$");
-// 		check_serial_qcode_Scanner();
-// 		// server_modem.busy=1;
-// 	}
-// 	#else
-// 	Serial.println("\n !!!!!!!! DISABLE BARCOD!!!!!!!!!!!!!!!\n");
-// 	#endif
-// 	// #endif
-	
-
-//   Serial.println(String(systeminfo.header_ID));
-//   int tam = strlen(inforeget_setting.name_topic);
-//   if(tam<=0)
-//   {
-// 	Serial.println("chua co header");
-// 	// inforeget_setting.name_topic="PRINTER";
-// 	// String tam_test = "PRINTER";
-// 	// tam_test.toCharArray(inforeget_setting.name_topic,100);
-// 	if(systeminfo.header_ID=="")
-// 	{
-// 		String tam_test = "PRINTER";
-// 		tam_test.toCharArray(systeminfo.header_ID,100);
-// 	}
-// 	sprintf(inforeget_setting.name_topic,"%s",systeminfo.header_ID);
-// 	EEPROM.put(0,inforeget_setting.name_topic);
-//   	EEPROM.commit();
-//   }
-
-//   else if(systeminfo.header_ID!=inforeget_setting.name_topic)
-//   {
-// 	sprintf(inforeget_setting.name_topic,"%s",systeminfo.header_ID);
-// 	EEPROM.put(0,inforeget_setting.name_topic);
-//   	EEPROM.commit();
-//   }
-
-//   else 
-//   {
-// // 	// sprintf(inforeget_setting.name_topic,"%s",systeminfo.header_ID);
-// 	// EEPROM.put(0,inforeget_setting.name_topic);
-//   	// EEPROM.commit();
-// 	// EEPROM.get(0,inforeget_setting.name_topic);
-//   }
-//   	// EEPROM.get(0,inforeget_setting.name_topic);//nao chay thi mo ra
-// 	// Serial.println(String(inforeget_setting.name_topic));
-// 	// delay(50);
-
-// 	setup_mqtt_atcmd(systeminfo.name_domain,systeminfo.username_mqtt,systeminfo.password_mqtt,inforeget_setting.name_topic,mynamedevice);
-// 	// delay(200);
-	
-// 	for(int i=0;i<=5;i++)
-// 	{
-// 		if(public_online==1)
-// 		{
-// 			setup_modem();
-// 			disconnect_MQTT_ATCMD();
-// 			setup_mqtt_atcmd(systeminfo.name_domain,systeminfo.username_mqtt,systeminfo.password_mqtt,inforeget_setting.name_topic,mynamedevice);
-// 		}
-// 	}
-	
-// //   EEPROM.put(0,inforeget_setting.name_topic);
-// //   EEPROM.commit();
-// // //   delay(1000);
-// //   server_modem.busy=0;
-// 	/*reset other device*/
-//   ui8_truycap_mqtt=0;	
-  
-// //   if(ui8_checkbarcode_landau==1)
-// //   {
-// 	// select_uart(UART_4G);
-// 	// server_modem.busy=1;
-// //   }	
-// //   ui32_timeout_connectmqtt = millis() + 2000;
-//   Serial.println("\n --------application start-------");
-// }
-
 void  setup() {
 
- // initialize both serial ports:
+  // initialize both serial ports:
   Serial.begin(115200);
   EEPROM.begin(4096);
 	/*init RTC*/
@@ -1456,7 +1038,7 @@ void  setup() {
 
 	
  	//Wire.setClock(100000);
-	WiFi.mode(WIFI_MODE_NULL);   // tắt Wi‑Fi đúng cách cho core 2.0.17
+	
 	// WiFi.config(IP_LOCAL,IP_GATEWAY,SUBNET,DNS1,DNS2);
 	// digitalWrite(PWRKEY_MODEM, HIGH);
 	ui8_ketnoithanhcong_mqtt=1;
@@ -1753,7 +1335,7 @@ void  setup() {
 
 //    u32_time_resend_opu = millis() + 10*60*1000;/*sau 10' up len*/
 
-  u32_time_resend_opu = millis() + 20*1000;
+  u32_time_resend_opu = millis() + 5*60*1000;
   deviceprinter.time = millis() + 120000;// 2 phút = 2*60*1000
   u32_time_connected_mqtt = millis()+60*1000;	
   ui32_timeout_check_set = millis() + 10000;
@@ -1860,7 +1442,7 @@ void loop()
 	
 	if(flash_led==0 && system_running_mode == 0)
 	{		
-		process_upfile_https();	/*MQTT: mới test wifi, ethernet*/
+		process_upfile_mqtt();	/*MQTT: mới test wifi, ethernet*/
 		
 		process_get_chunk_mqtt();
 
@@ -1872,24 +1454,24 @@ void loop()
 		check_system_time();
 		#endif 
 
-		send_opu_status();// dang sai cai nay
+		send_opu_status();
 
 		check_format_disk();
 		
 		checkfirmware();
 
 		//phan danh them
-		xuly_info_printer(); //dang sai cai nay
+		xuly_info_printer();
 		#if (DF_USING_BARCODE)
 		SWITCH_BARCODE();
 		#endif
-		xuly_thongtin_mayin(); //dang sai cai nay
+		xuly_thongtin_mayin();
 		sleep_nguon();
 		checkpower();
 		tat_pin();
 		reset_sim();
 		check_reset_box();
-		check_song();
+		// check_song();
 		// if(ui8_datgioihanfile==1 && ui8_canformatdisk==1)
 		// {
 		// 	Serial.println("format disk");
@@ -1901,8 +1483,6 @@ void loop()
 		
 	}
 
-
-	// dang sai toan bo cai nay
 	if(system_running_mode ==0)
 	{
 		/* đây là chế độ chạy bình thường */	
@@ -2570,13 +2150,7 @@ void check_serial_debug()
 	else if(inByte == 'J')
 	{
 		Serial.println("test public mqtt");
-		// updatemqtt_func(1100);	
-		char filename[200];
-
-		test_dayfile("PRINTER/ITB_101873036526652/BIL20251213043246/6/CHUNK",(500*1024),"DANH_TEST_file");
-		// uploadCounter=100+1;
-		// sprintf(filename,"PRINTER_TEST_%d",uploadCounter);
-		// dayfile((10*1024),filename);
+		updatemqtt_func(1100);	
 	}
 	else if(inByte == 'Y')
 	{
@@ -2716,9 +2290,7 @@ void check_serial_debug()
 		// select_uart(UART_4G);
 		// SerialToBarcodeModem.println("AT+CVALARM=0");
 		// test_upload_file_new();// test up file mqtt
-		// updatemqtt_func(10*1024);
-		Serial.println("test upload data HTTPS");
-		// guifile_pp_theolaptrinh("/PRINTER/ITB_101873036526652/BILL20251215040124/INFO");
+		updatemqtt_func(10*1024);
 		// test_upload_data_SPIFFS();
 		// response_Manufacturer_STM();
 		// ui32_timeout_check_barcode = millis() + 2000;
@@ -3103,36 +2675,18 @@ void check_serial_printer()
 				if(device_status.printer != 1 && device_status.printer != 2)
 				{					
 					u32_time_resend_opu = millis() + 10000;
-					// ui8_guiinfo_manu = 0;
-					// ui8_guistatus_manu = 0;
-					// ui8_guiseri_manu = 0;
-					Serial.println("info may in san sang");
-					u32_timeout_checkinfo_printer = millis() + 500;
-					u32_timeout_checkstatus_printer = millis() + 1000;
-					u32_timeout_checkserinumber_printer = millis() + 1500;
-					ui8_check_manufacturer=0;
-					ui8_check_product_printer=0;
-					ui8_check_serialnumber_printer=0;
 				}
 				
 				device_status.printer = 1;
 				
 				Serial.println("Printer Ready");
 			}
-			else if (ui8_cmd[1] == '0') 
+			else
 			{
 				
 				if(device_status.printer != 0 && device_status.printer != 2)
 				{
 					u32_time_resend_opu = millis() + 10000;
-					Serial.println("info may in ko san sang");
-
-					u32_timeout_checkinfo_printer = millis() + 500;
-					u32_timeout_checkstatus_printer = millis() + 1000;
-					u32_timeout_checkserinumber_printer = millis() + 1500;
-					ui8_check_manufacturer=0;
-					ui8_check_product_printer=0;
-					ui8_check_serialnumber_printer=0;
 				}
 
 				device_status.printer = 0;
@@ -4020,7 +3574,7 @@ void deleteallmdeia(fs::FS &fs, const char * dirname, uint8_t levels){
 
 			  String s =String(file.name());
 			//   if (s.endsWith(".ini") || s.endsWith(".dat")|| s.endsWith(".h")) {
-			  if (s.endsWith(".ini") || s.endsWith(".sys")) {
+			  if (s.endsWith(".ini") || s.endsWith(".sys") || s.endsWith(".txt")) {
 				#ifndef use_debug_serial
 				SerialDEBUG.println("[*FILE]: \tright file-->keep");
 				#endif 								
@@ -4991,8 +4545,8 @@ int get_lost_chunk(char* dataBuffer, int part_, int tong_, HEADER_FILE hdtam)
  
 	Serial.println(F("\n --------- get_lost_chunk-----------------------"));
 
-	uint64_t start = max_packagesize_uploadmqtt*part_;
-	uint64_t end =start + max_packagesize_uploadmqtt -1;
+	uint32_t start = max_packagesize_uploadmqtt*part_;
+	uint32_t end =start + max_packagesize_uploadmqtt -1;
 	int reslen =0;
 	
 	uint8_t buf_temp_[256];
@@ -5070,8 +4624,8 @@ int get_files_part_mqtt(char* dataBuffer, int part_, int tong_)
 	if (header_file_doing.length==0) return 0;
 	// if(header_file_doing.length<=8024) return 0;
 	
-	uint64_t start = max_packagesize_uploadmqtt*part_;
-	uint64_t end =start + max_packagesize_uploadmqtt -1;
+	uint32_t start = max_packagesize_uploadmqtt*part_;
+	uint32_t end =start + max_packagesize_uploadmqtt -1;
 	int reslen =0;
 	
 	uint8_t buf_temp_[256];
@@ -5591,8 +5145,7 @@ int get_files_headder_mqtt(char* dataBuffer, int part_)
 		 if(t < header_file_doing.length)
 		 {
 			num_part++;
-			// t += max_packagesize_uploadmqtt; code cũ
-			t += header_file_doing.length;
+			t += max_packagesize_uploadmqtt;
 			// SerialDEBUG.print(F("@i =  "));
     		// SerialDEBUG.print(i);
 			// SerialDEBUG.print(F(", num_part =  "));
@@ -5748,8 +5301,7 @@ int get_files_headder_mqtt(char* dataBuffer, int part_)
 		 if(t < bill_media_info_temp.sizedata)
 		 {
 			num_part++;
-			// t += max_packagesize_uploadmqtt; code cũ
-			t+=bill_media_info_temp.sizedata;
+			t += max_packagesize_uploadmqtt;
 			// SerialDEBUG.print(F("@i =  "));
     		// SerialDEBUG.print(i);
 			// SerialDEBUG.print(F(", num_part =  "));
@@ -5997,7 +5549,7 @@ void process_upfile()
 			len/=2;
 			
 			if(updatepart == 0)
-			{ 
+			{
 				Serial.println("header: no increase data up");
 			}
 			else
@@ -6077,7 +5629,7 @@ void process_upfile()
 
 }
 #if (DF_UPFILE_USING_MQTT)
-void process_upfile_https()
+void process_upfile_mqtt()
 {
 	// if(ui8_dangupdate_esp==1) return;
 	/*check server*/
@@ -6180,8 +5732,7 @@ void process_upfile_https()
 	}
 	else
 	{	
-		// len = get_files_part_mqtt(VALUE,(updatepart -1),totalkichthuoc);
-		len=getkichthuoc(upload_manager_info.mid);
+		len = get_files_part_mqtt(VALUE,(updatepart -1),totalkichthuoc);
 	}
  
 	// debug_print_data(VALUE,len);
@@ -6217,7 +5768,6 @@ void process_upfile_https()
 		// u32_timeout_checkserinumber_printer = millis() + 5000;
 		ui8_dangin = 1;
 		char channel_[100];  
-		char filename[100];
 		// sprintf(channel_,"PRINTER/%s/BILL",mynamedevice);
 		uint32_t tam = millis();
 		if (updatepart==0)
@@ -6231,8 +5781,6 @@ void process_upfile_https()
 				Serial.println("vao mode in bill");
 			}
 			sprintf(channel_,"%s/%s/%s/INFO",inforeget_setting.name_topic,mynamedevice, upload_manager_info.nameofbill);
-
-			// %d%02d%02d%02d%02d%02d",(tmstruct.tm_year+1900),( tmstruct.tm_mon+1), tmstruct.tm_mday,tmstruct.tm_hour , tmstruct.tm_min, tmstruct.tm_sec
 			#if (DF_DEBUG_NOUPLOAD_TO_SERVER)
 				kq =1;
 
@@ -6285,14 +5833,10 @@ void process_upfile_https()
 					data_get += VALUE[i];
 				}
 				Serial.println("gia tri cua len la: " +(String) len);
-				Serial.println("data info la: ");
-				Serial.println(data_get);
+				
 				// kq = clientmqtt.publish(channel_,VALUE,1,2);
 				// Serial.println(data_get.length());
-				// kq=publish_data(data_get,len,channel_);// dang sai
-				kq=guifile_pp_theolaptrinh(channel_,header_file_doing.model,header_file_doing.brand_name,header_file_doing.name,totalpart);//https
-				// kq=1;
-				// kq=guifile_pp_theolaptrinh(data_get,channel_);
+				kq=publish_data(data_get,len,channel_);
 				// Serial.write(value_moi,strlen(value_moi));
 				// int need_upload_opu = res_command(500, "+CMQTTPUB: 0,0");
 				// pulic_data_TEST(VALUE,len,channel_);
@@ -6312,7 +5856,6 @@ void process_upfile_https()
 		else
 		{	
 			sprintf(channel_,"%s/%s/%s/%d/CHUNK",inforeget_setting.name_topic,mynamedevice, upload_manager_info.nameofbill, (updatepart -1));
-			sprintf(filename,"%s_%d",upload_manager_info.nameofbill, (updatepart -1));
 			
 			#if (DF_DEBUG_NOUPLOAD_TO_SERVER)
 				kq =1;
@@ -6377,23 +5920,11 @@ void process_upfile_https()
 
 						data_get += VALUE[i];
 					}
-
-					Serial.println("data chunk la: ");
-					for (int i = 0; i < 32 && i < len; i++) {
-						Serial.printf("%02X ", VALUE[i]);
-					}
-					Serial.println();
 					// // Serial.println(data_get.length());
 					Serial.println("gia tri cua len la: " +(String) len);
 					// Serial.println(data_get);
 					// kq=pulic_data(data_get,len,channel_);
-					// kq=publish_data(data_get,len,channel_);//dang sai
-					// kq=guifile_goiin(channel_,VALUE,len,filename);
-					// uploadCounter=100+1;
-					// dayfile(mysclient_gsm,VALUE,channel_,len,filename,1);//sai ngay 17/12
-					// kq=test_dayfile(channel_,len,filename);//https DAN SU DUNG LUN
-					kq=upload_file_from_flash_https(channel_,len,filename);
-					// dayfile(base_client_gsm,VALUE,channel_,len,filename,0);
+					kq=publish_data(data_get,len,channel_);
 					// pulic_data_TEST(VALUE,len,channel_);
 					// Serial.write(value_moi,strlen(value_moi));
 					// int need_upload_opu = res_command(500, "+CMQTTPUB: 0,0");
@@ -6542,6 +6073,7 @@ void process_upfile_https()
 					// // ui8_ketnoimqtt_ok=0;
 					// ui32_timeout_disconnect_mqtt=millis()+100;
 					ui32_time_allow_upfile = millis() + 500;
+					ui16_counterfail=0;
 					// ui8_uploadlai=1;
 				}
 
@@ -6563,17 +6095,17 @@ void process_upfile_https()
 					ui8_sim_erro=1;
 					ui32_timeout_resetsim=millis()+100;
 					Serial.println("reset sim");
+					ui8_check_disconnect_mqtt=1;
+					// ui8_uploi=1;
+					// ui8_candisconnectmqtt=1;
+					// ui32_timeout_disconnect_mqtt=millis()+10;
+					// ui32_time_allow_upfile = millis() + 500;
 					// ui8_check_disconnect_mqtt=1;
-				// 	// ui8_uploi=1;
-				// 	// ui8_candisconnectmqtt=1;
-				// 	// ui32_timeout_disconnect_mqtt=millis()+10;
-				// 	// ui32_time_allow_upfile = millis() + 500;
-				// 	// ui8_check_disconnect_mqtt=1;
-				// 	// delay(2000);
-				// 	// setup_modem();
-				// 	// ui8_sim_erro=1;
-				// 	// ui32_timeout_resetsim=millis()+10000;
-				// 	// delay(2000);
+					// delay(2000);
+					// setup_modem();
+					// ui8_sim_erro=1;
+					// ui32_timeout_resetsim=millis()+10000;
+					// delay(2000);
 				}
 				else
 				{
@@ -7401,7 +6933,7 @@ void check_system_time()
 	*/
 	
 	//đọc thời gian hiện tại
-	if(ui8_busy_rec_printer == 1) return;
+	// if(ui8_busy_rec_printer == 1) return;
 	if(ui8_init_stm32_printer == 1) return;
 	if(ui8_init_stm32_barcode == 1) return;
 	// if(ui8_truycap_mqtt==1) return;
@@ -8930,7 +8462,7 @@ void setup_modem ()
     // pinMode(6,INPUT_PULLUP);
 	delay(500);
     digitalWrite(PWRKEY_MODEM, HIGH);
-    delay(500); //Need delay
+    delay(800); //Need delay
     digitalWrite(PWRKEY_MODEM, LOW);
 
 // 	if(digitalRead(6) == 1)
@@ -8944,8 +8476,6 @@ void setup_modem ()
 //   }
 
 	TESTMODEM();
-	// delay(5000);
-	// setup_pp();
 }
 void light_sleep(uint32_t sec )
 {
@@ -10413,19 +9943,19 @@ void send_opu_status()
 	}
 	// last_check_rssi=millis()+20;
 	ui8_dangupdate_mqtt=1;
-	// if(ui32_timeout_checkprinter < millis()) return;
-	// if(ui8_dangin==1) return;
-	// if(ui8_dangupdate_esp==1) return;
+	if(ui32_timeout_checkprinter < millis()) return;
+	if(ui8_dangin==1) return;
+	if(ui8_dangupdate_esp==1) return;
 	if (millis() < u32_time_resend_opu) return;
-	// if(ui8_dangconnect_mqtt==1) return;
-	// if(server_modem.busy == 0 || ui8_ketnoithanhcong_mqtt==0) return;
+	if(ui8_dangconnect_mqtt==1) return;
+	if(server_modem.busy == 0 || ui8_ketnoithanhcong_mqtt==0) return;
 	// if(ui8_truycap_mqtt==1) return;
 	// if(ui8_kiemtra_header == 0) return;
-	// if(ui8_busy_rec_printer == 1)
-	// {
-	// 	u32_time_resend_opu = millis() + 60*1000;
-	// 	return;
-	// }
+	if(ui8_busy_rec_printer == 1)
+	{
+		u32_time_resend_opu = millis() + 10*60*1000;
+		return;
+	}
 	// int tam = strlen(inforeget_setting.name_topic);
 	// if(ui8_kiemtra_header==0 && tam <= 0 )
 	// {
@@ -10534,41 +10064,59 @@ void send_opu_status()
 		doc["firmware_barcode"] = String (device_status.vs_barcode);
 		doc["firmware_printer"] = String (device_status.vs_printer);
 		doc["firmware_network"] = String (versionname);
-		// struct tm tmstruct ;		
-		// tmstruct.tm_year = 0;
-		// getLocalTime(&tmstruct, 5000);
+		
 		char msg[500];
 		serializeJson(doc, msg);
-		// %d%02d%02d%02d%02d%02d",(tmstruct.tm_year+1900),( tmstruct.tm_mon+1), tmstruct.tm_mday,tmstruct.tm_hour , tmstruct.tm_min, tmstruct.tm_sec
-
-		// DateTime now = rtc.now();
-		// sprintf(bill_media_info.nameofbill,"BIL%d%02d%02d%02d%02d%02d",now.year(),now.month(), now.day(),now.hour() , now.minute(), now.second());	
-		char channel_[200];  
-		// sprintf(channel_,"%s_%s_INFO_%d%02d%02d%02d%02d%02d",inforeget_setting.name_topic,mynamedevice,now.year(),now.month(), now.day(),now.hour() , now.minute(), now.second());
-		// sprintf(channel_,"/PRINTER/%s/%d%02d%02d%02d%02d%02d/INFO",mynamedevice,now.year(),now.month(), now.day(),now.hour() , now.minute(), now.second());
+		
+		char channel_[100];  
 		sprintf(channel_,"%s/%s/INFO",inforeget_setting.name_topic,mynamedevice);
-		Serial.println(channel_);
 
+		// bool publish(const char topic[], const char payload[], int length, bool retained, int qos);
+		
+		// #ifndef DF_MQTT_UP_4G
+		// 	int need_upload_opu  = clientmqtt.publish(channel_,msg,1,2);
+		// #else	
+		// 	String data_get = "";
+		// 	Serial.println("Load data");
+		// 	for(uint64_t i = 0; i<(strlen(msg)) ; i++)
+		// 	{	  	  
+		// 		// VALUE[u] = i;
+		// 		// u++;
+		// 		// j++;  
+		// 		// // VALUE[u] = 'A';
+		// 		// data_get+=VALUE[u];
+
+		// 		data_get += msg[i];
+		// 	}
+		// 	Serial.println(data_get.length());
+		// 	pulic_data(data_get,data_get.length(),channel_);
+		// 	// Serial.write(value_moi,strlen(value_moi));
+		// 	// int need_upload_opu = res_command(500, "+CMQTTPUB: 0,0");
+		// 	int need_upload_opu = gsm_send_serial("AT+CMQTTPUB=0,1,60",500);
+		// #endif
 		int need_upload_opu=0;
 		if(system_connection_mode == BYSIM4G)
 		{
-			// if(ui8_check_disconnect_mqtt==1)
-			// {
-			// 	Serial.println("dang disconect can connect lai trong ham process_upfile_mqtt");
-			// 	// init_MQTT(inforeget_setting.name_topic,mynamedevice);
-			// 	// // send_at("AT+CMQTTCFG=\"checkUTF8\",0,0");
-			// 	// connect_MQTT_ATCMD();
-			// 	// if(mqttConnected==0)
-			// 	// {
-			// 		disconnect_MQTT();
-			// 		setup_mqtt_atcmd(systeminfo.name_domain,systeminfo.username_mqtt,systeminfo.password_mqtt,inforeget_setting.name_topic,mynamedevice);
-			// 	// }
-			// 	ui32_timeout_disconnect_mqtt=millis()+5000;
-			// 	ui8_check_disconnect_mqtt=0;
-			// }
+			if(ui8_check_disconnect_mqtt==1)
+			{
+				Serial.println("dang disconect can connect lai_gui info");
+				// init_MQTT(inforeget_setting.name_topic,mynamedevice);
+				// send_at("AT+CMQTTCFG=\"checkUTF8\",0,0");
+				// connect_MQTT_ATCMD();
+				if(mqttConnected==0)
+					{
 
-			// if(ui8_check_disconnect_mqtt==0)
-			// {
+						setup_mqtt_atcmd(systeminfo.name_domain,systeminfo.username_mqtt,systeminfo.password_mqtt,inforeget_setting.name_topic,mynamedevice);
+					}
+				// setup_mqtt_atcmd(systeminfo.name_domain,systeminfo.username_mqtt,systeminfo.password_mqtt,inforeget_setting.name_topic,mynamedevice);
+				ui32_timeout_disconnect_mqtt=millis()+5000;
+				ui8_check_disconnect_mqtt=0;
+			}
+			// server_modem.busy=1;
+			// select_uart(UART_4G);
+			// delay(10);
+			
+			if (ui8_check_disconnect_mqtt==0){
 				String data_get = "";
 				// ui32_timeout_check_barcode = millis() + 50000;
 				Serial.println("Load data");
@@ -10583,12 +10131,18 @@ void send_opu_status()
 
 					data_get += msg[i];
 				}
-				// need_upload_opu=guifile_pp(data_get,channel_);
-				// need_upload_opu=guifile_pp_theolaptrinh(data_get,channel_);
-				need_upload_opu=publish_data(data_get,data_get.length(),channel_);
-			// }
-
-				
+				Serial.println(data_get.length());
+				// if(ui8_check_disconnect_mqtt==0)
+				// {
+					// need_upload_opu  = clientmqtt.publish(channel_,msg,1,2);
+					// need_upload_opu=pulic_data(data_get,data_get.length(),channel_);
+					need_upload_opu=publish_data(data_get,data_get.length(),channel_);
+					// Serial.write(value_moi,strlen(value_moi));
+					// int need_upload_opu = res_command(500, "+CMQTTPUB: 0,0");
+					// need_upload_opu = gsm_send_serial("AT+CMQTTPUB=0,1,60",500);
+					// need_upload_opu = ui8_check_pub;
+				// }
+			}
 		}
 
 		else
@@ -10603,11 +10157,9 @@ void send_opu_status()
 			Serial.println("gui info thanh cong");
 			ui8_danggui_thongtin_board=0;
 			u32_time_resend_opu = millis() + 20*60*60*1000; /*20h*/
-			// u32_time_resend_opu = millis() + 60*1000;; /*20h*/
 			ui8_demsolanguisai_info=0;
 			ui8_dangupdate_mqtt=0;
-			lastNetworkCheck = millis()+5000;
-			gui_onl=1;
+			lastNetworkCheck = millis()+30000;
 			// ui8_candisconnectmqtt=1;
 			// ui32_timeout_disconnect_mqtt = millis() + TG_DISCONNECT_MQTT;
 			// if(ui8_check_disconnect_mqtt == 0)
@@ -10623,20 +10175,14 @@ void send_opu_status()
 			/*fail: init short time*/
 			// ui32_timeout_check_barcode = millis() + 60000;z
 			Serial.println("gui info khong thanh cong");
-			ui8_check_disconnect_mqtt=1;
-			u32_time_resend_opu = millis() + 60*1000;
-			gui_onl=1;
+			u32_time_resend_opu = millis() + 2000;
 			ui8_demsolanguisai_info++;
 			if(ui8_demsolanguisai_info>3)
 			{
 				u32_time_resend_opu = millis() + 20*60*60*1000;
-				// u32_time_resend_opu = millis() + 60*1000;; /*20h*/
 				ui8_demsolanguisai_info=0;
 				ui8_dangupdate_mqtt=0;
-				lastNetworkCheck = millis()+5000;
-				gui_onl=1;
-				ui8_sim_erro=1;
-				ui32_timeout_resetsim=millis()+100;
+				lastNetworkCheck = millis()+30000;
 				// ui8_candisconnectmqtt=1;
 				// ui32_timeout_disconnect_mqtt=millis()+50;
 			}
@@ -10645,7 +10191,8 @@ void send_opu_status()
 			// ui32_timeout_resetsim=millis()+300;
 			// server_modem.busy=0;
 		}
- 
+
+  	// }	
 }
 
 
@@ -10658,7 +10205,7 @@ void messageReceived(String &topic, String &payload)
   // or push to a queue and handle it in the loop after calling `client.loop()`.
 	// Serial.print(F(">>>>************>>>IN\n"));
 	if(ui8_busy_rec_printer == 1) return;
-	if(topic!="" && payload!="") return;
+	// if(topic!="" && payload!="") return;
 	if(ui8_comess==0) return;
 	SerialDEBUG.println("incoming: ");
 	SerialDEBUG.println(topic);
@@ -11049,7 +10596,7 @@ void check_format_disk()
 	if (upload_manager_info.mode == 1) return;
 	
 	// if (upload_manager_info.tot > max_file_save -1)
-	if (upload_manager_info.tot > 30)
+	if (upload_manager_info.tot > 40)
 	{
 		Serial.println(F("Format cause file reach memory"));
 		formatdisk_func();		
@@ -11593,13 +11140,13 @@ void check_manufacturer()
 	if(ui8_truycap_mqtt == 1) return;
 	if(ui8_dangin==1 || ui8_busy_rec_printer==1)
 	{
-		u32_timeout_checkinfo_printer = millis() + 6000;
+		// u32_timeout_checkinfo_printer = millis() + 6000;
 		return;
 	}
 	// if(ui8_khoicheck_manufacturer == 1) return;
 	// Serial.println("vo check manufacturer");
 	response_Manufacturer_STM();
-	u32_timeout_checkinfo_printer = millis() + 6000;
+	// u32_timeout_checkinfo_printer = millis() + 6000;
 	// dem_solan_checkmanu++;
 	// if(dem_solan_checkmanu >= 3)
 	// {
@@ -11616,7 +11163,7 @@ void check_product_printer()
 	if(ui8_truycap_mqtt == 1) return;
 	if(ui8_dangin==1 || ui8_busy_rec_printer==1)
 	{
-		u32_timeout_checkstatus_printer = millis() + 5500;
+		// u32_timeout_checkstatus_printer = millis() + 5500;
 		return;
 	}
 	// if(server_modem.busy==0) return;
@@ -11626,7 +11173,7 @@ void check_product_printer()
 	// }
 	// if(ui8_khoicheck_product_printer == 1) return;
 	response_Product_STM();
-	u32_timeout_checkstatus_printer = millis() + 5500;
+	// u32_timeout_checkstatus_printer = millis() + 5500;
 	// dem_solan_checkstatus_printer++;
 	// if(dem_solan_checkstatus_printer >= 3)
 	// {
@@ -11642,7 +11189,7 @@ void check_serialnmber_printer()
 	}
 	if(ui8_dangin==1 || ui8_busy_rec_printer==1)
 	{
-		u32_timeout_checkserinumber_printer = millis() + 5000;
+		// u32_timeout_checkserinumber_printer = millis() + 5000;
 		return;
 	}
 	if(ui8_truycap_mqtt == 1) return;
@@ -11654,7 +11201,7 @@ void check_serialnmber_printer()
 
 	// if(ui8_khoicheck_serialnumber_printer == 1) return;
 	response_Serialnumber_STM();
-	u32_timeout_checkserinumber_printer = millis() + 5000;
+	// u32_timeout_checkserinumber_printer = millis() + 5000;
 	// dem_solan_checkserialnumber_printer++;
 	// if(dem_solan_checkserialnumber_printer >= 3)
 	// {
@@ -11729,13 +11276,13 @@ void xuly_info_printer()
 		ui8_checkketnoi_serialnumber_printer=0;
 	}
 
-	// if(ui8_guiinfo_manu == 1 && ui8_guistatus_manu==1 && ui8_guiseri_manu==1)
-	// {
-	// 	u32_time_resend_opu = millis() + 15000;
-	// 	ui8_guiinfo_manu = 0;
-	// 	ui8_guistatus_manu = 0;
-	// 	ui8_guiseri_manu = 0;
-	// }
+	if(ui8_guiinfo_manu == 1 && ui8_guistatus_manu==1 && ui8_guiseri_manu==1)
+	{
+		u32_time_resend_opu = millis() + 15000;
+		ui8_guiinfo_manu = 0;
+		ui8_guistatus_manu = 0;
+		ui8_guiseri_manu = 0;
+	}
 }
 
 void chuyen_mode()
@@ -12013,1417 +11560,6 @@ void check_reset_box()
 		
 	}
 }
-
-void setup_pp()
-{
-	 // Khởi động modem
-	// modem.restart();
-	Serial.println("Đang tìm mạng...");
-
-	if (!modem.waitForNetwork(50000)) {
-		Serial.println("Không tìm thấy mạng.");
-		ui8_dem_sl_ketnoi_4g++;
-		if(ui8_dem_sl_ketnoi_4g<=3)
-		{
-			setup_modem ();
-		}
-		return;
-	}
-
-	Serial.println("Đã thấy mạng. Bắt đầu PPP...");
-
-	// Thay đổi APN theo nhà mạng của bạn:
-	// const char apn[] = "v-internet"; // Viettel: v-internet, Vina: internet, Mobi: m-wap
-
-	if (!modem.gprsConnect(systeminfo.apn, "", "")) {
-		Serial.println("Không kết nối được mạng di động (PPP).");
-		ui8_dem_sl_ketnoi_4g++;
-		if(ui8_dem_sl_ketnoi_4g<=3)
-		{
-			setup_modem ();
-		}
-		return;
-	}
-
-	Serial.println("Đã kết nối Internet (PPP).");
-	Serial.print("IP cấp phát: ");
-	Serial.println(modem.localIP());
-	ui8_dem_sl_ketnoi_4g=0;
-	ui8_sim_erro=1;
-}
-
-void saveToSPIFFS(const char* filename, const char* data) {
-  File file = SPIFFS.open(filename, FILE_WRITE);
-  if (!file) {
-    Serial.println("❌ Không thể mở file để ghi");
-    return;
-  }
-
-  size_t bytesWritten = file.write((const uint8_t*)data, strlen(data));
-  file.close();
-
-  Serial.printf("✅ Đã ghi %u byte vào %s\n", bytesWritten, filename);
-}
-
-// void dayfile(uint64_t sizedata,const char* filename)
-// {
-// 	unsigned long startTime = millis(); // Lấy thời gian bắt đầu
-	
-// 	// Mở file
-// 	uint64_t u = 0;
-// 	uint64_t j = 0;
-
-// 	/*
-// 	16k không publish được
-
-// 	*/
-// 	for(int i =0; i< sizedata; i++)
-// 	{	  	  
-// 	VALUE[u] = i;
-// 	u++;
-// 	j++;
-// 	// if( j >'z') j ='a';	  
-// 	}
-
-// 	VALUE[u] = '\0';
-// 	Serial.print("\n buffer pub = ");
-// 	Serial.println(u);	
-// 	Serial.println(strlen(VALUE));
-
-//   const size_t fileSize = sizedata;
-// //   File file = SPIFFS.open("/data100kb.txt", FILE_WRITE);
-// //   if (!file) {
-// //     Serial.println("❌ Không thể tạo file");
-// //     return;
-// //   }
-
-//   // Ghi từng khối nhỏ để tránh dùng quá nhiều RAM
-//   const size_t chunkSize = 1024;
-// //   char buffer[chunkSize];
-// //   memset(buffer, 'C', chunkSize);
-// // //   memcpy(buffer, data, chunkSize);
-
-// //   size_t written = 0;
-// //   while (written < fileSize) {      
-// //     size_t toWrite = min(chunkSize, fileSize - written);
-// //     // file.write((const uint8_t*)buffer, toWrite);
-// //     written += toWrite;
-// //   }
-
-// //   file.close();
-//   Serial.printf("✅ Đã ghi file %d byte thành công: /data100kb.txt\n", fileSize);
-
-
-// 	// File f = SPIFFS.open("/data100kb.txt", "r");
-// 	// if (!f) {
-// 	// 	Serial.println("Không mở được file");
-// 	// 	return;
-// 	// }
-// 	size_t contentLength = fileSize;
-//   	Serial.println(contentLength);
-	
-	
-// 	// Tạo tên file theo số lần upload
-// 	String fileName = String(filename) + ".txt";
-// 	Serial.println(fileName);
-// 	String boundary = "----ESP32Boundary";
-// 	String header = String("--") + boundary + "\r\n"
-// 					+ "Content-Disposition: form-data; name=\"fileToUpload\"; filename=\"" + fileName + "\"\r\n"
-// 					+ "Content-Type: application/octet-stream\r\n\r\n";
-// 	String footer = "\r\n--" + boundary + "--\r\n";
-	
-// 	if (!base_client_gsm.connect(host, port)) {
-// 		Serial.println("Không kết nối được tới server");
-// 		// f.close();
-// 		return;
-// 	}
-// 	Serial.println("Đã kết nối tới server");
-
-// 	// Gửi request line và headers
-// 	base_client_gsm.print(String("POST ") + serverPath + " HTTP/1.1\r\n");
-// 	base_client_gsm.print(String("Host: ") + host + "\r\n");
-// 	base_client_gsm.print("Connection: close\r\n");
-// 	base_client_gsm.print("Content-Type: multipart/form-data; boundary=" + boundary + "\r\n");
-
-// 	// Tổng độ dài body = header + file + footer
-// 	size_t totalLength = header.length() + contentLength + footer.length();
-// 	base_client_gsm.print("Content-Length: " + String(totalLength) + "\r\n\r\n");
-
-// 	// Gửi phần header multipart
-// 	base_client_gsm.print(header);
-
-// 	// Stream file theo chunk 1024 byte
-// 	// const size_t bufSize = 1024;
-// 	// uint8_t buf[bufSize];
-// 	// while (size_t len = f.read(buf, bufSize)) {
-// 	// 	base_client_gsm.write(buf, len);
-// 	// }
-// 	// base_client_gsm.print(String(buffer));
-// 	// ======== GỬI DỮ LIỆU GIẢ TRỰC TIẾP TỪ RAM THEO CHUNK ========
-// 	size_t sent = 0;
-// 	while (sent < 200000) {
-// 	size_t toSend = min(chunkSize, fileSize - sent);
-// 	base_client_gsm.write((const uint8_t*)VALUE, fileSize);
-// 	sent += toSend;
-// 	}
-
-// 	// Gửi phần footer
-// 	base_client_gsm.print(footer);
-
-// 	// Đọc phản hồi
-// 	Serial.println("------ Server phản hồi ------");
-// 	while (base_client_gsm.connected() || base_client_gsm.available()) {
-// 		if (base_client_gsm.available()) {
-// 		String line = base_client_gsm.readStringUntil('\n');
-// 		Serial.println(line);
-// 		}
-// 	}
-// 	Serial.println("------ Kết thúc ------");
-// 	base_client_gsm.stop();
-// 	unsigned long endTime = millis();
-// 	Serial.print("Tổng thời gian gửi file: ");
-// 	Serial.print((endTime - startTime) / 1000.0);
-// 	Serial.println(" giây");
-// }
-int readServerResponse(Client &client, uint32_t waitFirstByteMs = 30000, uint32_t totalReadMs = 60000)
-{
-  String resp = "";
-    unsigned long t = millis();
-
-    while (millis() - t < 8000) {
-        while (client.available()) {
-            resp += (char)client.read();
-			Serial.println("test ketnoi");
-        }
-        if (!client.connected()) break;
-    }
-	client.stop();
-
-	Serial.println("=== RAW RESPONSE ===");
-    Serial.println(resp);
-
-    if (resp.indexOf("HTTP/1.1") >= 0) {
-        Serial.println("✅ SERVER ĐÃ PHẢN HỒI");
-        return 1;
-    } else {
-        Serial.println("❌ SERVER CẮT KẾT NỐI");
-        return 0;
-    }
-}
-
-
-int dayfile(Client &client ,const char* data,const char* channel_, uint64_t sizedata, const char* filename, uint8_t dieukien)
-{
-  unsigned long startTime = millis();
-
-  // 1) Tạo dữ liệu vào VALUE (demo)
-  // Lưu ý: VALUE phải đủ sizedata + 1
-  char VALUE_test[sizedata + 1];
-  uint64_t u = 0;
-  for (uint64_t i = 0; i < sizedata; i++) {
-    VALUE_test[u++] = 'A' + (i % 26);   // dữ liệu text an toàn
-  }
-  VALUE_test[u] = '\0';
-
-  Serial.print("\n buffer pub = ");
-//   Serial.println((uint32_t)u);
-  Serial.println(strlen(data)); // chỉ đúng nếu dữ liệu text không có '\0' ở giữa
-  const size_t fileSize = (size_t)sizedata;
-  Serial.printf("✅ Data size = %u bytes\n", (unsigned)fileSize);
-
-  // 2) Multipart info
-  String fileName = String(filename) + ".bin";
-  Serial.println(fileName);
-  String boundary = "----ESP32Boundary";
-  
-
-   String header =
-      String("--") + boundary + "\r\n"
-    + "Content-Disposition: form-data; name=\"DATA\"; filename=\"" + fileName + "\"\r\n"
-    + "Content-Type: application/octet-stream\r\n\r\n";
-
-//   String header =
-//       String("--") + boundary + "\r\n"
-//     + "Content-Disposition: form-data; name=\"DATA\"; filename=\"" + fileName + "\"\r\n"
-//     + "Content-Type: application/octet-stream\r\n\r\n"; // nay cho server lap trinh
-
-  String footer = "\r\n--" + boundary + "--\r\n";
-
-  size_t contentLength = fileSize;
-  size_t totalLength = header.length() + contentLength + footer.length();
-
-  // 3) Connect
-  if (!client.connect(host, port)) {
-    Serial.println("❌ Không kết nối được tới server");
-    return 0;
-  }
-  Serial.println("✅ Đã kết nối tới server");
-  client.setTimeout(200000);  // 120 giây
-
-  // 4) HTTP headers
-//   if(dieukien==0)
-//   {
-// 	  client.print(String("POST ") + serverPath + " HTTP/1.1\r\n");
-// 	  client.print(String("Host: ") + host + "\r\n");
-// 	  client.print("Connection: close\r\n");
-// 	  client.print("Content-Type: multipart/form-data; boundary=" + boundary + "\r\n");
-// 	  client.print("Content-Length: " + String(totalLength) + "\r\n\r\n");
-
-//   }
-//   else if(dieukien==1)
-//   {
-	// client.print(String("POST ") + String("/") + channel_ + " HTTP/1.1\r\n");
-	// Serial.println(String("POST ") + String("/") + channel_ + " HTTP/1.1\r\n");
-    // client.print(String("Host: ") + host + "\r\n");
-
-	// client.print("User-Agent: ESP32\r\n");
-  	// client.print("Accept: */*\r\n");
-    // client.print("X-API-KEY: 59ac5be1333a7b1247deb8f36609b25f41d781efbc7f06e7d485b04d8b3d9101\r\n");
-    // client.print("Connection: close\r\n");
-    // client.print("Content-Type: multipart/form-data; boundary=" + boundary + "\r\n");
-    // client.print("Content-Length: " + String(totalLength) + "\r\n\r\n");
-
-
-	client.print(String("POST /") + channel_ + " HTTP/1.1\r\n");
-	client.print(String("Host: ") + host + "\r\n");
-	client.print("X-API-KEY: 59ac5be1333a7b1247deb8f36609b25f41d781efbc7f06e7d485b04d8b3d9101\r\n");
-	client.print("User-Agent: ESP32\r\n");
-	client.print("Accept: */*\r\n");
-	client.print("Connection: close\r\n");
-	client.print("Content-Type: multipart/form-data; boundary=" + boundary + "\r\n");
-	client.print("Content-Length: " + String(totalLength) + "\r\n");
-	client.print("Expect: 100-continue\r\n\r\n");   
-//   }
-	
-  // 5) Send multipart header
-  client.print(header);
-
-// //   6) Send VALUE from RAM by chunk (CHUẨN)
-  const size_t chunkSize = 1024;
-  size_t sent = 0;
-
-  while (sent < fileSize) {
-    size_t toSend = min(chunkSize, fileSize - sent);
-
-    // GỬI ĐÚNG OFFSET + ĐÚNG SỐ BYTE
-    size_t w = client.write((const uint8_t*)VALUE_test + sent, toSend);
-	Serial.printf("Đã gửi: %u / %u bytes\r\n", (unsigned)(sent + w), (unsigned)fileSize);
-	Serial.println("test g"+String(w));
-    if (w != toSend) {
-      Serial.printf("❌ Write lỗi: sent=%u, toSend=%u, wrote=%u\n",
-                    (unsigned)sent, (unsigned)toSend, (unsigned)w);
-      break;
-    }
-
-    sent += toSend;
-
-    // GSM thường cần nhịp nhỏ để ổn định
-    delay(50);
-  }
-
-  // 7) Footer
-  client.print(footer);
-
-  // 8) Read response
-  Serial.println("------ Server phản hồi ------");
-  unsigned long t0 = millis();
-  while ((client.connected() || client.available()) && (millis() - t0 < 20000)) {
-    while (client.available()) {
-      String line = client.readStringUntil('\n');
-      Serial.println(line);
-      t0 = millis(); // reset timeout nếu còn data
-    }
-    delay(10);
-  }
-//   int ketqua=0;
-//   ketqua=readServerResponse(client, 30000, 60000);	
-  Serial.println("------ Kết thúc ------");
-
-  client.stop();
-
-  unsigned long endTime = millis();
-  Serial.print("Tổng thời gian gửi file: ");
-  Serial.print((endTime - startTime) / 1000.0);
-  Serial.println(" giây");
-}
-
-
-int guifile_pp(String data_get,const char* channel_)
-{
-	unsigned long startTime = millis(); // Lấy thời gian bắt đầu
-	size_t contentLength = data_get.length();
-//code moi
-
-
-	// Tạo tên file theo số lần upload
-	String fileName = String(channel_)+".txt";
-	
-	String boundary = "----ESP32Boundary";
-	String header = String("--") + boundary + "\r\n"
-					+ "Content-Disposition: form-data; name=\"fileToUpload\"; filename=\"" + fileName + "\"\r\n"
-					+ "Content-Type: application/octet-stream\r\n\r\n";
-	String footer = "\r\n--" + boundary + "--\r\n";
-	
-	if (!base_client_gsm.connect(host, port)) {
-		Serial.println("Không kết nối được tới server");
-		// f.close();
-		return 0;
-	}
-	Serial.println("Đã kết nối tới server");
-
-	// Gửi request line và headers
-	base_client_gsm.print(String("POST ") + serverPath + " HTTP/1.1\r\n");
-	// base_client_gsm.print(String("POST ") + String("/") + channel_ + " HTTP/1.1\r\n");
-	base_client_gsm.print(String("Host: ") + host + "\r\n");
-	base_client_gsm.print("Connection: close\r\n");
-	base_client_gsm.print("Content-Type: multipart/form-data; boundary=" + boundary + "\r\n");
-
-	// Tổng độ dài body = header + file + footer
-	size_t totalLength = header.length() + contentLength + footer.length();
-	base_client_gsm.print("Content-Length: " + String(totalLength) + "\r\n\r\n");
-	Serial.println("Content-Length: " + String(totalLength) + "\r\n\r\n");
-	// Gửi phần header multipart
-	base_client_gsm.print(header);
-
-	base_client_gsm.print(data_get);
-	// Gửi phần footer
-	base_client_gsm.print(footer);
-
-	// Đọc phản hồi
-	Serial.println("------ Server phản hồi ------");
-	String response = "";
-	while (base_client_gsm.connected() || base_client_gsm.available()) {
-		if (base_client_gsm.available()) {
-		String line = base_client_gsm.readStringUntil('\n');
-		Serial.println(line);
-		 response += line + "\n";  // Thêm dòng vào response (kèm newline)
-		}
-	}
-
-	// In ra toàn bộ phản hồi
-	// Serial.println("📨 Phản hồi từ server:");
-	// Serial.println(response);
-
-	// Kiểm tra thành công
-	response.toLowerCase();  // Đưa về chữ thường hết
-	if (response.indexOf("uploaded") >= 0) {
-	Serial.println("✅ Upload thành công!");
-	return 1;
-	} else {
-	Serial.println("❌ Upload thất bại hoặc server không trả về đúng định dạng.");
-	return 0;
-	}
-	Serial.println("------ Kết thúc ------");
-	base_client_gsm.stop();
-	unsigned long endTime = millis();
-	Serial.print("Tổng thời gian gửi file: ");
-	Serial.print((endTime - startTime) / 1000.0);
-	Serial.println(" giây");
-
-}
-
-int guifile_pp_http(String data_get,const char* channel_,const char* filename)
-{
-	unsigned long startTime = millis(); // Lấy thời gian bắt đầu
-	size_t contentLength = data_get.length();
-//code moi
-
-
-	// Tạo tên file theo số lần upload
-	String fileName = String(filename)+".bin";
-	
-	String boundary = "----ESP32Boundary";
-	String header = String("--") + boundary + "\r\n"
-					+ "Content-Disposition: form-data; name=\"DATA\"; filename=\"" + fileName + "\"\r\n"
-					+ "Content-Type: application/octet-stream\r\n\r\n";
-	String footer = "\r\n--" + boundary + "--\r\n";
-	
-	if (!base_client_gsm.connect(host, port)) {
-		Serial.println("Không kết nối được tới server");
-		// f.close();
-		return 0;
-	}
-	Serial.println("Đã kết nối tới server");
-
-	// Gửi request line và headers
-	base_client_gsm.print(String("POST ") + serverPath + " HTTP/1.1\r\n");
-	// base_client_gsm.print(String("POST ") + String("/") + channel_ + " HTTP/1.1\r\n");
-	base_client_gsm.print(String("Host: ") + host + "\r\n");
-	base_client_gsm.print("Connection: close\r\n");
-	base_client_gsm.print("Content-Type: multipart/form-data; boundary=" + boundary + "\r\n");
-
-	// Tổng độ dài body = header + file + footer
-	size_t totalLength = header.length() + contentLength + footer.length();
-	base_client_gsm.print("Content-Length: " + String(totalLength) + "\r\n\r\n");
-	Serial.println("Content-Length: " + String(totalLength) + "\r\n\r\n");
-	// Gửi phần header multipart
-	base_client_gsm.print(header);
-
-	base_client_gsm.print(data_get);
-	// Gửi phần footer
-	base_client_gsm.print(footer);
-
-	// Đọc phản hồi
-	Serial.println("------ Server phản hồi ------");
-	String response = "";
-	while (base_client_gsm.connected() || base_client_gsm.available()) {
-		if (base_client_gsm.available()) {
-		String line = base_client_gsm.readStringUntil('\n');
-		Serial.println(line);
-		 response += line + "\n";  // Thêm dòng vào response (kèm newline)
-		}
-	}
-
-	// In ra toàn bộ phản hồi
-	// Serial.println("📨 Phản hồi từ server:");
-	// Serial.println(response);
-
-	// Kiểm tra thành công
-	response.toLowerCase();  // Đưa về chữ thường hết
-	if (response.indexOf("uploaded") >= 0) {
-	Serial.println("✅ Upload thành công!");
-	return 1;
-	} else {
-	Serial.println("❌ Upload thất bại hoặc server không trả về đúng định dạng.");
-	return 0;
-	}
-	Serial.println("------ Kết thúc ------");
-	base_client_gsm.stop();
-	unsigned long endTime = millis();
-	Serial.print("Tổng thời gian gửi file: ");
-	Serial.print((endTime - startTime) / 1000.0);
-	Serial.println(" giây");
-
-}
-
-bool response_is_ok(const char* resp) {
-  // 1) Parse HTTP status từ dòng đầu: "HTTP/1.1 200 OK"
-  int code = 0;
-  const char* p = strstr(resp, "HTTP/");
-  if (p) {
-    // tìm khoảng trắng sau HTTP/x.x
-    p = strchr(p, ' ');
-    if (p) code = atoi(p + 1);
-  }
-
-  // 2) Nếu HTTP code là 2xx => OK
-  if (code >= 200 && code < 300) return true;
-
-  // 3) Fallback: tìm chữ "ok" trong body (case-insensitive đơn giản)
-  // tách body sau "\r\n\r\n"
-  const char* body = strstr(resp, "\r\n\r\n");
-  body = body ? (body + 4) : resp;
-
-  // tìm "ok" / "OK"
-  if (strstr(body, "ok") || strstr(body, "OK") || strstr(body, "\"ok\"") || strstr(body, "\"OK\""))
-    return true;
-
-  return false;
-}
-
-
-
-int guifile_pp_theolaptrinh(const char* channel_,const char* model,const char* brand,const char* vouchercode,uint8_t part)
-{
-    String boundary = "ESP32Boundary";
-    String body = "";
-
-    // ===== MULTIPART BODY =====
-    body += "--" + boundary + "\r\n";
-    body += "Content-Disposition: form-data; name=\"PART\"\r\n\r\n";
-    body += String(part) + "\r\n";
-
-    body += "--" + boundary + "\r\n";
-    body += "Content-Disposition: form-data; name=\"PRINTER_MODEL\"\r\n\r\n";
-    body += String(model) + "\r\n";
-
-    body += "--" + boundary + "\r\n";
-    body += "Content-Disposition: form-data; name=\"PRINTER_BRAND\"\r\n\r\n";
-    body += String(brand) + "\r\n";
-
-    body += "--" + boundary + "\r\n";
-    body += "Content-Disposition: form-data; name=\"VOUCHER_CODE\"\r\n\r\n";
-    body += String(vouchercode+3)+ "\r\n";
-
-    body += "--" + boundary + "--\r\n";
-
-    size_t contentLength = body.length();
-
-    Serial.println("=== BODY SEND ===");
-    Serial.println(body);
-
-    // ===== CONNECT SERVER =====
-    if (!mysclient_gsm.connect(host, port)) {
-        Serial.println("❌ Không kết nối được server");
-        return 0;
-    }
-
-    Serial.println("✅ Đã kết nối server");
-
-    // ===== HTTP HEADER =====
-    mysclient_gsm.print(String("POST ") + String("/") + channel_ + " HTTP/1.1\r\n");
-    mysclient_gsm.print(String("Host: ") + host + "\r\n");
-    mysclient_gsm.print("X-API-KEY: 59ac5be1333a7b1247deb8f36609b25f41d781efbc7f06e7d485b04d8b3d9101\r\n");
-    mysclient_gsm.print("Connection: close\r\n");
-    mysclient_gsm.print("Content-Type: multipart/form-data; boundary=" + boundary + "\r\n");
-    mysclient_gsm.print("Content-Length: " + String(contentLength) + "\r\n\r\n");
-
-    // ===== SEND BODY =====
-    mysclient_gsm.print(body);
-	// ===== READ RESPONSE SAFE =====
-	Serial.println("------ SERVER RESPONSE ------");
-	// #define MAX_RESP 1024
-	char response[1024];
-	int respLen = 0;
-
-	unsigned long waitStart = millis();
-	while (!mysclient_gsm.available()) {
-		if (millis() - waitStart > 10000) {
-			Serial.println("❌ Timeout chờ response");
-			mysclient_gsm.stop();
-			return 0;
-		}
-		delay(10);
-	}
-
-	// đọc tối đa MAX_RESP byte
-	while (mysclient_gsm.available() && respLen < 1024 - 1) {
-		// Serial.println("test doc response");
-		response[respLen++] = mysclient_gsm.read();
-		delay(10);
-	}
-	response[respLen] = '\0';
-
-	mysclient_gsm.stop();
-
-	Serial.println(response);
-
-
-	// if (response_is_ok(response)) {
-	// Serial.println("Server trả OK");
-	// return 1;
-	// } else {
-	// Serial.println("Server KHÔNG OK");
-	// return 0;
-	// }
-
-	// ===== TÁCH MESSAGE: "Bill created" =====
-    char billMsg[64] = {0};
-	uint8_t ui8_daok=0;
-
-    // 1) tìm "message":"..."
-    const char* p = strstr(response, "\"message\":\"");
-	const char* d = strstr(response, "\"detail\":\"");
-    if (p) {
-        p += strlen("\"message\":\"");
-        const char* end = strchr(p, '"');
-        if (end) {
-            size_t n = (size_t)(end - p);
-            if (n >= sizeof(billMsg)) n = sizeof(billMsg) - 1;
-            memcpy(billMsg, p, n);
-            billMsg[n] = '\0';
-        }
-    }
-
-	if(d) {
-		d += strlen("\"detail\":\"");
-		const char* endd = strchr(d, '"');
-		if (endd) {
-			size_t n = (size_t)(endd - d);
-			if (n >= sizeof(billMsg)) n = sizeof(billMsg) - 1;
-			memcpy(billMsg, d, n);
-			billMsg[n] = '\0';
-		}
-	}
-
-    if (billMsg[0] != '\0') {
-        Serial.print("✅ MESSAGE = ");
-        Serial.println(billMsg);   // <-- đây là "Bill created"
-		if(String(billMsg)=="Bill created")
-		{
-			ui8_daok=1;
-			Serial.println("da tao bill ok");
-		}
-
-		if(String(billMsg)=="Bill already exists")
-		{
-			ui8_daok=0;
-			Serial.println("da tao bill ko ok");
-			formatdisk_func();
-		}
-    } 
-	else 
-	{
-        Serial.println("⚠️ Không tách được field message");
-    }
-
-    // ===== CHECK OK (giữ logic cũ của bạn) =====
-    if (response_is_ok(response) && ui8_daok==1) {
-        Serial.println("Server trả OK");
-        return 1;
-    } 
-	else 
-	{
-        Serial.println("Server KHÔNG OK");
-        return 0;
-    }
-
-}
-
-int guifile_goiin(const char* channel_, const char* data_get, uint64_t chunkSize, String file_name)
-{
-	unsigned long startTime = millis(); // Lấy thời gian bắt đầu
-	size_t contentLength = (size_t)chunkSize;
-	
-	String fileName = String(file_name) + ".bin";
-	Serial.println("ten file: " + String(fileName));
-	
-	String boundary = "----ESP32Boundary";
-	String header = String("--") + boundary + "\r\n"
-					+ "Content-Disposition: form-data; name=\"DATA\"; filename=\"" + fileName + "\"\r\n"
-					+ "Content-Type: application/octet-stream\r\n\r\n";
-	String footer = "\r\n--" + boundary + "--\r\n";
-	
-	if (!mysclient_gsm.connect(host, port)) {
-		Serial.println("Không kết nối được tới server");
-		// f.close();
-		return 0;
-	}
-	Serial.println("Đã kết nối tới server");
-
-	// Gửi request line và headers
-	// base_client_gsm.print(String("POST ") + serverPath + " HTTP/1.1\r\n");
-	mysclient_gsm.print(String("POST ") + String("/") + channel_ + " HTTP/1.1\r\n");
-	mysclient_gsm.print(String("Host: ") + host + "\r\n");
-	mysclient_gsm.print("X-API-KEY: 59ac5be1333a7b1247deb8f36609b25f41d781efbc7f06e7d485b04d8b3d9101\r\n");
-	mysclient_gsm.print("Connection: close\r\n");
-	mysclient_gsm.print("Content-Type: multipart/form-data; boundary=" + boundary + "\r\n");
-
-	// Tổng độ dài body = header + file + footer
-	size_t totalLength = header.length() + contentLength + footer.length();
-	mysclient_gsm.print("Content-Length: " + String(totalLength) + "\r\n\r\n");
-	Serial.println("Content-Length: " + String(totalLength) + "\r\n\r\n");
-	// Gửi phần header multipart
-	mysclient_gsm.print(header);
-	Serial.println("header sent");
-	Serial.write((const uint8_t*)data_get, chunkSize);
-	// mysclient_gsm.write(data_get.c_str(), chunkSize);
-	mysclient_gsm.write((const uint8_t*)data_get, contentLength);
-	// Gửi phần footer
-	mysclient_gsm.print(footer);
-
-	// Đọc phản hồi
-	Serial.println("------ Server phản hồi ------");
-	// String response = "";
-	// while (mysclient_gsm.connected() || mysclient_gsm.available()) {
-	// 	// Serial.println("ketnoi duoc");
-	// 	if (mysclient_gsm.available()) {
-	// 	Serial.println("");
-	// 	Serial.println("");
-	// 	Serial.println("");
-	// 	Serial.println("");	
-	// 	String line = mysclient_gsm.readStringUntil('\n');
-	// 	Serial.println(line);
-	// 	 response += line + "\n";  // Thêm dòng vào response (kèm newline)
-
-	// 	}
-	// }
-
-	// // In ra toàn bộ phản hồi
-	// Serial.println("📨 Phản hồi từ server:");
-	// Serial.println(response);
-
-	// // Kiểm tra thành công
-	// response.toLowerCase();  // Đưa về chữ thường hết
-	// if (response.indexOf("uploaded") >= 0) {
-	// Serial.println("✅ Upload thành công!");
-	// return 1;
-	// } else {
-	// Serial.println("❌ Upload thất bại hoặc server không trả về đúng định dạng.");
-	// return 0;
-	// }
-	// Serial.println("------ Kết thúc ------");
-	// mysclient_gsm.stop();
-	// unsigned long endTime = millis();
-	// Serial.print("Tổng thời gian gửi file: ");
-	// Serial.print((endTime - startTime) / 1000.0);
-	// Serial.println(" giây");
-
-
-	String resp = "";
-    unsigned long t = millis();
-
-    while (millis() - t < 8000) {
-        while (mysclient_gsm.available()) {
-            resp += (char)mysclient_gsm.read();
-			Serial.println("test ketnoi");
-        }
-        if (!mysclient_gsm.connected()) break;
-    }
-	mysclient_gsm.stop();
-
-	Serial.println("=== RAW RESPONSE ===");
-    Serial.println(resp);
-
-    if (resp.indexOf("HTTP/1.1") >= 0) {
-        Serial.println("✅ SERVER ĐÃ PHẢN HỒI");
-        return 1;
-    } else {
-        Serial.println("❌ SERVER CẮT KẾT NỐI");
-        return 1;
-    }
-
-}
-
-
-int test_https_minimal(const char* path)
-{
-
-	// mysclient_gsm.setInsecure();
-
-    String body = "cong danh";
-
-    if (!mysclient_gsm.connect("prtceptor-ai.altacloud.biz", 443)) {
-        Serial.println("❌ Connect failed");
-        return 0;
-    }
-
-    Serial.println("✅ Connected");
-
-    mysclient_gsm.print(
-        String("POST ") + path + " HTTP/1.1\r\n" +
-        "Host: prtceptor-ai.altacloud.biz\r\n" +
-        "X-API-KEY: 59ac5be1333a7b1247deb8f36609b25f41d781efbc7f06e7d485b04d8b3d9101\r\n" +
-        "Content-Type: text/plain\r\n" +
-        "Content-Length: " + body.length() + "\r\n" +
-        "Connection: close\r\n\r\n" +
-        body
-    );
-
-    String resp = "";
-    unsigned long t = millis();
-
-    while (millis() - t < 8000) {
-        while (mysclient_gsm.available()) {
-            resp += (char)mysclient_gsm.read();
-        }
-        if (!mysclient_gsm.connected()) break;
-    }
-
-    mysclient_gsm.stop();
-
-    Serial.println("=== RAW RESPONSE ===");
-    Serial.println(resp);
-
-    if (resp.indexOf("HTTP/1.1") >= 0) {
-        Serial.println("✅ SERVER ĐÃ PHẢN HỒI");
-        return 1;
-    } else {
-        Serial.println("❌ SERVER CẮT KẾT NỐI");
-        return 0;
-    }
-}
-
-// void test_dayfile(const char* channel_, uint64_t sizedata, const char* filename)
-// {
-//   unsigned long startTime = millis();
-
-//   // demo data (text) - OK cho test
-//   uint64_t u = 0;
-//   for (uint64_t i = 0; i < sizedata; i++) {
-//     VALUE[u++] = 'A' + (i % 26);
-//   }
-//   VALUE[u] = '\0';
-
-//   const size_t fileSize = (size_t)sizedata;
-
-//   String fileName = String(filename) + ".bin";
-//   String boundary = "----ESP32Boundary";
-
-//   String header =
-//       String("--") + boundary + "\r\n"
-//     + "Content-Disposition: form-data; name=\"DATA\"; filename=\"" + fileName + "\"\r\n"
-//     + "Content-Type: application/octet-stream\r\n\r\n";
-
-//   String footer = "\r\n--" + boundary + "--\r\n";
-
-//   size_t totalLength = header.length() + fileSize + footer.length();
-
-//   if (!mysclient_gsm.connect(host, port)) {
-//     Serial.println("❌ Không kết nối được tới server");
-//     return;
-//   }
-//   Serial.println("✅ Đã kết nối tới server");
-
-//   // HTTP headers (PHẢI có Content-Length + kết thúc header bằng \r\n\r\n)
-//   mysclient_gsm.print(String("POST ") + String("/") + channel_ + " HTTP/1.1\r\n");
-//   Serial.println(String("POST ") + String("/") + channel_ + " HTTP/1.1\r\n");
-//   mysclient_gsm.print(String("Host: ") + host + "\r\n");
-//   mysclient_gsm.print("X-API-KEY: 59ac5be1333a7b1247deb8f36609b25f41d781efbc7f06e7d485b04d8b3d9101\r\n");
-//   mysclient_gsm.print("Connection: close\r\n");
-//   mysclient_gsm.print("Content-Type: multipart/form-data; boundary=" + boundary + "\r\n");
-//   mysclient_gsm.print("Content-Length: " + String(totalLength) + "\r\n\r\n");   // ✅ QUAN TRỌNG
-
-//   // multipart header
-//   mysclient_gsm.print(header);
-
-//   // gửi data theo chunk nhỏ hơn cho HTTPS/GSM
-//   const size_t chunkSize = 128;     // ✅ 128 ổn hơn 1024
-//   size_t sent = 0;
-
-//   while (sent < fileSize) {
-//     if (!mysclient_gsm.connected()) {
-//       Serial.println("❌ Server cắt kết nối khi đang gửi");
-//       break;
-//     }
-
-//     size_t toSend = min(chunkSize, fileSize - sent);
-//     size_t w = mysclient_gsm.write((const uint8_t*)VALUE + sent, toSend);
-
-//     if (w == 0) {
-//       Serial.printf("❌ write=0 tại sent=%u\n", (unsigned)sent);
-//       break;
-//     }
-
-//     sent += w;
-//     delay(20);
-//     yield();
-//   }
-
-//   mysclient_gsm.print(footer);
-//   delay(300); // ✅ đừng flush()
-
-//   // đọc response lâu hơn (server xử lý có thể chậm)
-//   Serial.println("------ Server phản hồi ------");
-//   unsigned long t0 = millis();
-//   while (!mysclient_gsm.available() && mysclient_gsm.connected() && (millis() - t0 < 60000)) {
-//     delay(20);
-//   }
-//   while ((mysclient_gsm.connected() || mysclient_gsm.available()) && (millis() - t0 < 90000)) {
-//     while (mysclient_gsm.available()) {
-//       String line = mysclient_gsm.readStringUntil('\n');
-//       Serial.println(line);
-//       t0 = millis();
-//     }
-//     delay(10);
-//   }
-//   Serial.println("------ Kết thúc ------");
-
-//   mysclient_gsm.stop();
-
-//   unsigned long endTime = millis();
-//   Serial.print("Tổng thời gian gửi file: ");
-//   Serial.print((endTime - startTime) / 1000.0);
-//   Serial.println(" giây");
-// }
-
-static int readStatusLine(Client &c, uint32_t waitMs)
-{
-  uint32_t t0 = millis();
-  while (!c.available() && c.connected() && (millis() - t0 < waitMs)) {
-    delay(20);
-  }
-  if (!c.available()) return 0;
-
-  String status = c.readStringUntil('\n');
-  status.trim();
-  Serial.println("STATUS: " + status);
-
-  // parse HTTP code
-  if (status.startsWith("HTTP/")) {
-    int s1 = status.indexOf(' ');
-    int s2 = status.indexOf(' ', s1 + 1);
-    if (s1 > 0) return status.substring(s1 + 1, s2 > 0 ? s2 : status.length()).toInt();
-  }
-  return -1;
-}
-
-static void drainHeaders(Client &c, uint32_t maxMs = 5000)
-{
-  uint32_t t0 = millis();
-  while (c.connected() && (millis() - t0 < maxMs)) {
-    if (!c.available()) { delay(10); continue; }
-    String line = c.readStringUntil('\n');
-    if (line == "\r" || line.length() == 0) break; // end headers
-  }
-}
-
-int test_dayfile(const char* channel_, uint64_t sizedata, const char* filename)
-{
-  unsigned long startTime = millis();
-
-
-
-  // ========= QUAN TRỌNG: BIN thì KHÔNG strlen, KHÔNG '\0'
-  const size_t fileSize = size_t(sizedata);
-  Serial.printf("Data size = %u bytes\n", (unsigned)fileSize);
-
-  String fileName = String(filename) + ".bin";
-  String boundary = "----ESP32Boundary";
-
-  String mpHeader =
-      String("--") + boundary + "\r\n"
-    + "Content-Disposition: form-data; name=\"DATA\"; filename=\"" + fileName + "\"\r\n"
-    + "Content-Type: application/octet-stream\r\n\r\n";
-
-  String mpFooter = "\r\n--" + boundary + "--\r\n";
-
-  size_t totalLength = mpHeader.length() + fileSize + mpFooter.length();
-
-  // ========= CONNECT =========
-  if (!mysclient_gsm.connect(host, port)) {
-    Serial.println("Không kết nối được tới server");
-    return 0;
-  }
-  Serial.println("Đã kết nối tới server");
-  mysclient_gsm.setTimeout(500000);  // 120 giây
-
-  // ========= HTTP HEADERS =========
-  // channel_ của bạn đang là dạng "PRINTER/.../CHUNK" => request line phải "POST /<channel_> HTTP/1.1"
-  mysclient_gsm.print(String("POST /") + channel_ + " HTTP/1.1\r\n");
-  mysclient_gsm.print(String("Host: ") + host + "\r\n");
-  mysclient_gsm.print("X-API-KEY: 59ac5be1333a7b1247deb8f36609b25f41d781efbc7f06e7d485b04d8b3d9101\r\n");
-  mysclient_gsm.print("User-Agent: ESP32\r\n");
-  mysclient_gsm.print("Accept: */*\r\n");
-  mysclient_gsm.print("Connection: close\r\n");
-  mysclient_gsm.print("Content-Type: multipart/form-data; boundary=" + boundary + "\r\n");
-  mysclient_gsm.print("Content-Length: " + String(totalLength) + "\r\n");
-  mysclient_gsm.print("Expect: 100-continue\r\n\r\n");   
-
-  // ========= ĐỢI 100-continue / hoặc response =========
-  int code = readStatusLine(mysclient_gsm, 15000);
-
-  if (!mysclient_gsm.connected()) {
-    Serial.println("Server đóng kết nối NGAY SAU HEADER (sai API key / sai path / server reject).");
-    mysclient_gsm.stop();
-    return 0;
-  }
-
-  // Nếu server có trả status:
-  if (code != 0) {
-    // 100 Continue => OK gửi body
-    if (code == 100) {
-      drainHeaders(mysclient_gsm); // bỏ header của response 100
-    } else if (code >= 200 && code < 300) {
-      // Một số server trả 200 luôn, vẫn OK
-      drainHeaders(mysclient_gsm);
-    } else {
-      Serial.printf("Server từ chối trước khi gửi body. HTTP=%d\n", code);
-      mysclient_gsm.stop();
-      return 0;
-    }
-  } else {
-    // Server không support 100-continue, vẫn thử gửi body
-    Serial.println("Không thấy 100-continue, vẫn gửi body...");
-  }
-
-  // ========= MULTIPART HEADER =========
-  // multipart header
-mysclient_gsm.print(mpHeader);
-delay(5); // nhỏ thôi
-
-size_t sent = 0;
-
-
-size_t burst = 0;
-while (sent < fileSize) {
-  size_t toSend = min((size_t)1048, fileSize - sent);
-  size_t w = mysclient_gsm.write((const uint8_t*)VALUE + sent, toSend);
-  if (w == 0) break;
-  sent += w;
-
-  burst += w;
-  if (burst >= 1048) {          // mỗi 512B bơm 1 lần
-    burst = 0;
-    (void)mysclient_gsm.available();
-  }
-  yield();
-}
-
-
-// footer
-mysclient_gsm.print(mpFooter);
-
-  // ========= READ FINAL RESPONSE =========
-  int finalCode = readStatusLine(mysclient_gsm, 1500);
-  if (finalCode != 0) drainHeaders(mysclient_gsm);
-
-  // In thêm body response nếu có
-  uint32_t t0 = millis();
-  while ((mysclient_gsm.connected() || mysclient_gsm.available()) && (millis() - t0 < 1000)) {
-    while (mysclient_gsm.available()) {
-      Serial.println(mysclient_gsm.readStringUntil('\n'));
-      t0 = millis();
-    }
-  }
-
-  mysclient_gsm.stop();
-
-  unsigned long endTime = millis();
-  Serial.print("Tổng thời gian gửi file: ");
-  Serial.print((endTime - startTime) / 1000.0);
-  Serial.println(" giây");
-
-  if (sent != fileSize) {
-    Serial.printf("❌ Upload thiếu: %u/%u bytes\n", (unsigned)sent, (unsigned)fileSize);
-    return 0;
-  }
-  else 
-  {
-	return 1;
-  }
-  return finalCode;  // thường 200/201/204 nếu OK
-}
-
-
-
-//DANHTHEM
-
-// API KEY như code bạn
-static const char* API_KEY =
-  "59ac5be1333a7b1247deb8f36609b25f41d781efbc7f06e7d485b04d8b3d9101";
-
-static String sanitizeFilename(const char* in) {
-  String s = String(in);
-  s.trim();
-  s.replace(" ", "_");
-  String out; out.reserve(s.length());
-  for (size_t i = 0; i < s.length(); i++) {
-    char c = s[i];
-    bool ok = (c >= '0' && c <= '9') ||
-              (c >= 'A' && c <= 'Z') ||
-              (c >= 'a' && c <= 'z') ||
-              (c == '_' || c == '-' || c == '.');
-    if (ok) out += c;
-  }
-  if (out.length() == 0) out = "NONAME";
-  return out;
-}
-
-/**
- * Upload file từ flash (raw) lên HTTPS
- * @param channel_  path server (không có dấu / đầu) ví dụ "PRINTER/.../CHUNK"
- * @param filename  tên file (dùng đặt filename trong multipart), có thể lấy header_file_doing.name
- * @return 1 nếu OK, 0 nếu fail
- */
-// int upload_file_from_flash_https(const char* channel_, const char* filename)
-// {
-//   unsigned long startTime = millis();
-
-//   // ====== sanity ======
-//   if (header_file_doing.length == 0) {
-//     Serial.println("❌ header_file_doing.length = 0");
-//     return 0;
-//   }
-
-//   const size_t   fileSize   = (size_t)header_file_doing.length;
-//   uint32_t       flash_addr = (uint32_t)header_file_doing.addr;
-
-//   Serial.printf("Flash file addr=%u, size=%u bytes\n",
-//                 (unsigned)flash_addr, (unsigned)fileSize);
-
-//   // ====== multipart ======
-//   String safeBase = sanitizeFilename(filename);
-//   String fileName = safeBase + ".bin";
-//   String boundary = "----ESP32Boundary";
-
-//   String mpHeader =
-//       String("--") + boundary + "\r\n"
-//     + "Content-Disposition: form-data; name=\"DATA\"; filename=\"" + fileName + "\"\r\n"
-//     + "Content-Type: application/octet-stream\r\n\r\n";
-
-//   String mpFooter = "\r\n--" + boundary + "--\r\n";
-
-//   size_t totalLength = mpHeader.length() + fileSize + mpFooter.length();
-
-//   // ====== CONNECT ======
-//   if (!mysclient_gsm.connect(host, port)) {
-//     Serial.println("Không kết nối được tới server");
-//     return 0;
-//   }
-//   Serial.println("Đã kết nối tới server");
-
-//   // Timeout đọc/ghi (tùy client wrapper, nhưng Client::setTimeout có sẵn)
-//   mysclient_gsm.setTimeout(500000);
-
-//   // ====== HTTP HEADERS ======
-//   mysclient_gsm.print(String("POST /") + channel_ + " HTTP/1.1\r\n");
-//   mysclient_gsm.print(String("Host: ") + host + "\r\n");
-//   mysclient_gsm.print(String("X-API-KEY: ") + API_KEY + "\r\n");
-//   mysclient_gsm.print("User-Agent: ESP32\r\n");
-//   mysclient_gsm.print("Accept: */*\r\n");
-//   mysclient_gsm.print("Connection: close\r\n");
-//   mysclient_gsm.print("Content-Type: multipart/form-data; boundary=" + boundary + "\r\n");
-//   mysclient_gsm.print("Content-Length: " + String(totalLength) + "\r\n");
-//   mysclient_gsm.print("Expect: 100-continue\r\n\r\n");
-
-//   // ====== WAIT 100-continue / response ======
-//   int code = readStatusLine(mysclient_gsm, 15000);
-
-//   if (!mysclient_gsm.connected()) {
-//     Serial.println("Server đóng kết nối ngay sau header.");
-//     mysclient_gsm.stop();
-//     return 0;
-//   }
-
-//   if (code != 0) {
-//     if (code == 100) {
-//       drainHeaders(mysclient_gsm);
-//     } else if (code >= 200 && code < 300) {
-//       drainHeaders(mysclient_gsm);
-//     } else {
-//       Serial.printf("Server từ chối trước khi gửi body. HTTP=%d\n", code);
-//       mysclient_gsm.stop();
-//       return 0;
-//     }
-//   } else {
-//     Serial.println("Không thấy 100-continue, vẫn gửi body...");
-//   }
-
-//   // ====== SEND MULTIPART HEADER ======
-//   mysclient_gsm.print(mpHeader);
-// //   delay(2);
-
-//   // ====== SEND FILE DIRECT FROM FLASH (FIX SSLClient write error) ======
-//   size_t sent = 0;
-//   static uint8_t buf[1024];     // ✅ chunk nhỏ cho SSLClient ổn định
-//   uint32_t lastLog = millis();
-
-//   while (sent < fileSize) {
-//     size_t toRead = min((size_t)sizeof(buf), fileSize - sent);
-
-//     // đọc raw flash
-//     int rd = read_data(flash_addr, buf, (uint32_t)toRead);
-//     if (rd != 0) {
-//       Serial.println("❌ read_data fail khi upload");
-//       break;
-//     }
-
-//     // write có thể trả < toRead => loop cho đủ
-//     size_t off = 0;
-//     while (off < toRead) {
-//       size_t w = mysclient_gsm.write(buf + off, toRead - off);
-//       if (w == 0) {
-//         Serial.println("❌ write returned 0 (connection/ssl stalled)");
-//         goto _send_done;
-//       }
-
-//       off  += w;
-//       sent += w;
-
-//       // kick SSL engine / tránh nghẽn buffer
-//       (void)mysclient_gsm.available();
-//       yield();
-//     }
-
-//     flash_addr += (uint32_t)toRead;
-
-//     // log tiến độ mỗi ~2 giây
-//     if (millis() - lastLog > 1000) {
-//       Serial.printf("...sent %u/%u bytes\n", (unsigned)sent, (unsigned)fileSize);
-//       lastLog = millis();
-//     }
-//   }
-
-// _send_done:
-
-//   // footer
-//   mysclient_gsm.print(mpFooter);
-
-//   // ====== READ FINAL RESPONSE ======
-//   int finalCode = readStatusLine(mysclient_gsm, 2000);
-//   if (finalCode != 0) drainHeaders(mysclient_gsm);
-
-//   uint32_t t0 = millis();
-//   while ((mysclient_gsm.connected() || mysclient_gsm.available()) && (millis() - t0 < 1000)) {
-//     while (mysclient_gsm.available()) {
-//       Serial.println(mysclient_gsm.readStringUntil('\n'));
-//       t0 = millis();
-//     }
-//   }
-
-//   mysclient_gsm.stop();
-
-//   unsigned long endTime = millis();
-//   Serial.print("Tổng thời gian gửi file: ");
-//   Serial.print((endTime - startTime) / 1000.0);
-//   Serial.println(" giây");
-
-//   if (sent != fileSize) {
-//     Serial.printf("❌ Upload thiếu: %u/%u bytes\n", (unsigned)sent, (unsigned)fileSize);
-//     return 0;
-//   }
-
-//   Serial.println("✅ Upload OK");
-//   return 1;
-// }
-
-
-int upload_file_from_flash_https(const char* channel_,const uint64_t sizedata, const char* filename)
-{
-  unsigned long startTime = millis();
-
-  if (header_file_doing.length == 0) {
-    Serial.println("❌ header_file_doing.length = 0");
-    return 0;
-  }
-
-  // ====== FILE GỐC TRONG FLASH ======
-  const uint32_t baseAddr = (uint32_t)header_file_doing.addr;
-  const uint32_t baseLen  = (uint32_t)header_file_doing.length;
-
-  // ====== FILE MUỐN UPLOAD (CÓ THỂ LỚN HƠN FILE GỐC) ======
-  const uint64_t fileSize = sizedata;   // ví dụ 2MB (bạn muốn bao nhiêu chỉnh ở đây)
-
-  Serial.printf("Base flash addr=%u, baseLen=%u, uploadSize=%u\n",
-                (unsigned)baseAddr, (unsigned)baseLen, (unsigned)fileSize);
-
-  // ===== multipart =====
-  String safeBase = sanitizeFilename(filename);
-  String fileName = safeBase + ".bin";
-  String boundary = "----ESP32Boundary";
-
-  String mpHeader =
-      String("--") + boundary + "\r\n"
-    + "Content-Disposition: form-data; name=\"DATA\"; filename=\"" + fileName + "\"\r\n"
-    + "Content-Type: application/octet-stream\r\n\r\n";
-
-  String mpFooter = "\r\n--" + boundary + "--\r\n";
-
-  // Content-Length phải đúng = header + uploadSize + footer
-  size_t totalLength = mpHeader.length() + (size_t)fileSize + mpFooter.length();
-
-  // ===== CONNECT =====
-  if (!mysclient_gsm.connect(host, port)) {
-    Serial.println("Không kết nối được tới server");
-    return 0;
-  }
-  Serial.println("Đã kết nối tới server");
-  mysclient_gsm.setTimeout(5500000);
-
-  // ===== HTTP HEADERS =====
-  mysclient_gsm.print(String("POST /") + channel_ + " HTTP/1.1\r\n");
-  mysclient_gsm.print(String("Host: ") + host + "\r\n");
-  mysclient_gsm.print(String("X-API-KEY: ") + API_KEY + "\r\n");
-  mysclient_gsm.print("User-Agent: ESP32\r\n");
-  mysclient_gsm.print("Accept: */*\r\n");
-  mysclient_gsm.print("Connection: close\r\n");
-  mysclient_gsm.print("Content-Type: multipart/form-data; boundary=" + boundary + "\r\n");
-  mysclient_gsm.print("Content-Length: " + String(totalLength) + "\r\n");
-  mysclient_gsm.print("Expect: 100-continue\r\n\r\n");
-
-  // ===== WAIT 100-continue =====
-  int code = readStatusLine(mysclient_gsm, 5000);
-
-  if (!mysclient_gsm.connected()) {
-    Serial.println("Server đóng kết nối ngay sau header.");
-    mysclient_gsm.stop();
-    return 0;
-  }
-
-  if (code != 0) {
-    if (code == 100) drainHeaders(mysclient_gsm);
-    else if (code >= 200 && code < 300) drainHeaders(mysclient_gsm);
-    else {
-      Serial.printf("Server từ chối trước khi gửi body. HTTP=%d\n", code);
-      mysclient_gsm.stop();
-      return 0;
-    }
-  } else {
-    Serial.println("Không thấy 100-continue, vẫn gửi body...");
-  }
-
-  // ===== SEND MULTIPART HEADER =====
-  mysclient_gsm.print(mpHeader);
-
-  // ===== SEND DATA: NHÂN BẢN KIỂU 1 =====
-  uint32_t sent = 0;
-  static uint8_t buf[2048];     
-  const size_t SLICE = 1300;
-  uint32_t lastLog = millis();
-
-  uint32_t curAddr = baseAddr;      // đang đọc ở đâu trong file gốc
-  uint32_t curRemain = baseLen;     // còn bao nhiêu byte trong vòng lặp hiện tại
-
-  while (sent < fileSize) {
-
-    // nếu đã hết file gốc -> quay lại đầu (nhân bản)
-    if (curRemain == 0) {
-      curAddr = baseAddr;
-      curRemain = baseLen;
-    }
-
-    uint32_t needUpload = fileSize - sent;
-    uint32_t toRead = sizeof(buf);
-
-    if (toRead > curRemain)   toRead = curRemain;
-    if (toRead > needUpload)  toRead = needUpload;
-
-    int rd = read_data(curAddr, buf, toRead);
-    if (rd != 0) {
-      Serial.println("❌ read_data fail khi upload");
-      break;
-    }
-
-    // write partial-safe
-    uint32_t off = 0;
-    while (off < toRead) {
-	  size_t n = min(SLICE, toRead - off);
-      size_t w = mysclient_gsm.write(buf + off, n);
-      if (w == 0) {
-        Serial.println("❌ write returned 0 (connection/ssl stalled)");
-        goto _send_done;
-      }
-      off  += (uint32_t)w;
-      sent += (uint32_t)w;
-
-      (void)mysclient_gsm.available();
-      delay(0); // feed WDT tốt hơn yield()
-    }
-
-    curAddr += toRead;
-    curRemain -= toRead;
-
-    if (millis() - lastLog > 200) {
-      Serial.printf("...sent %u/%u bytes\n", (unsigned)sent, (unsigned)fileSize);
-      lastLog = millis();
-    }
-  }
-
-_send_done:
-
-  // footer
-  mysclient_gsm.print(mpFooter);
-
-  // ===== READ FINAL RESPONSE =====
-  int finalCode = readStatusLine(mysclient_gsm, 5000);
-  if (finalCode != 0) drainHeaders(mysclient_gsm);
-
-  uint32_t t0 = millis();
-  while ((mysclient_gsm.connected() || mysclient_gsm.available()) && (millis() - t0 < 2000)) {
-    while (mysclient_gsm.available()) {
-      Serial.println(mysclient_gsm.readStringUntil('\n'));
-      t0 = millis();
-    }
-    delay(0);
-  }
-
-  mysclient_gsm.stop();
-
-  unsigned long endTime = millis();
-  Serial.print("Tổng thời gian gửi file: ");
-  Serial.print((endTime - startTime) / 1000.0);
-  Serial.println(" giây");
-
-  if (sent != fileSize) {
-    Serial.printf("❌ Upload thiếu: %u/%u bytes\n", (unsigned)sent, (unsigned)fileSize);
-    return 0;
-  }
-
-  Serial.println("✅ Upload OK (nhân bản kiểu 1)");
-  return 1;
-}
-
 
 /*-------------------------------END FUNCTIONS DANH THEM VAO--------------------*/
 

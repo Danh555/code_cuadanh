@@ -1,0 +1,18 @@
+{
+	"folders": [
+		{
+			"path": "../../../Box_ESP_Upload_V1.0 .3_64"
+		},
+		{
+			"path": "../.."
+		},
+		{
+			"path": "../../../../../../../../du an 2022/ATM/CODE_ATM/ATM_3.122/ATM/code_ATM_v21"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"*.tpp": "cpp"
+		}
+	}
+}
