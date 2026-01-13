@@ -1,0 +1,95 @@
+  
+#ifndef __CONFIG_HARDWARE_LOCAL__
+
+#define __CONFIG_HARDWARE_LOCAL__
+
+/**----------------cấu hình debug code------------------------------------*/
+#define debugprocessdata// hiển thị thông tin debug khi xưe lý chuỗi
+#define debuging_display //debuging_display: dùng để test, khi chạy thực tế thì comment lại
+// #define debug_receive_serial//Khi chạy chính thức bỏ dòng này đi
+// #define debug_code_scanled//Khi chạy chính thức bỏ dòng này đi
+// #define display_welcome_name//Hiển thị thông tin mobifone, trạng thái điểm led trên màn hình led
+ // #define df_test_limit_led
+
+
+/**----------------cấu hình hardware điều khiển------------------------------------*/
+
+//Khai báo đúng phiên bản: vì ảnh hưởng tới chế độ quét led hiển thị
+// #define hwv0	// hwv0: bảng demo ngoài Hà Nội-->cập nhật firm cho Lâm: dùng chung use_main_wifi_outdoor
+#define hwv1	//hw1: phần cứng phiên bản 1, làm mạch in, chỉ có 4G
+
+/**----------------cấu hình loại led sử dụng------------------------------------*/
+
+/**----------------cấu hình thông tin app build------------------------------------*/
+
+
+// #define use_HaNoi	//chọn cấu hình thông số cho bảng led demo ngoài Hà Nội V0
+// #define use_manhinh2DongNai
+// #define use_main_wifi //Board điều khiển V2, dùng chức năng wifi, debug không dùng
+
+#define use_main_wifi_outdoor//hiện đang dùng cho 20 board
+
+
+/*
+Qui định đặt tên phiên bản
+
+x.y.z
+
+x: x: phiên bản hardware
+	=0: hàn tay, bảng demo ngoài Hà Nội
+	=1: Phiên bản 1	
+y: phiên bản phần mềm
+	=0: bảng led demo đầu tiên
+	=1: bảng led Đồng Nai
+	=2: bảng led Cần Thơ..
+	=3: 5/20 bảng led sử dụng led outdoor.
+z: lần build thứ mấy
+
+*/
+
+
+#if defined (use_manhinh2DongNai)
+	#define URL_fw_Bin "https://raw.githubusercontent.com/DaikCong/Firmware-LMD-DongNai/main/Matrix96x32.ino.bin"
+	const char *appbuild="use_manhinh2DongNai";
+#elif defined (use_HaNoi)
+	#define URL_fw_Bin "https://raw.githubusercontent.com/DaikCong/Firmware-LMD-Mobiphone/main/Matrix96x32.ino.esp32.bin"
+	const char *appbuild="use_HaNoi";
+#elif defined (use_main_wifi)
+	#define URL_fw_Bin "https://raw.githubusercontent.com/DaikCong/Mobifone_Thongtindientu/HardwareV1/Matrix96x32.ino.bin"
+	const char *appbuild="use_main_wifi";
+#elif defined (use_main_wifi_outdoor)
+	//#define URL_fw_Bin "https://raw.githubusercontent.com/DaikCong/Mobifone_Thongtindientu/HardwareV1/Matrix96x32.outdoor.bin"			
+	// #if defined (led_p10_indoor)	
+		// #define URL_fw_Bin "https://raw.githubusercontent.com/DaikCong/FirmwareLMD20board/main/Matrix96x32.indoor.bin"
+	// #elif defined (led_p10_outdoor)
+		// #define URL_fw_Bin "https://raw.githubusercontent.com/DaikCong/FirmwareLMD20board/main/Matrix96x32.outdoor.bin"
+	// #else
+		// #define URL_fw_Bin "https://raw.githubusercontent.com/DaikCong/FirmwareLMD20board/main/Matrix96x32.bin"
+	// #endif
+		
+	#if defined (hwv0)
+		#define URL_fw_Bin "https://raw.githubusercontent.com/DaikCong/FirmwareLMD20board/main/Matrix96x32.hwv0.bin"
+	#elif defined (hwv1)
+		#define URL_fw_Bin "https://raw.githubusercontent.com/DaikCong/FirmwareLMD20board/main/Matrix96x32.both.bin"
+	#else
+		#error "Please define one of hwv in config_hw_local.h"
+	#endif
+				
+	const char *appbuild="use_main_wifi_outdoor";
+#else
+	#error "Please define one of use_ in config_hw_local.h"
+#endif
+
+#if defined (use_manhinh2DongNai)
+	const char *versionname="1.1.1";	
+#elif defined (use_HaNoi)
+	const char *versionname="1.0.1";
+#elif defined (use_main_wifi)
+	const char *versionname="1.2.1";
+#elif defined (use_main_wifi_outdoor)
+	const char *versionname="1.3.5";
+#else
+	#error "Please define one of use_ in config_hw_local.h"
+#endif
+
+#endif

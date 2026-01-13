@@ -1,0 +1,3024 @@
+/*
+Điều khiển led matrix
+
+Led Screen:
+1.	P10 Indoor Full color
+2.	Resolution	:96x32 pixels
+3.	Modules		:3Wx2H
+
+Module Led:
+1.	P10 Indoor Full color 32x16 pixel, 1port/2 group data RGB/1 module
+
+MCU:
+1.	ESP32 1pcs : get data from server
+2.	ESP32 1pcs : display led matrix
+3.	Port control: 2
+
+**/
+
+/*
+v.1.3.5
+
+1. Thêm chức năng cấu hình loại led từ board wifi gửi qua.
+
+v.1.3.3
+
+1.Nếu OTA lộn qua server chip: sau 5' sẽ tự động bật OTA manual
+2.Chỉnh lại câu mới khởi động thiết bị: không hiển thị lời chào, không hiển thị màn hình chờ
+
+
+v.1.3.2
+
+1. Cập nhật thêm timeout cho OTA manual
+
+v.2.2.11
+
+1.cập nhật thêm quét led cho bảng outdoor
+
+v.2.2.10
+
+1. Sửa file IOT47_UTF8.c cập nhật thêm nhận diện khoảng trắng Non-breaking space
+
+v.2.2.9
+
+1. Cấu hình này đang nạp cho bảng led ngoài Hà Nội V0, @ Mar152022
+
+v.2.2.8
+
+1. Thêm thông tin version vào gói STOP khi server chip gửi qua
+
+v.2.2.6
+
+1. Sửa lại cấu trúc xử lý màu sắc
+
+v.2.2.6
+
+1. Bị lỗi: Guru Meditation Error: Core 1 panic'ed (Cache disabled but cached memory region accessed)
+--> đã khắc phục
+
+v.2.2.5
+
+1. Thêm xử lý nhận wifi, pass từ board thông tin qua
+
+v.2.2.4
+
+1.Chỉnh lại chỗ xử lý nạp data vào buffer hiển thị-->cải thiện rõ tốc độ chạy-->ok
+
+v.2.2.3
+
+1. Phiên bản đi theo phần board xử lý thông tin: vừa wifi vừa modem 4G
+2. Thêm xử lý màu sắc/tốc độ...
+ <Fn><Mn><Sn><Bn><CT=[red],[green],[blue]>[Nội dung 1]</CT><CT=[red],[green],[blue]>[Nội dung 2]</CT>....
+3.	Chỉnh lại cách quét led-->chạy mượt hơn, nhưng vẫn chưa tối ưu.
+
+v.1.2.5
+ 1.Thêm xử lý màu sắc/tốc độ...
+ <Fn><Mn><Sn><Bn><CT=[red],[green],[blue]>[Nội dung 1]</CT><CT=[red],[green],[blue]>[Nội dung 2]</CT>....
+
+v.1.2.4
+
+1. Chỉnh lại vị trí so sánh trong hàm process_data--> cải thiện led bị giựt chữ
+
+v.1.2.3
+
+1. Thêm chức năng OTA bằng wifi do chip esp phát ra
+2. Bỏ chức năng tự động check update firmware
+3. Reset index khi board server reset
+
+v.1.2.2 beta
+
+1. Sửa lại hiển thị khi bị Stop: thêm dòng showBuffer
+
+v 1.2.2
+
+1. Bỏ bớt mấy dòng debug serial
+2. Bỏ so sánh duration, ku wifi truyền gì qua thì hiển thị cái đó
+
+v 1.2.0:
+
+1.	Thêm chức năng tự động check firmware từ Wifi board truyền qua: 
+
+1. Bỏ đọc serial debug trong hàm đọc serial Serial.available()
+
+
+MQTT_Matrix_Mobiphone_Dec012021_16h28
+
+1. Thêm chức năng OTA cho mạch điều khiển led
+
+WifiMatrix2board_Nov192021_10h38:
+
+1.	Hiển thị chạy chữ.
+2.	Hiển thị chữ in hoa, đang bị lỗi: chữ bị giựt giựt (thí dụ: CHÚC MỪNG NĂM MỚI).
+3.	Hiển thị chữ thường thì ok (thí dụ: Chúc Mừng Năm Mới).
+
+**/
+
+// This is how many color levels the display shows - the more the slower the update
+//#define PxMATRIX_COLOR_DEPTH 4
+
+// Defines the speed of the SPI bus (reducing this may help if you experience noisy images)
+//#define PxMATRIX_SPI_FREQUENCY 20000000
+
+// Creates a second buffer for backround drawing (doubles the required RAM)
+// #define PxMATRIX_double_buffer true
+
+#include <FS.h>                   //this needs to be first, or it all crashes and burns...
+#include "SPIFFS.h"
+
+/* You only need to format SPIFFS the first time you run a
+   test or else use the SPIFFS plugin to create a partition
+   https://github.com/me-no-dev/arduino-esp32fs-plugin */
+#define FORMAT_SPIFFS_IF_FAILED true
+
+#define  double_buffer
+
+// #include "SoftwareSerial.h"
+// SoftwareSerial mySerial;
+// String line2= "Welcome to ALTA Media! 2021  ";
+
+
+
+//-------------thư viện dùng OTA---------
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <HTTPUpdate.h>
+#include <WiFiClientSecure.h>
+#include "cert.h"
+#include "config_hw_local.h"
+#include "user_define_matrix.h"
+// #include "Globalvariables_DANH.h"
+#include "TRUYCAP_HTTPS.h"
+
+/*
+#if defined (use_manhinh2DongNai)
+	#define URL_fw_Bin "https://raw.githubusercontent.com/DaikCong/Firmware-LMD-DongNai/main/Matrix96x32.ino.bin"
+#elif defined (use_HaNoi)
+	#define URL_fw_Bin "https://raw.githubusercontent.com/DaikCong/Firmware-LMD-Mobiphone/main/Matrix96x32.ino.esp32.bin"
+#elif defined (use_main_wifi)
+	#define URL_fw_Bin "https://raw.githubusercontent.com/DaikCong/Mobifone_Thongtindientu/HardwareV1/Matrix96x32.ino.bin"
+#elif defined (led_p10_outdoor)
+	//#define URL_fw_Bin "https://raw.githubusercontent.com/DaikCong/Mobifone_Thongtindientu/HardwareV1/Matrix96x32.outdoor.bin"			
+	#define URL_fw_Bin "https://raw.githubusercontent.com/DaikCong/FirmwareLMD20board/main/Matrix96x32.outdoor.bin"
+#else
+	#error "Please define one of use_ in config_hw_local.h"
+#endif
+*/
+//-----------------------OTA------------------------------------------------------
+#include <Update.h>
+#include <WebServer.h>
+WebServer server(80);
+const char* serverIndex =
+	"<!DOCTYPE html><html lang=\"en\"><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no\"/><title>Update Led Controller</title>"
+	//"<script>function c(l){document.getElementById('s').value=l.innerText||l.textContent;document.getElementById('p').focus();}</script>"
+	"<style>.c{text-align: center;} div,input{padding:5px;font-size:1em;} input{width:95%;} body{text-align: center;font-family:verdana;} button{border:0;border-radius:0.3rem;background-color:#1fa3ec;color:#fff;line-height:2.4rem;font-size:1.2rem;width:100%;} .q{float: right;width: 64px;text-align: right;} .l{background: url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAALVBMVEX///8EBwfBwsLw8PAzNjaCg4NTVVUjJiZDRUUUFxdiZGSho6OSk5Pg4eFydHTCjaf3AAAAZElEQVQ4je2NSw7AIAhEBamKn97/uMXEGBvozkWb9C2Zx4xzWykBhFAeYp9gkLyZE0zIMno9n4g19hmdY39scwqVkOXaxph0ZCXQcqxSpgQpONa59wkRDOL93eAXvimwlbPbwwVAegLS1HGfZAAAAABJRU5ErkJggg==\") no-repeat left center;background-size: 1em;}</style>"
+	"</head><body><div style='text-align:left;display:inline-block;min-width:260px;'>"
+	"<h3>Update Firmware to Matrix Led Controller</h3>"
+	"<br/>Note: You are about to update the program for the Matrix Led controller<br/>"
+	"Please choose the correct file format as:<br/>"
+	"<h3>Matrix*.bin</h3><br/>"
+	"<form method='POST' action='/update' enctype='multipart/form-data'><input type='file' name='update'><br/><br/><br/><input type='submit' value='Update'></form>";
+
+
+
+//-----------------------End OTA------------------------------------------------------
+#include <ArduinoJson.h>
+
+
+String line2= "Chúc Mừng Năm Mới   ";
+
+#include "PxMatrix.h"
+
+#include "FontMaker.h"
+
+// #include "EEPROM.h"
+
+// #define EEPROM_SIZE 64
+
+
+//Khi sử dụng ngắt --> khai báo thông số này: để truy cập eeprom. flash không bị lỗi nếu.
+
+#define INTERRUPT_ATTR IRAM_ATTR
+
+WiFiClientSecure wclient;
+
+struct str_media_manager
+{
+	uint16_t mode;
+	uint32_t ds;//thời lượng phát cài đặt
+	uint32_t ds_running;//thời lượng phát thực tế
+	uint16_t looop;
+	uint16_t looop_running;
+	uint16_t playing;//
+	uint8_t	index;
+	uint8_t status;//tương ứng stop media tức thì
+	String text;
+};
+
+str_media_manager media_manager;
+
+
+struct str_color_manager
+{
+	uint8_t r;
+	uint8_t g;
+	uint8_t b;
+	uint16_t	start;
+	uint8_t status;
+};
+
+str_color_manager infocolor[df_max_color_support];
+
+struct str_text_manager
+{
+	uint8_t brighness;
+	uint8_t font;
+	uint8_t mode;
+	uint8_t speed;
+};
+
+str_text_manager infotext;
+
+uint16_t dsp_color_start[df_max_color_support];
+uint16_t dsp_color_val[df_max_color_support];
+
+struct wifi_info_t
+{
+    char wifi_name[20];
+	char wifi_pass[20];
+	uint16_t ledkind;
+	uint16_t ledwidth;
+	uint16_t ledheigh;
+}; 
+
+wifi_info_t wifiinfo;
+
+
+// #include "PxMatrix.h"
+
+//bổ sung biến toàn cục của v 1.2.4
+int colorR1,colorG1,colorB1;
+int colorR2,colorG2,colorB2;
+int colorR3,colorG3,colorB3;
+int colorR4,colorG4,colorB4;
+int colorR5,colorG5,colorB5;
+int colorR6,colorG6,colorB6;
+int mode1,mode2,mode3,mode4,mode5;
+uint32_t len1,len2,len3,len4,len5,len6;
+String local_text1,local_text2,local_text3,local_text4,local_text5,local_text6;
+int block1,block2,block3,block4,block5;
+int macdinh;
+uint16_t mau1;
+uint16_t mau2;
+uint16_t mau3;
+uint16_t mau4;
+uint16_t mau5;
+uint16_t mau6;
+uint16_t tocdo=10;
+volatile uint8_t u8count_napdata=0;
+volatile uint8_t napdata=0;
+
+// Pins for LED MATRIX
+#define ESP32
+#ifdef ESP32
+
+#define P_LAT 23
+#define P_A 25
+#define P_B 22
+#define P_C 33
+#define P_D 17
+#define P_OE 18
+
+hw_timer_t * timer = NULL;
+portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
+
+#endif
+
+#if defined(df_test_limit_led)
+	#define matrix_width 224//đã test chạy 224*32 ok màu không lên sáng hết được
+	#define matrix_height 32
+	// This defines the 'on' time of the display is us. The larger this number,
+	// the brighter the display. If too large the ESP will crash
+	#define display_draw_time 70 //30-70 is usually fine
+#else
+	// #define matrix_width 96
+	// #define matrix_height 32
+	#define matrix_width 64
+	#define matrix_height 32
+	// This defines the 'on' time of the display is us. The larger this number,
+	// the brighter the display. If too large the ESP will crash
+	#define display_draw_time 80 //30-70 is usually fine
+#endif
+
+
+PxMATRIX display(matrix_width,matrix_height,P_LAT, P_OE,P_A,P_B,P_C,P_D);
+// PxMATRIX display(560,75,P_LAT, P_OE,P_A,P_B,P_C);
+
+// Some standard colors
+
+uint16_t myRED = display.color565(0, 0, 255);
+uint16_t myGREEN = display.color565(0, 255, 0);
+uint16_t myBLUE = display.color565(255, 0, 0);
+uint16_t myWHITE = display.color565(255, 255, 255);
+uint16_t myYELLOW = display.color565(255, 255, 0);
+uint16_t myCYAN = display.color565(0, 255, 255);
+uint16_t myMAGENTA = display.color565(255, 0, 255);
+uint16_t myBLACK = display.color565(0, 0, 0);
+
+uint16_t myCOLORS[8]={myRED,myGREEN,myBLUE,myWHITE,myYELLOW,myCYAN,myMAGENTA,myBLACK};
+
+
+// const int led_sign=2;
+int status_led;
+unsigned long tempus=0;
+int dotchange=0;
+uint8_t ui8_norx =0;
+uint8_t ui8_system_status=0;
+uint32_t ui32timeoutrx=0;
+uint32_t ui32timeout_enableOTA=0;
+uint8_t ui8_ota_enable=0;
+
+uint8_t change_color=0;
+uint8_t ui8_vitrihienthix=0;
+uint8_t i8_chieuchay=1;
+void setpx(int16_t x,int16_t y,uint16_t color,uint8_t *state)
+{
+  display.drawPixel(x,y,color); //Thay đổi hàm này thành hàm vẽ pixel mà thư viện led bạn dùng cung cấp
+  *state=display.getState();
+}
+MakeFont myfont(&setpx);
+
+int readdata;
+#ifdef ESP32
+void IRAM_ATTR display_updater(){
+  // Increment the counter and set the time of ISR
+  portENTER_CRITICAL_ISR(&timerMux);
+  display.display(display_draw_time);  
+  
+  u8count_napdata++;
+    
+  portEXIT_CRITICAL_ISR(&timerMux);
+}
+#endif
+
+
+void display_update_enable(bool is_enable)
+{
+
+#ifdef ESP32
+  if (is_enable)
+  {
+    // timer = timerBegin(0, 80, true);
+	timer = timerBegin(0, 100, true);
+    timerAttachInterrupt(timer, &display_updater, true);
+    timerAlarmWrite(timer, 4000, true);
+    timerAlarmEnable(timer);
+  }
+  else
+  {
+    timerDetachInterrupt(timer);
+    timerAlarmDisable(timer);
+  }
+#endif
+}
+
+union single_double{
+  uint8_t two[2];
+  uint16_t one;
+} this_single_double;
+
+void printnew(int16_t x,int16_t y,String str,uint16_t color,uint16_t backcolor)
+{
+   unsigned char offset=0;
+   uint16_t utf8_addr;
+   unsigned char *s = (unsigned char *)&str[0];
+   unsigned char i=0;
+   unsigned char w=0;
+  
+   Serial.print("xin= ");   
+   Serial.print(x);
+
+  while(*s)
+   {
+      utf8_addr=UTF8_GetAddr((unsigned char *)s,&offset);
+      w =myfont.putChar(x,y,utf8_addr,color,backcolor)+1;
+      x +=w;
+	  i+=w;
+	  s+=offset;
+	  // if(i>=96){		  
+		  // break;	  	  
+	  // }
+   }
+   Serial.print(", xout= ");   
+   Serial.print(x);   
+   wait_next();
+}
+//hàm chạy chữ auto của debuge
+void scroll_textUTF(uint8_t ypos, unsigned long scroll_delay, String text, uint8_t colorR, uint8_t colorG, uint8_t colorB)
+{
+    uint16_t text_length = text.length();
+	// unsigned char offset=0;
+	// uint16_t utf8_addr;
+	// unsigned char *s = (unsigned char *)&text[0];
+   // unsigned char i=0;
+   // unsigned char w=0;
+	// uint8_t zpos=0;
+	// uint8_t indexpos=0;
+	
+	// unsigned char sumw=0;
+	
+    display.setTextWrap(false);  // we don't wrap text so it scrolls nicely
+    display.setTextSize(5);
+    display.setRotation(0);
+    display.setTextColor(display.color565(colorR,colorG,colorB));
+
+    // Asuming 5 pixel average character width
+	// for (int xpos=matrix_width; xpos>-(matrix_width+text_length*5); xpos--)
+
+	for (int xpos=matrix_width; xpos>-(matrix_width+text_length*13); xpos--)
+    {			
+		  display.clearDisplay();
+		  // myfont.print(xpos,ypos,text,display.color565(colorR,colorG,colorB),myBLACK);
+		  myfont.print_noBackColor(xpos,ypos,text,display.color565(colorR,colorG,colorB));
+		  display.showBuffer();
+			delay(scroll_delay);
+		  yield();
+
+			// delay(scroll_delay/5);
+			// yield();
+
+			// delay(2000);
+
+		read_serial();
+		if(media_manager.playing==0)break;
+    }
+}
+uint16_t lanthumay=0;
+//hàm chạy chữ khi nhận từ wifi
+void scroll_textfont(uint8_t ypos, unsigned long scroll_delay, String text)
+{
+  uint16_t text_length = text.length();
+  display.setTextWrap(false);  // we don't wrap text so it scrolls nicely
+  display.setTextSize(5);
+    
+  if(infotext.brighness<3)infotext.brighness=3;
+  if(infotext.brighness>255)infotext.brighness=255;
+  
+  // infotext.brighness = map(infotext.brighness, 0, 100, 20, 255);
+    
+  display.setBrightness(infotext.brighness);	
+  
+  if(infotext.mode==LMD_MOVER)
+  {
+    for ( int xpos=-(matrix_width+text_length*15); xpos<matrix_width; xpos++)
+   {     
+      display.clearDisplay();
+      // myfont.print_text(xpos,ypos,text,len1,len2,len3,len4,len5,len6,mau1,mau2,mau3,mau4,mau5,mau6);
+	  myfont.print_text1(xpos,ypos,text,dsp_color_start,dsp_color_val);
+      display.showBuffer();
+      delay(scroll_delay);
+      yield();
+      read_serial();
+      if(media_manager.playing==0)break;
+   }
+  }
+  else
+  {
+	/*
+	Serial.println("Infomation display:");
+	Serial.println("\tbrighness = " + String(infotext.brighness));
+	Serial.println("\tmode = " + String(infotext.mode));
+	Serial.println("\tspeed = " + String(infotext.speed));
+	*/
+	
+	uint16_t chieudai=myfont.getLength(text);
+	uint16_t index_hienthi=0;;
+	unsigned char shift_ch=0;
+	unsigned long speed_shift;
+	if(infotext.speed==LMD_SPEED_FAST)
+	{
+		speed_shift=3;//15
+	}
+	else if(infotext.speed==LMD_SPEED_NORMAL)
+	{
+		speed_shift=10;//25
+	}
+	else if(infotext.speed==LMD_SPEED_SLOW)
+	{
+		speed_shift=20;//30
+	}
+	else if (infotext.speed>4 && infotext.speed<40)
+	{
+		;
+	}
+	else
+	{
+		speed_shift=3;
+	}
+	
+	// Serial.println("\tindex = " + String(speed_shift));
+	
+	// Serial.println("Chieu dai hien thi = " + String(chieudai));   
+	
+	// Serial.println("Enter this mode"); 
+	// Serial.println("\n****This line test code\n");	
+	// speed_shift=100;
+	
+	for(int xpos=0;xpos<chieudai;xpos++)
+	{
+		
+		// xpos=10;
+				
+		// Serial.print("shift/index = " + String(shift_ch)+"/" + String(index_hienthi));		
+
+		// if(index_hienthi<22)
+		// {
+		display.clearDisplay();
+		myfont.print_shift_text(&index_hienthi,&shift_ch,ypos,text,dsp_color_start,dsp_color_val);		
+		
+		while(u8count_napdata<speed_shift);		
+
+		
+		display.showBuffer();
+		u8count_napdata=0;
+		// }		
+		// delay(speed_shift);
+
+		yield();
+		read_serial();
+		if(media_manager.playing==0)break;
+	
+	}
+}
+}
+
+
+/*
+void scroll_textUTF(uint8_t ypos, unsigned long scroll_delay, String text, uint8_t colorR, uint8_t colorG, uint8_t colorB)
+{
+    uint16_t text_length = text.length();
+	unsigned char offset=0;
+	uint16_t utf8_addr;
+	// unsigned char *s = (unsigned char *)&text[0];
+   unsigned char i=0;
+   unsigned char w=0;
+	uint8_t zpos=0;
+	uint8_t indexpos=0;
+	
+	unsigned char sumw=0;
+	
+    display.setTextWrap(false);  // we don't wrap text so it scrolls nicely
+    display.setTextSize(3);
+    display.setRotation(0);
+    display.setTextColor(display.color565(colorR,colorG,colorB));
+
+    // Asuming 5 pixel average character width
+	// for (int xpos=matrix_width; xpos>-(matrix_width+text_length*5); xpos--)
+
+	for (int xpos=matrix_width; xpos>-(matrix_width+text_length*13); xpos--)
+    {			
+		  display.clearDisplay();
+		  // myfont.print(xpos,ypos,text,display.color565(colorR,colorG,colorB),myBLACK);
+		  myfont.print_noBackColor(xpos,ypos,text,display.color565(colorR,colorG,colorB));
+		  
+			  delay(scroll_delay);
+		  yield();
+		  
+			  delay(scroll_delay/5);
+		  yield();
+
+		read_serial();
+		if(media_manager.playing==0)break;
+    }
+}
+*/
+/*
+void scroll_textUTF(uint8_t ypos, unsigned long scroll_delay, String text, uint8_t colorR, uint8_t colorG, uint8_t colorB)
+{
+    uint16_t text_length = text.length();
+    display.setTextWrap(false);  // we don't wrap text so it scrolls nicely
+    display.setTextSize(3);
+    display.setRotation(0);
+    display.setTextColor(display.color565(colorR,colorG,colorB));
+
+    // Asuming 5 pixel average character width
+	// for (int xpos=matrix_width; xpos>-(matrix_width+text_length*5); xpos--)
+    for (int xpos=matrix_width; xpos>-(matrix_width+text_length*6); xpos--)
+    {
+      
+	  //display.setTextColor(display.color565(colorR,colorG,colorB));
+	  display.clearDisplay();
+	  myfont.print(xpos,ypos,text,display.color565(colorR,colorG,colorB),myBLACK);
+	  // printnew(xpos,ypos,text,display.color565(colorR,colorG,colorB),myBLACK);
+	  
+
+	  // display.setTextColor(display.color565(colorR,colorG,colorB));
+      // display.clearDisplay();
+      // display.setCursor(xpos,ypos);      	  
+	  // display.println(text);        
+	  
+	  delay(scroll_delay);
+	  yield();
+	  
+	  
+	   // This might smooth the transition a bit if we go slow      
+      // myfont.print(xpos-1,ypos,text,display.color565(colorR/4,colorG/4,colorB/4),myBLACK);
+	  
+	  delay(scroll_delay/5);
+      yield();
+
+		read_serial();
+    }
+}
+*/
+unsigned long last_draw=0;
+
+/*void scroll_text(uint8_t ypos, unsigned long scroll_delay, String text, uint8_t colorR, uint8_t colorG, uint8_t colorB)
+{
+    uint16_t text_length = text.length();
+    display.setTextWrap(false);  // we don't wrap text so it scrolls nicely
+    display.setTextSize(3);
+    display.setRotation(0);
+    display.setTextColor(display.color565(colorR,colorG,colorB));
+
+    // Asuming 5 pixel average character width
+	// for (int xpos=matrix_width; xpos>-(matrix_width+text_length*5); xpos--)
+    for (int xpos=matrix_width; xpos>-(matrix_width+text_length*17); xpos--)
+    {
+      display.setTextColor(display.color565(colorR,colorG,colorB));
+      display.clearDisplay();
+      display.setCursor(xpos,ypos);
+      	  
+	  display.println(text);        
+	  
+	  delay(scroll_delay);
+      yield();
+
+      // This might smooth the transition a bit if we go slow
+      // display.setTextColor(display.color565(colorR/4,colorG/4,colorB/4));
+      // display.setCursor(xpos-1,ypos);
+      // display.println(text);
+
+      delay(scroll_delay/5);
+      yield();
+		read_serial();
+    }
+}
+*/
+
+uint8_t getvalue(String s,int *start_, char endchar)
+{
+	// #123$
+	if(*start_<0)return 0;
+	
+	uint8_t kq=0;
+	String ss="";
+	int end_ =s.indexOf(endchar,*start_);					
+	// Serial.print("Get values \tend_=: " + String(end_));
+	
+	if(end_>0)
+	{
+		ss=s.substring(*start_,end_);
+		
+		if(ss.length()<4)
+		{
+			// Serial.print("\tChuoi=: " + String(ss));
+			*start_=end_;
+		}
+	}
+		
+	kq=ss.toInt();
+	// Serial.println("\tkq=: " + String(kq));
+	return kq;
+}
+				
+void getrgb(String s,int start_get,str_color_manager *color_)
+{
+	//<CT=[red],[green],[blue]>[Nội dung 1]</CT>
+	// Serial.println("GetRGB\nchuoi=: " + String(s));
+	int daubang=s.indexOf("<CT=",start_get);
+						
+	if(daubang>=0)
+	{
+		color_->start=daubang;						
+		color_->status=0;	
+		daubang+=4;						
+		color_->r=getvalue(s,&daubang,',');
+		daubang++;
+		color_->g=getvalue(s,&daubang,',');						
+		daubang++;
+		color_->b=getvalue(s,&daubang,'>');						
+	}
+}
+void testthu(int16_t x,int16_t y,String str,uint16_t *len,uint16_t *color)
+{
+	
+   
+   unsigned char offset=0;
+   uint16_t utf8_addr;
+   unsigned char *s = (unsigned char *)&str[0];
+   uint16_t len_text=0;
+   uint16_t col_;
+   Serial.println("testthu chuoi=: " + String(str));
+	while(*s)
+   {
+	  utf8_addr=UTF8_GetAddr((unsigned char *)s,&offset);
+	  //get color
+	  
+	  
+	  for(int i=9;i>=0;i--)
+	  {
+		  // Serial.print( "@" + String(i));
+		  // Serial.print( "\tlen_text/len=" + String(len_text));
+		  // Serial.print( "/" + String(len[i]));
+		  if(len_text>=len[i])
+		  {
+			 col_ = color[i];			
+			
+			Serial.print((char)(*s));	
+
+			Serial.print(" @" + String(len_text));			
+			
+			Serial.print(" rgb=");		
+			Serial.print(String(infocolor[i].r) + ",");
+			Serial.print(String(infocolor[i].g) + ",");
+			Serial.print(String(infocolor[i].b)); 
+			Serial.print(" offset=" + String(offset));			
+			 
+			 if(col_==0)
+			 {
+				 col_=2000;
+				 Serial.print(" reset color,");
+			 }
+			 break;
+		  }
+		  else
+		  {
+			  // Serial.print( "\n");
+		  }
+	  }
+	  Serial.println(" end"); 
+	   
+		  
+	  x +=myfont.putChar_noBackColor(x,y,utf8_addr,col_)+1;
+	  
+	  // if(cong123)
+	  // {		  
+		  // return;
+	  // }
+	  
+	  s+=offset;
+	  len_text+=offset;
+
+   }
+}
+
+String inputString = "";
+
+
+void getcolor(int index)
+{
+	int passct=0;
+	int ss=0;
+	int m;
+	//kiểm tra xem có bao nhieu </CT>
+	// Serial.print("\t mark open color");		
+	// Serial.print("\tcheck @" + String(index));
+	
+	for(m=index;;m--)
+	{
+		if(infocolor[m].status==1)
+		{
+			passct++;
+		}
+		if(m==0)break;
+	}
+	// Serial.print("\t passct = " + String(passct));
+	passct++;
+	//get color
+	
+	for(m=index;;m--)
+	{
+		// Serial.print("\t *check = " + String(m));
+		if(infocolor[m].status==0)
+		{
+			// Serial.print("\t have colour @" + String(m));
+			
+			ss++;
+			if(ss==passct)
+			{
+				// Serial.print("\t getcolor @" + String(m));
+
+				infocolor[index].r=infocolor[m].r;
+				infocolor[index].g=infocolor[m].g;
+				infocolor[index].b=infocolor[m].b;
+				m=0;
+				break;
+			}
+		}
+		if(m==0)break;
+	}
+	// Serial.print("\n");
+}
+void sapxeplaimau()
+{
+	
+	// Serial.println("\nChuoi = " + String(line2));	
+	// <CT=255,255,255>MÀU TRẮNG <CT=224,62,45>CHUYỂN MÀU</CT> QUAY LẠI MÀU TRẮNG</CT>
+	//debug in
+	for(int m=0;m<df_max_color_support;m++)
+	{
+		// Serial.print("\@" + String(m));
+		// Serial.print("\trgb=" + String(infocolor[m].r));
+		// Serial.print("," + String(infocolor[m].g));
+		// Serial.print("," + String(infocolor[m].b));
+		// Serial.print(", start=" + String(infocolor[m].start));
+		// Serial.print(", status=" + String(infocolor[m].status));
+		// Serial.print("\n");	
+
+		
+		if(infocolor[m].status==1)//chưa có mã màu
+		{
+			
+			getcolor(m);						
+		}
+		
+		// kk=line2.substring(infocolor[m].start, line2.length());					
+		// Serial.println(",Chuoi : " + kk);					
+				
+		// Serial.print("\n");					
+	}
+
+}
+void get_content_display()
+{
+	
+	//DSP [INDEX] [MODE] [LOOP] [DURATION] [CONTENT]
+			//get mode
+			int firstspace = inputString.indexOf(' ');
+			int secondspace = inputString.indexOf(' ',firstspace+1);
+			
+			//get index
+			String s =inputString.substring(firstspace+1,secondspace);
+			#ifdef debugprocessdata
+				Serial.print("Get INDEX: ");
+				Serial.println("\tF: " + String(firstspace) + ", S: " + String(secondspace));
+				Serial.println("\ts: " + s);
+			#endif
+			
+
+			int index_temp=s.toInt();
+			
+			#if defined(debugprocessdata)
+			Serial.println("\tindex_temp: " + String(index_temp));
+			Serial.println("\media_manager.index: " + String(media_manager.index));
+			#endif 
+			if(media_manager.index!=index_temp)
+			{
+				media_manager.index=index_temp;
+				
+				//get mode
+				firstspace = secondspace;
+				secondspace = inputString.indexOf(' ',firstspace+1);
+				// #ifdef debugprocessdata
+				// Serial.print("Get mode: ");
+				// Serial.println("\tF: " + String(firstspace) + ", S: " + String(secondspace));							
+				// #endif
+				s =inputString.substring(firstspace,secondspace);				
+				// #ifdef debugprocessdata
+				// Serial.println("\ts: " + s);	
+				// #endif
+				media_manager.mode=s.toInt();
+				
+				//get  loop
+				firstspace = secondspace;
+				secondspace = inputString.indexOf(' ',firstspace+1);
+				s =inputString.substring(firstspace,secondspace);
+				// #ifdef debugprocessdata
+				// Serial.print("Get loop: ");
+				// Serial.println("\tF: " + String(firstspace) + ", S: " + String(secondspace));
+				// Serial.println("\ts: " + s);
+				// #endif
+				media_manager.looop=s.toInt();				
+								
+				//get duration
+				firstspace = secondspace;
+				secondspace = inputString.indexOf(' ',firstspace+1);
+				s =inputString.substring(firstspace+1,secondspace);
+				// #ifdef debugprocessdata
+				// Serial.print("Get DURATION: ");
+				// Serial.println("\tF: " + String(firstspace) + ", S: " + String(secondspace));
+				// Serial.println("\ts: " + s);
+				// #endif
+				media_manager.ds=s.toInt();
+
+				int indextam1,indextam2;
+				
+
+				//get content				
+				//<Fn><Mn><Sn><Bn>
+				//<CT=[red],[green],[blue]>[Nội dung 1]</CT>
+				//<CT=[red],[green],[blue]>[Nội dung 2]</CT>....
+				line2=inputString.substring(secondspace+1, inputString.length());
+				// Serial.println("Chuoi hien thi: " + line2);
+				// line2.replace("</CT>","");
+			
+				String linecanxoa="";
+				
+				
+				//tìm mode hiển thị <Mn>
+				indextam1=line2.indexOf("<M");
+				
+				if(indextam1>=0)
+				{
+					// Serial.println("tim thay <M");
+					indextam1+=2;
+					infotext.mode=getvalue(line2,&indextam1,'>');
+					// Serial.println("\tmode: " + String(infotext.mode));
+					
+					if(infotext.mode!=LMD_MOVEL && infotext.mode!=LMD_MOVER)
+					{
+						infotext.mode=LMD_MOVEL;
+						// Serial.println("\tmode hieu chinh: " + String(infotext.mode));
+					}
+				}
+				
+				//tìm tốc độ hiển thị <Sn>
+				indextam1=line2.indexOf("<S");
+				
+				if(indextam1>=0)
+				{
+					// Serial.println("tim thay <S");
+					indextam1+=2;
+					infotext.speed=getvalue(line2,&indextam1,'>');
+				}
+				//tìm độ sáng hiển thị <Bn>
+				indextam1=line2.indexOf("<B");
+				
+				if(indextam1>=0)
+				{
+					// Serial.println("tim thay <B");
+					indextam1+=2;
+					infotext.brighness=getvalue(line2,&indextam1,'>');
+					
+					if(infotext.brighness<0)infotext.brighness=0;
+					if(infotext.brighness>100)infotext.brighness=100;
+					
+					//chuyển mức thành 255
+					infotext.brighness = map(infotext.brighness, 0, 100, 3, 255);
+					
+					// Serial.println("\tdosangmanhinh: " + String(infotext.brighness));
+					
+				}
+				
+				//xóa đoạn đầu
+				int canxoa=0,vitricanxoa=0;
+				canxoa=line2.indexOf("<B");
+				// Serial.print("chuoi 918:");
+				// Serial.println(line2);
+				if(canxoa>=0)
+				{						
+					vitricanxoa=line2.indexOf(">",canxoa);
+					linecanxoa=line2.substring(vitricanxoa+1, line2.length());
+					line2=linecanxoa;
+					// Serial.println("Chuoi Cat doan dau: " + line2);
+										
+				}
+				// Serial.print("chuoi 928:");
+				// Serial.println(line2);
+				//thêm mã màu mặc định vào đầu chuỗi
+				canxoa = line2.indexOf("<CT=");
+
+					if(canxoa>0)line2 = "<CT=255,255,255>" + line2;
+
+				// line2=reorder_colour(line2);
+				
+				//Tìm chuỗi màu
+				//<CT=[red],[green],[blue]>[Nội dung 1]</CT>
+				//<CT=[red],[green],[blue]>[Nội dung 1]</CT>
+				//<CT=[red],[green],[blue]>[Nội dung 1]</CT>
+				
+				int batdau=0;
+				
+				
+				int local_color1_start=0;
+				int local_color1_end=0;
+				
+				
+				//preset values
+				for(int m3=0;m3<df_max_color_support;m3++)
+				{
+					infocolor[m3].start=30000;
+					infocolor[m3].status=10;
+					infocolor[m3].r=20;
+					infocolor[m3].g=20;
+					infocolor[m3].b=20;
+				}
+				
+				String yy="";
+				String chuoitrai="";
+				String chuoiphai="";
+				
+				
+				line2.replace("<br/>","     ");
+				
+				s = "                        " + line2;
+				line2=s;
+				
+				
+				// Serial.print("chuoi 966:");
+				// Serial.println(line2);
+				
+				
+				
+				// line2 = reorder_colour(line2);
+											
+				//tìm tất cả vị trí mo khoa
+				// lấy mã màu tại vị trí đó
+				for(int m=0;m<df_max_color_support;m++)
+				{
+					#if defined(debugprocessdata)
+					Serial.println("process @" + String(m));
+					#endif 
+					
+					local_color1_start = line2.indexOf("<CT=");
+					local_color1_end = line2.indexOf("</CT>");
+					
+					#if defined(debugprocessdata)
+					Serial.print("\tin/out=" + String(local_color1_start) +"/"+ String(local_color1_end));
+					#endif 
+
+					if(local_color1_start>=0 && local_color1_end>=0)//có cả 2 biến
+					{
+						
+						if(local_color1_start<local_color1_end)
+						{
+							canxoa = line2.indexOf(">",local_color1_start);
+							if(canxoa>=0)
+							{						
+								getrgb(line2,local_color1_start,&infocolor[m]);
+								//xoa thong tin mau
+								//A chuoixoa B
+
+								chuoitrai=line2.substring(0, local_color1_start);
+								chuoiphai=line2.substring(canxoa+1, line2.length());
+								line2=chuoitrai + chuoiphai;				
+							}
+							#if defined(debugprocessdata)
+							Serial.println("\t1");
+							#endif 
+						}						
+						else 
+						{
+							//đánh dấu vị trí màu
+							infocolor[m].start=local_color1_end;
+							infocolor[m].status=1;
+							//xử lý end
+							chuoitrai=line2.substring(0, local_color1_end);
+							chuoiphai=line2.substring(local_color1_end+5, line2.length());
+							line2=chuoitrai + chuoiphai;	
+							#if defined(debugprocessdata)
+								Serial.println("\t2");		
+							#endif 							
+						}						
+					}
+					else if(local_color1_end>=0)//chỉ có end
+					{
+						#if defined(debugprocessdata)
+						Serial.println("\t3");
+						#endif 
+						//đánh dấu vị trí màu
+						infocolor[m].start=local_color1_end;
+						infocolor[m].status=1;
+						//xử lý end
+						chuoitrai=line2.substring(0, local_color1_end);
+						chuoiphai=line2.substring(local_color1_end+5, line2.length());
+						line2=chuoitrai + chuoiphai;
+						
+					}
+					else if(local_color1_start>=0)//chỉ có start
+					{
+						#if defined(debugprocessdata)
+						Serial.println("\t3_1");
+						#endif 
+						canxoa = line2.indexOf(">",local_color1_start);
+						if(canxoa>=0)
+						{						
+							getrgb(line2,local_color1_start,&infocolor[m]);
+							//xoa thong tin mau
+							//A chuoixoa B
+
+							chuoitrai=line2.substring(0, local_color1_start);
+							chuoiphai=line2.substring(canxoa+1, line2.length());
+							line2=chuoitrai + chuoiphai;				
+						}
+						
+					}
+					else
+					{
+						#if defined(debugprocessdata)
+						Serial.println("\t4");
+						#endif 
+						break;
+					}
+					
+					#if defined(debugprocessdata)
+					Serial.print("\n\tchuoi =");
+					Serial.println(line2);
+					#endif 
+					
+				}
+				
+				
+				// Serial.print("Truoc sap mau:");
+				
+				// Serial.println(line2);
+				sapxeplaimau();
+
+				// Serial.print("Sau sap mau:");
+				// Serial.println(line2);
+				//in thông tin
+				
+				// Serial.println("\tInfomation:");
+				// Serial.println("\tbrighness = " + String(infotext.brighness));
+				// Serial.println("\tmode = " + String(infotext.mode));
+				// Serial.println("\tspeed = " + String(infotext.speed));
+
+				for(int m=0;m<df_max_color_support;m++)
+				{
+					// Serial.print("\tindex=" + String(m));
+					// Serial.print("\trgb=" + String(infocolor[m].r));
+					// Serial.print("," + String(infocolor[m].g));
+					// Serial.print("," + String(infocolor[m].b));
+					// Serial.print(", start=" + String(infocolor[m].start));
+					
+					String kk=line2.substring(infocolor[m].start, line2.length());					
+					// Serial.println(",Chuoi : " + kk);					
+					
+					
+					// Serial.print("\n");					
+									
+					dsp_color_val[m] =  display.color565(infocolor[m].b, infocolor[m].g, infocolor[m].r);//bgr
+					dsp_color_start[m]=infocolor[m].start;
+				}
+				
+				
+				
+				//-------Xử lý định dạng text-------------------------
+				//get content
+				// line2=inputString.substring(secondspace+1, inputString.length());
+
+				// Serial.print("Chuoi 1050:");
+				// Serial.println(line2);
+				
+				
+				line2+=" ";
+				media_manager.text=line2;
+				if(media_manager.text=="")
+				{
+					media_manager.text="Erro format";
+				}
+				
+				
+				// testthu(96,0,media_manager.text,dsp_color_start,dsp_color_val);
+				
+				
+				//reset timer
+				//ds đơn vị là s
+				//giá trị đọc là ms
+				media_manager.ds_running=millis()+(media_manager.ds)*1000;
+				media_manager.looop_running=0;
+				//cho phép chạy
+				media_manager.playing=1;
+				// #ifdef debugprocessdata				
+				// Serial.print("Content display: ");
+				// Serial.println(line2);
+
+				//indebug
+				#ifdef 	debugprocessdata
+					Serial.println("\n************Content*******************");
+					Serial.println("index: " + String(media_manager.index));
+					Serial.println("mode: " + String(media_manager.mode));
+					Serial.println("loop: " + String(media_manager.looop));
+					Serial.println("dur: " + String(media_manager.ds));
+					Serial.println("text: " + media_manager.text);
+					Serial.println("");
+				#endif	
+				// #endif
+				Serial2.println("LMD DSP NEW");
+			}			
+			else {
+				#ifdef 	debugprocessdata
+					Serial.println("Old message");
+				#endif	
+				Serial2.println("LMD DSP OLD");				
+			}				
+}
+void load_systemdefault(){
+	//load default value
+
+	StaticJsonDocument<1024> json1;
+
+	json1["Wname"] = df_wifi_name;
+	json1["Wpass"] = df_wifi_pass;
+	json1["Led"] = df_led_kind;
+	json1["Width"] = df_led_width;
+	json1["Heigh"] = df_led_heigh;
+	
+	//create file
+	File f2 = SPIFFS.open(sys_filename,  "w");		
+	// serializeJson(json1,Serial);
+	serializeJson(json1,f2);
+	f2.close();	
+}
+void save_config()
+{
+	Serial.println("save_config");
+	
+	//STOP INTERRUPT
+	display_update_enable(false);	
+	delay(1000);
+	Serial.println("end delay");
+	
+	DynamicJsonDocument jsonBuffer(1024);
+
+	jsonBuffer["Wname"] =  wifiinfo.wifi_name;
+	jsonBuffer["Wpass"] = wifiinfo.wifi_pass;
+	jsonBuffer["Led"] = wifiinfo.ledkind;
+	jsonBuffer["Width"] = 64;
+	jsonBuffer["Heigh"] = 64;
+					
+	File configFile = SPIFFS.open(sys_filename, FILE_WRITE);
+	if (!configFile) {
+		Serial.println("failed to open config file for writing");
+	}
+
+	serializeJson(jsonBuffer,Serial);
+	serializeJson(jsonBuffer,configFile);
+	configFile.close();
+
+}
+void load_config()
+{
+	if (!SPIFFS.exists(sys_filename)) {
+		Serial.println(F("[FILE SYS]:File not exists"));
+		Serial.println(F("[FILE SYS]:Need to create new file 310"));
+		load_systemdefault();			
+		Serial.println(F("\n[FILE SYS]:Done"));		
+    }
+	
+	File f = SPIFFS.open(sys_filename,  "r");  //r+
+	
+	//if File Exists
+  if (f) {
+	// Serial.println(F("[*FILE]: Read file"));  
+	size_t size = f.size();
+	// Allocate a buffer to store contents of the file.
+	std::unique_ptr<char[]> buf(new char[size]);
+	f.readBytes(buf.get(), size);
+		
+	DynamicJsonDocument  jsonBuffer(1024);
+	deserializeJson(jsonBuffer,buf.get());
+	
+	Serial.print(F("[*FILE]: \t"));  
+	serializeJson(jsonBuffer,Serial);  
+	Serial.print(F("\n")); 
+			
+	if (!jsonBuffer.isNull()) {
+		strlcpy(wifiinfo.wifi_name,                  // <- destination
+			jsonBuffer["Wname"] | df_wifi_name,  // <- source
+			sizeof(wifiinfo.wifi_name));         // <- destination's capacity
+
+		strlcpy(wifiinfo.wifi_pass,                  // <- destination
+			jsonBuffer["Wpass"] | df_wifi_pass,  // <- source
+			sizeof(wifiinfo.wifi_pass));         // <- destination's capacity
+			
+		wifiinfo.ledkind= jsonBuffer["Led"] | df_led_kind;
+		wifiinfo.ledwidth= jsonBuffer["Width"] | df_led_width;
+		wifiinfo.ledheigh= jsonBuffer["Heigh"] | df_led_heigh;
+			
+
+		f.close();
+	} else {
+		Serial.println(F("[FILE]: \tFile incorrect format"));		
+		Serial.println(F("[FILE]: \tLoad default"));
+		f.close();
+		load_systemdefault();		
+		Serial.println(F("\n\r[FILE]: \tDone"));
+	}  
+
+  } else {
+    Serial.print(F("[FILE]: \tUnable to open file: "));
+    Serial.println(sys_filename);
+  }
+}
+
+uint16_t get16value(String s,int *start_, char endchar)
+{
+	// #123$
+	if(*start_<0)return 0;
+	
+	uint16_t kq=0;
+	String ss="";
+	int end_ =s.indexOf(endchar,*start_);					
+	// Serial.print("Get values \tend_=: " + String(end_));
+	if(end_<0) end_=s.length();
+	
+	if(end_>0)
+	{
+		ss=s.substring(*start_,end_);
+		
+		if(ss.length()<4)
+		{
+			// Serial.print("\tChuoi=: " + String(ss));
+			*start_=end_;
+		}
+	}
+		
+	kq=(uint16_t)ss.toInt();
+	// Serial.println("\tkq=: " + String(kq));
+	return kq;
+}
+
+void process_data(char inChar,int index_)
+{
+	// if the incoming character is a newline, set a flag so the main loop can
+	// do something about it:
+	// Serial.write(inChar);
+	ui32timeoutrx = millis()+40000;
+	ui32timeout_enableOTA=millis()+time_enable_ota;//
+	//process data here
+	// "ENA [VALUE]"
+	// VALUE=0: enable		
+	// VALUE=1: disable
+	// if(inputString == "")return;
+	#ifdef debug_receive_serial
+	Serial.println("Data: " + inputString);
+	#endif
+	
+
+	if (inputString.startsWith("DSP")) {//update
+		get_content_display();
+	}
+	// else if (inputString.startsWith("CHK")) {			
+		
+		// #ifdef debugprocessdata
+		// Serial.println("\tLMD ACK");
+		// #endif
+		
+		// Serial2.println("LMD ACK");
+		
+		// SAVE EEROM
+	// }
+	else if (inputString.startsWith("ENA")) {			
+		int firstspace = inputString.indexOf(' ');
+		String s =inputString.substring(firstspace+1,inputString.length());
+		#ifdef debugprocessdata
+		Serial.println("\ts: " + s);
+		#endif
+		media_manager.status=s.toInt();
+		//check message
+		if(media_manager.status==0)
+		{
+			#ifdef debugprocessdata
+			Serial.println("ACTIVE");
+			#endif				
+			//save
+			// display_update_enable(false);
+			// delay(1000);
+			// EEPROM.write(0, media_manager.status);
+			// EEPROM.commit();
+			// delay(500);
+			// display_update_enable(true);
+			Serial2.println("LMD ENA 0");
+		}
+		else if(media_manager.status==1){
+			#ifdef debugprocessdata
+			Serial.println("DEACTIVE");
+			#endif
+			media_manager.playing=0;
+			// display_update_enable(false);
+			// delay(1000);
+			// EEPROM.write(0, media_manager.status);
+			// EEPROM.commit();
+			// delay(500);
+			// display_update_enable(true);
+			Serial2.println("LMD ENA 1");
+		}			
+		//SAVE EEROM
+	}
+	else if (inputString.startsWith("UGN")) {			
+		
+		//UGN WIFI_NAME,WIFI_PASS
+		//chuoi test UGN Unknow,congluxubu
+		// #ifdef debugprocessdata
+		Serial.println("\tCheck upgrade");
+		Serial2.println("LMD UGN");
+
+		//get user name va password
+		
+		//tim dau ','
+		int dauphay=inputString.indexOf(',');
+		if(dauphay>0)
+		{
+			String username_=inputString.substring(4,dauphay);
+			String userpass_=inputString.substring(dauphay+1,inputString.length());
+			
+			
+			username_.toCharArray(wifiinfo.wifi_name,sizeof(wifiinfo.wifi_name));
+			userpass_.toCharArray(wifiinfo.wifi_pass,sizeof(wifiinfo.wifi_pass));
+			
+			Serial.println("username = " + String(wifiinfo.wifi_name));
+			Serial.println("password = " + String(wifiinfo.wifi_pass));
+
+			 //save pass			
+			save_config();
+		}
+		else
+		{
+			Serial.println("Khong thay wifi name-->load default");						
+		}
+				
+		/*
+		//thong bao tao update firm ware			
+		display.clearDisplay();			
+		display.setCursor(2,0);
+		display.setTextSize(1);
+		display.setTextColor(myGREEN);
+		display.print("Update.");
+		display.showBuffer();
+		delay(2000);
+		display.clearDisplay();			
+		display.setCursor(2,0);
+		display.setTextColor(myGREEN);
+		display.print("Update..");
+		display.showBuffer();
+		delay(1000);
+		display.clearDisplay();			
+		display.setCursor(2,0);
+		display.setTextColor(myGREEN);
+		display.print("Update...");
+		display.showBuffer();
+		delay(1000);
+		*/
+		//save
+		setup_upgrade_now();
+		
+		//XOA HET BUFFER
+		while (Serial2.available()) {
+
+			char inChar = (char)Serial2.read();
+		}
+		
+		/*display_update_enable(false);
+		delay(1000);
+		int add=0;
+		add+=sizeof(media_manager.status);
+		
+		EEPROM.write(add, 0xfe);
+		EEPROM.commit();
+		ESP.restart();
+		while(1){
+			delay(1);
+		}
+		*/
+		//SAVE EEROM
+	}
+	else if (inputString.startsWith("OTA")) {			
+		//OTA 1
+		// #ifdef debugprocessdata
+		Serial.println("\tOTA upgrade");
+		Serial2.println("LMD OTA");	
+
+		//save
+		// display_update_enable(false);
+		// delay(1000);
+		set_up_ota_now();
+		#ifdef debug_receive_serial
+			//XOA HET BUFFER
+			while (Serial.available()) {
+
+				char inChar = (char)Serial.read();
+			}
+		#endif
+		
+		//XOA HET BUFFER
+		while (Serial2.available()) {
+
+			char inChar = (char)Serial2.read();
+		}
+		/*
+		//save
+		// display_update_enable(false);
+		// delay(1000);
+		int add=0;
+		add+=sizeof(media_manager.status);
+		
+		EEPROM.write(add, 0x6e);
+		EEPROM.commit();
+		ESP.restart();
+		while(1){
+			delay(1);
+		}
+		
+		*/
+		//SAVE EEROM
+	}
+	/*
+	else if (inputString.startsWith("VER")) {												
+		String ss =inputString.substring(4);
+		#ifdef debugprocessdata
+		Serial.print("\tVersion is ");
+		Serial.println(ss);
+		#endif
+		Serial2.println("LMD VER");	
+		if(String(ss)==String(versionname))
+		{
+			#ifdef debugprocessdata
+			Serial.printf("\LMD already on latest firmware version:%s\n", versionname);
+			#endif
+			;
+		}
+		else{
+			Serial.println("New firmware LMD detected");
+						//thong bao tao update firm ware			
+			display.clearDisplay();
+			display.setTextColor(myRED);
+			display.setCursor(2,0);
+			display.print("Update.");
+			delay(1000);
+			display.clearDisplay();
+			display.setTextColor(myRED);
+			display.setCursor(2,0);
+			display.print("Update..");
+			delay(1000);
+			display.clearDisplay();
+			display.setTextColor(myRED);
+			display.setCursor(2,0);
+			display.print("Update...");
+			delay(1000);
+			
+			
+			
+			//update now
+			//save
+			display_update_enable(false);
+			delay(1000);
+			int add=0;
+			add+=sizeof(media_manager.status);
+			
+			EEPROM.write(add, 0xfe);
+			EEPROM.commit();
+			ESP.restart();
+			while(1){
+				delay(1);
+			}
+			//SAVE EEROM
+		}
+	}
+	*/
+
+	else if (inputString.startsWith("STOP")) {			
+		
+		#ifdef debugprocessdata
+		Serial.println("\tLMD STOP");
+		#endif
+		
+		#ifdef debuging_display
+			media_manager.playing=1;			
+		#else
+			media_manager.playing=0;			
+		#endif
+				
+		//tách mã status
+		//STOP i
+		
+		String ss =inputString.substring(5, inputString.length());
+		ui8_system_status=ss.toInt();
+		
+		// Serial.println("chuoi =" + inputString);
+		// Serial.println("ss <" + ss + ">");
+		// Serial.println("system_status =" + String(ui8_system_status));
+		
+
+		//gửi thông tin version trong gói tin STOP		
+		Serial2.print("LMD MINF ");		
+		Serial2.println(versionname);
+		
+		//SAVE EEROM
+	}
+	else if (inputString.startsWith("WIFI")) {			
+		
+		#ifdef debugprocessdata
+		Serial.println("\tLMD WIFI");
+		#endif
+		//reset index
+		media_manager.index=0;
+	}
+	else if (inputString.startsWith("GINF")) {			//GET INFO
+		
+		#ifdef debugprocessdata
+		Serial.print("LMD MINF ");		
+		Serial.println(versionname);
+		#endif
+		Serial2.print("LMD MINF ");		
+		Serial2.println(versionname);		
+	}
+	else if (inputString.startsWith("LED")) {			
+		//LED 1 96 32		
+		//DSP [INDEX] [MODE] [LOOP] [DURATION] [CONTENT]		
+		int daubang=4;
+		uint16_t ledkind_temp;
+
+		ledkind_temp = get16value(inputString,&daubang,' ');
+		
+		daubang++;		
+		wifiinfo.ledwidth = get16value(inputString,&daubang,' ');
+		
+		daubang++;		
+		wifiinfo.ledheigh = get16value(inputString,&daubang,' ');
+
+		
+		#if defined(debugprocessdata)
+			Serial.println("\ledkind: " + String(wifiinfo.ledkind));
+			Serial.println("\width: " + String(wifiinfo.ledwidth));
+			Serial.println("\height: " + String(wifiinfo.ledheigh));
+		#endif 
+		
+		//so sánh khác nhau thì mới lưu
+		if(wifiinfo.ledkind!=ledkind_temp)
+		{
+			wifiinfo.ledkind=ledkind_temp;			
+			save_config();
+			//need restart
+			display_update_enable(false);	
+			delay(1000);
+			ESP.restart();
+			while(1){
+				delay(1);
+			}
+			
+		}
+
+	}
+
+	#ifdef debugprocessdata
+	else
+	{
+		Serial.print("#TX");
+		Serial.print(index_);
+		Serial.print("#: ");
+		Serial.println(inputString);
+	}
+	#endif
+	inputString = "";
+}
+
+#ifdef debug_receive_serial
+String inString = "";         // a String to hold incoming data
+bool stringCompletedebug = false;  // whether the string is complete
+#endif
+
+
+void modetestled(uint16_t value)
+{
+  // Set the multiplex pattern {LINE, ZIGZAG,ZZAGG, ZAGGIZ, WZAGZIG, VZAG, ZAGZIG} (default is LINE)
+  // display.setScanPattern(ZAGZIG);
+  
+    // Define multiplex implemention here {BINARY, STRAIGHT} (default is BINARY)
+  //display.setMuxPattern(BINARY);
+  
+    // Set driver chip type {SHIFT, FM6124, FM6126A};
+  // display.setDriverChip(driver_chips driver_chip);
+  
+  switch (value)
+  {
+	  case 0:
+	  {
+		  display.setScanPattern(LINE);
+		  break;
+	  }
+	  case 1:
+	  {
+		  display.setScanPattern(ZIGZAG);
+		  break;
+	  }
+	  case 2:
+	  {
+		  display.setScanPattern(ZZAGG);
+		  break;
+	  }
+	  	  case 3:
+	  {
+		  display.setScanPattern(ZAGGIZ);
+		  break;
+	  }
+	  	  case 4:
+	  {
+		  display.setScanPattern(WZAGZIG);
+		  break;
+	  }
+	  	  case 5:
+	  {
+		  display.setScanPattern(VZAG);
+		  break;
+	  }
+	  	  case 6:
+	  {
+		  display.setScanPattern(ZAGZIG);
+		  break;
+	  }
+	  case 7:
+	  {
+		  Serial.println("New mode");
+		  display.setScanPattern(ZAGOUTDOOR);
+		  break;
+	  }
+	  
+	  	  case 10:
+	  {
+		  display.setMuxPattern(BINARY);
+		  break;
+	  }
+	  	  case 11:
+	  {
+		  display.setMuxPattern(STRAIGHT);
+		  break;
+	  }
+	  case 20:
+	  {
+		  display.setDriverChip(SHIFT);
+		  break;
+	  }
+	  case 21:
+	  {
+		  display.setDriverChip(FM6124);
+		  break;
+	  }
+	  case 22:
+	  {
+		  display.setDriverChip(FM6126A);
+		  break;
+	  }
+
+	  case 30:
+	  {
+		  display.setBlockPattern(ABCD);
+		  break;
+	  }
+	  case 31:
+	  {
+		  display.setBlockPattern(DBCA);
+		  break;
+	  }
+	  case 41:
+	  {
+		  Serial.println("test_pixel"); 
+		  test_pixel();
+		  break;
+	  }
+	  default:
+	  Serial.println("Unknow config code = " + String(value));  
+  }
+}
+
+void test_pixel()
+{
+	display.clearDisplay();
+	display_update_enable(false);
+	
+	delay(1000);
+	unsigned long now_=millis()+30000;
+
+	while(millis() <now_)
+	{
+		display.displayTestPixel(70);
+	}
+	
+	display_update_enable(true);
+}
+void read_serial()
+{
+
+	#ifdef debug_receive_serial
+
+	while (Serial.available()) {
+
+
+		char inChar = (char)Serial.read();
+		
+		if (inChar == '\n' || inChar == '\r') {
+			process_data(inChar,1);		
+		}
+		else
+		{
+			inputString += inChar;
+		}
+		
+
+		/*
+		int inChar = Serial.read();
+		if (isDigit(inChar)) {
+		  // convert the incoming byte to a char and add it to the string:
+		  inString += (char)inChar;
+		}
+		// if you get a newline, print the string, then the string's value:
+		if (inChar == '\n') {
+		  tocdo=inString.toInt();
+		  Serial.print("Value:");
+		  Serial.println(inString.toInt());
+		  // Serial.print("String: ");
+		  // Serial.println(inString);
+		  // clear the string for new input:
+		  
+		  
+		  // Set the multiplex pattern {LINE, ZIGZAG,ZZAGG, ZAGGIZ, WZAGZIG, VZAG, ZAGZIG} (default is LINE)
+		  // display.setScanPattern(ZAGZIG);
+
+		  // Set the block pattern {ABCD, DBCA} (default is ABCD)
+		  // display.setBlockPattern(ABCD);
+		  
+		  modetestled(tocdo);		  
+		  inString = "";
+		}
+		*/
+		
+	}
+
+	
+	#endif
+
+	while (Serial2.available()) {
+
+		char inChar = (char)Serial2.read();
+		
+		if (inChar == '\n' || inChar == '\r') {
+			process_data(inChar,2);		
+		}
+		else
+		{
+			inputString += inChar;
+		}	
+		
+	}
+}
+void wait_next()
+{
+		Serial.println("Press anykey to continue...");
+		while (!Serial.available()) {
+			delay(1);			
+		}
+		while (Serial.available()) {
+			char inChar = (char)Serial.read();			
+		}
+}
+
+//------------------end wifi------------------------
+
+void playtext()
+{
+	display.clearDisplay();
+	scroll_textfont(5,10,media_manager.text);
+}
+
+#ifdef display_welcome_name
+
+void display_status_name()
+{
+	
+	if(check1s())
+	{		
+		//if(media_manager.status==0)
+		//check timeout
+		if(millis()>ui32timeoutrx)ui8_system_status=SYS_DISCONNECT;
+		//else ui8_system_status =0;
+		
+		dotchange++;
+		
+		ui8_vitrihienthix+=i8_chieuchay;
+		
+		if(ui8_vitrihienthix>48)
+		{
+			ui8_vitrihienthix=48;
+			i8_chieuchay=-1;
+		}
+		if(ui8_vitrihienthix==0)
+		{
+			i8_chieuchay=1;			
+		}
+		
+		display.clearDisplay();
+		// display.setCursor(2,1);
+		display.setCursor(ui8_vitrihienthix,1);
+		display.setTextSize(1);	
+
+		display.setTextColor(myWHITE);
+		display.print("mobi");
+		display.setTextColor(myRED);
+		display.print("fone");
+		
+		if(dotchange==1)
+		{
+			if (ui8_system_status==SYS_DISCONNECT) 
+			{					
+				// Serial.println("set RED");											
+				display.setCursor(92,25);
+				display.setTextColor(myRED);
+				display.print(".");
+			}
+			else if(ui8_system_status==SYS_NORMAL)
+			{
+				// Serial.println("set blue");
+				// display.setCursor(92,25);
+				// display.setTextColor(myGREEN);
+				// display.print(".");	
+			}
+			else if(ui8_system_status==SYS_ERR0)
+			{
+				// Serial.println("set blue");
+				display.setCursor(92,25);
+				display.setTextColor(myBLUE);
+				display.print(".");	
+			}
+			else if(ui8_system_status==SYS_ERR_SERVER)
+			{
+				// Serial.println("set blue");
+				display.setCursor(92,25);
+				display.setTextColor(myCYAN);
+				display.print(".");	
+			}				
+		}
+		else{
+			dotchange=0;			
+			// Serial.println("set black");
+			// display.setTextColor(myBLACK);				
+		}
+		display.showBuffer();
+	}	
+}
+#endif
+
+int landau=0;
+void test_scrollUTF()
+{
+	//DSP [INDEX] [MODE] [LOOP] [DURATION] [CONTENT]
+	//<Fn><Mn><Sn><Bn>
+	//<CT=[red],[green],[blue]>[Nội dung 1]</CT>
+	//<CT=[red],[green],[blue]>[Nội dung 2]</CT>....
+	
+	// if(landau==1)return;
+	// landau=1;
+	landau++;
+	media_manager.index=123;//test
+	
+	Serial.println("\n----Test filter content-----");
+	
+	landau=1;
+	if(landau==1)
+	{
+		inputString = "DSP 1 2 3 3000 <F1><M2><S1><B255><CT=255,255,255> NGUYỄN CÔNG DANH</CT>";
+		// inputString = "DSP 1 2 3 3000 <F1><M2><S1><B50><CT=255,255,255>MÀU TRẮNG <CT=224,62,45>CHUYỂN MÀU</CT> QUAY LẠI MÀU TRẮNG</CT>";
+		//th1-1
+		// inputString = "DSP 1 2 3 3000 <F1><M2><S1><B255><CT=255,0,0>không</CT>";
+				
+		// inputString = "DSP 1 2 3 3000 <F1><M2><S1><B255><CT=255,0,0>Xin <CT=0,255,0>Chào <CT=0,0,255>Các <CT=200,200,0>Bạn, <CT=0,200,200>Chúc <CT=200,0,200>Một <CT=200,200,200>Ngày <CT=200,200,200><CT=20,100,200>Tốt <CT=200,50,50>Đẹp";
+		// inputString = "DSP 1 2 3 3000 <F1><M2><S2><B255><CT=255,0,0>MỘT HAI BA BỐN NĂM SÁU BẢY TÁM CHÍN MƯỚI</CT>";
+		// landau=0;
+
+	}
+	else if(landau==2)
+	{
+		
+		// inputString="DSP 1 2 3 3000 <F1><M2><S1><B50><CT=255,255,255>MÀU TRẮNG <CT=255,0,0>MÀU ĐỎ <CT=0,255,0>MÀU XANH LÁ</CT></CT>";
+		// inputString="DSP 1 2 3 3000 <F1><M2><S3><B200><CT=255,0,0>Red MÀU ĐỎ,</CT><CT=0,255,0>Green MÀU XANH LÁ,</CT><CT=0,0,255>Blue MÀU XANH DƯƠNG,</CT><CT=255,255,0>YELLOW MÀU VÀNG,</CT><CT=255,255,255>ĐÂY LÀ MÀU TRẮNG.</CT><CT=255,0,73>CHƯƠNG TRÌNH TEST MÀU CHỮ, </CT><CT=100,15,230> TỐC ĐỘ HIỂN THỊ CHỮ XEM NHƯ THẾ NÀO, MỘT HAI BA BỐN NĂM SÁU BẢY </CT>";
+		
+		
+		// inputString = "DSP 1 2 3 3000 <F1><M2><S2><B255><CT=0,255,0>.  .</CT>";
+		
+		//th1-3				
+		inputString="DSP 1 2 3 3000 <F1><M2><S1><B255>MÀU MẶC ĐỊNH enter<br/><CT=0,0,255>XANH DƯƠNG enter<br/><CT=255,0,0>ĐỎ</CT></CT>";
+		
+	}
+	else if(landau==3)
+	{
+		// inputString="DSP 1 2 3 3000 <F1><M2><S2><B255><CT=0,0,255>Chúc </CT><CT=255,0,0>Mừng </CT><CT=0,255,0>Năm </CT><CT=0,255,255>Mới </CT><CT=70,70,70>Xuân Canh Dần </CT>";
+		//th2
+		inputString="DSP 1 2 3 3000 <F1><M2><S1><B255><CT=255,0,0>MÀU ĐỎ enter<br/></CT> <CT=0,255,0> XANH LÁ</CT><CT=0,0,255>XANH DƯƠNG</CT>";
+	}
+	else if(landau==4)
+	{
+		// inputString="DSP 1 2 3 3000 <F1><M2><S2><B255><CT=0,0,255>Chúc </CT><CT=255,0,0>Mừng </CT><CT=0,255,0>Năm </CT><CT=0,255,255>Mới </CT><CT=70,70,70>Xuân Canh Dần </CT>";
+		//th3
+		inputString="DSP 1 2 3 3000 <F1><M2><S1><B255><CT=255,0,0>MÀU ĐỎ <CT=0,255,0>XANH LÁ enter<br/></CT> <CT=255,255,0>MÀU VÀNG</CT></CT>";
+	}
+	else if(landau==5)
+	{
+		// inputString="DSP 1 2 3 3000 <F1><M2><S2><B255><CT=0,0,255>Chúc </CT><CT=255,0,0>Mừng </CT><CT=0,255,0>Năm </CT><CT=0,255,255>Mới </CT><CT=70,70,70>Xuân Canh Dần </CT>";
+		//th5		
+		inputString="DSP 1 2 3 3000 <F1><M2><S1><B255><CT=255,255,255><CT=255,0,0> ĐỎ<CT=0,255,0>XANH enter<br/><CT=0,0,255>DƯƠNG<CT=255,255,0>VÀNG <CT=0,255,255>TÍM 1<CT=255,0,255>TÁI</CT>TÍM 2</CT> VÀNG</CT>DƯƠNG</CT>XANH</CT>ĐỎ</CT>TRẮNG</CT>";
+		landau=0;
+	}
+	else
+	{
+		landau=0;
+		inputString="DSP 1 2 3 3000 <F1><M2><S1><B255><CT=255,254,253>Chúc Mừng Năm Mới </CT><CT=255,0>Vạn Sự Như ý </CT><CT=0,255,0>An Khang Thịnh Vượng </CT><CT=0,0,255>Tấn Tài Tấn Lộc </CT><CT=200,30,70>Xuân Canh Dần </CT>";
+	}
+	
+	if (inputString.startsWith("DSP")) {
+		get_content_display();
+	}
+
+}
+void test_scrollUTF1()
+{
+		// line2="Hôm nay là thứ 3, ngày 16, tháng 11.";
+		// line2="Chúc Mừng Năm Mới 2022";
+		//line2=line3.substring(0,8);		
+		line2="Chúc Mừng";
+		display.clearDisplay();				
+		display.setBrightness(50);
+		Serial.println("speed 5");		
+		scroll_textUTF(5,10,line2,255,0,0);
+		
+		line2="CHÚC MỪNG";
+		delay(1000);
+		display.clearDisplay();
+		display.setBrightness(50);
+		Serial.println("speed 10");		
+		scroll_textUTF(5,10,line2,0,255,0);
+		
+		line2="Vạn Sự Như VẠN SỰ";
+		delay(1000);
+		display.clearDisplay();
+		display.setBrightness(50);
+		Serial.println("speed 255");		
+		scroll_textUTF(5,10,line2,0,0,255);		
+				
+		line2="Vạn Sự Như VẠN SỰ";
+		delay(1000);
+		display.clearDisplay();
+		display.setBrightness(50);
+		Serial.println("speed 255");		
+		scroll_textUTF(5,10,line2,0,0,255);
+		
+		line2="Vạn Sự Như VẠN SỰ";
+		delay(1000);
+		display.clearDisplay();
+		display.setBrightness(50);
+		Serial.println("speed 255");		
+		scroll_textUTF(5,10,line2,0,0,255);
+		
+		line2="Vạn Sự Như VẠN SỰ";
+		delay(1000);
+		display.clearDisplay();
+		display.setBrightness(50);
+		Serial.println("speed 255");		
+		scroll_textUTF(5,10,line2,0,0,255);
+}
+/*
+void test_scroll()
+{
+  // line2="abcdefghijklmnopqrstuvxyz0123456789ABCDEFGHIJKLMNOPQRSTUVXYZ";
+  // line2="Hello";
+  for (uint8_t dimm=255; dimm>40; dimm-=10)
+  {
+		display.setBrightness(dimm);
+		Serial.println("scroll text");
+		display.clearDisplay();
+		// scroll_text(5,25,"Welcome to ALTA Medi@! 0123456789",150,45,20);
+		scroll_text(5,25,line2,150,45,20);
+							
+		display.clearDisplay();
+		scroll_text(5,25,line2,45,150,180);
+		
+		// delay(5);
+  }
+  for (uint8_t dimm=30; dimm<255; dimm+=10)
+  {
+		display.setBrightness(dimm);
+		Serial.println("scroll text");
+		display.clearDisplay();
+		scroll_text(5,25,line2,45,150,180);
+		display.clearDisplay();
+		scroll_text(5,25,line2,150,45,180);
+		
+  }
+}  
+*/
+void upgradenow()
+{
+	Serial.println("wifi begin");
+	// WiFi.begin(ssid, pass);
+	WiFi.begin(wifiinfo.wifi_name, wifiinfo.wifi_pass);
+		
+	int m;
+	int hieuung=0;
+	
+	Serial.print("checking wifi...");
+	
+	while (WiFi.status() != WL_CONNECTED) {
+	
+		hieuung++;		
+				
+        Serial.println(hieuung);
+		
+		if(hieuung>60)
+		{									
+			break;		
+		}
+		delay(1000);		
+    }
+	
+	if(hieuung>30)
+	{
+		Serial.println("WiFi connect fail");
+		return;
+	}
+	else 
+	{
+		Serial.println("WiFi connected");
+		Serial.println("IP address: ");
+		Serial.println(WiFi.localIP());
+		
+		firmwareUpdate();
+	}
+	
+}
+
+
+void firmwareUpdate(void) {
+  WiFiClientSecure client;
+  
+  client.setInsecure();//mới thêm
+
+  // client.setCACert(rootCACertificate);//mới bỏ
+  httpUpdate.setLedPin(2, LOW);
+  t_httpUpdate_return ret = httpUpdate.update(client, URL_fw_Bin);
+
+  switch (ret) {
+    case HTTP_UPDATE_FAILED:
+      Serial.printf("HTTP_UPDATE_FAILD Error (%d): %s\n", httpUpdate.getLastError(), httpUpdate.getLastErrorString().c_str());
+      break;
+
+    case HTTP_UPDATE_NO_UPDATES:
+      Serial.println("HTTP_UPDATE_NO_UPDATES");
+      break;
+
+    case HTTP_UPDATE_OK:
+      Serial.println("HTTP_UPDATE_OK");
+      break;
+  }
+}
+void config_OTA_firmware() {
+
+  Serial.print("Setting AP mode");
+  
+	char wifiname_id[23];
+	snprintf(wifiname_id, 23, "OTAL%lld", ESP.getEfuseMac());
+  
+  
+  WiFi.softAP(wifiname_id, "56ab78cd"); //TẠO ACCESS POINT ĐỂ PHÁT WIFI
+
+  IPAddress IP = WiFi.softAPIP(); //mặc định là 192.168.4.1
+  Serial.print("AP IP address: ");
+  Serial.println(IP);
+
+  //THIẾT KẾ WEBSERVER TRÊN IP CỦA ACCESS POINT VÀ CHỨC NĂNG UPLOAD CODE
+  server.on("/", HTTP_GET, []() {
+    server.sendHeader("Connection", "close");
+    server.send(200, "text/html", serverIndex);
+  });
+  server.on("/update", HTTP_POST, []() {
+    server.sendHeader("Connection", "close");
+	server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
+    ESP.restart();
+  }, []() {
+    HTTPUpload& upload = server.upload();
+    if (upload.status == UPLOAD_FILE_START) {
+      // Serial.setDebugOutput(true);
+      // WiFiUDP::stopAll();
+      Serial.printf("Update: %s\n", upload.filename.c_str());
+      uint32_t maxSketchSpace = (ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000;
+      if (!Update.begin(maxSketchSpace)) { //start with max available size
+        Update.printError(Serial);
+      }
+    } else if (upload.status == UPLOAD_FILE_WRITE) {
+      if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+        Update.printError(Serial);
+      }
+	  Serial.println("c/t" + String(upload.currentSize) + "\t" + String(upload.totalSize));
+	  
+    } else if (upload.status == UPLOAD_FILE_END) {
+      if (Update.end(true)) { //true to set the size to the current progress
+        Serial.println("Update Success: " + String(upload.totalSize));
+      } else {
+        Update.printError(Serial);
+		Serial.println(F("Update Error"));
+      }
+      // Serial.setDebugOutput(false);
+    }
+    // yield();
+  });
+  server.begin(); //KHỞI ĐỘNG SERVER
+
+}
+/**------setup_upgrade_now--------------
+update by connecting to server
+*/
+void setup_upgrade_now()
+{
+	Serial.println("Check for upgrade...");
+	//thong bao tao update firm ware
+	display_update_enable(true);	
+	display.clearDisplay();			
+	display.setCursor(2,0);
+	display.setTextSize(1);
+	display.setTextColor(myGREEN);
+	display.print("Update Led By Server.");
+	display.showBuffer();
+	delay(2000);
+	
+	display.clearDisplay();	
+	display.setCursor(2,0);
+	display.setTextColor(myGREEN);
+	display.print("Update Led By Server..");
+	display.showBuffer();	
+	delay(1000);
+	
+	display.clearDisplay();			
+	display.setCursor(2,0);
+	display.setTextColor(myGREEN);
+	display.print("Update Led By Server...");
+	display.showBuffer();
+	delay(1000);
+	
+	display_update_enable(false);
+	delay(1000);
+	
+	upgradenow();
+	
+}
+void set_up_ota_now()
+{
+	//thong bao tao update firm ware
+	display_update_enable(true);	
+	display.clearDisplay();			
+	display.setCursor(2,0);
+	display.setTextSize(1);
+	display.setTextColor(myGREEN);
+	display.print("Update Led Manual.");
+	display.showBuffer();
+	delay(2000);
+	
+	display.clearDisplay();	
+	display.setCursor(2,0);
+	display.setTextColor(myGREEN);
+	display.print("Update Led Manual..");
+	display.showBuffer();
+	delay(1000);
+	
+	display.clearDisplay();			
+	display.setCursor(2,0);
+	display.setTextColor(myGREEN);
+	display.print("Update Led Manual...");
+	display.showBuffer();
+	delay(1000);
+	
+	display_update_enable(false);
+	delay(1000);
+	
+	Serial.println("OTA now...");
+	config_OTA_firmware();
+
+	//them timeout
+	
+	unsigned int time = millis()+300000;//5 phút		
+	// unsigned int time = millis()+30000;//30S phút			
+	
+	while (time > millis())
+	{
+		// thêm timeout vào
+		server.handleClient();
+		delay(1);
+	}
+	
+	Serial.println("Off OTA now...");
+			
+	// esp_wifi_disconnect();
+	server.close();
+	server.stop();
+	
+	WiFi.softAPdisconnect(true);
+	ui8_ota_enable=0;
+	
+	delay(1000);
+	display_update_enable(true);
+	
+	Serial.println("OTA timeout exit");	
+	
+}
+void setup_screen()
+{
+	#if defined(df_test_limit_led)
+		wifiinfo.ledkind=LEDMODE_OUTDOOR;
+		// wifiinfo.ledkind=LEDMODE_INDOOR;
+	#endif
+	
+	// if(wifiinfo.ledkind==LEDMODE_INDOOR)
+	// {
+	// 	display.begin(8);
+	// 	Serial.println("Using P10 Indoor");
+	// }
+	// else
+	// {
+	// 	//outdoor P10
+	// 	display.begin(4);
+	// 	display.setScanPattern(ZAGOUTDOOR);
+	// 	display.setColorOrder(BBGGRR);
+	// 	Serial.println("Using P10 Outdoor");
+	// }
+
+	display.begin(16);
+	display.setPanelsWidth(1);
+	display.setScanPattern(LINE);
+	display.setColorOrder(RRGGBB);
+	// display.setColorOrder(BBGGRR);  // hay gặp nhất
+	// display.setColorOrder(GGRRBB);
+	// display.setColorOrder(GGBBRR);
+	// display.setColorOrder(RRBBGG);
+	// display.setColorOrder(BBRRGG);
+
+
+	Serial.println("Using P50 OUtdoor");
+	// display.setPanelsWidth(1);      // QUAN TRỌNG: 1 tấm thì phải là 1
+	// display.setBlockPattern(ABCD);  // QUAN TRỌNG: tránh DBCA
+	// display.setScanPattern(LINE);   // test ổn định trước
+	// display.setFlip(true);   // nếu lib của bạn có hàm này
+
+	// display.setScanPattern(LINE);
+	// display.setColorOrder(RRGGBB);
+
+	// mySerial.begin(9600);
+	// mySerial.begin(9600, SWSERIAL_8N1, 5, 5, false, 256);
+
+  //display.begin(8, 14, 13, 12, 4);
+
+  // Define multiplex implemention here {BINARY, STRAIGHT} (default is BINARY)
+  //display.setMuxPattern(BINARY);
+
+  // Set the multiplex pattern {LINE, ZIGZAG,ZZAGG, ZAGGIZ, WZAGZIG, VZAG, ZAGZIG, ZAGOUTDOOR} (default is LINE)
+
+  // display.setScanPattern(ZAGOUTDOOR);
+  
+
+  // Set the block pattern {ABCD, DBCA} (default is ABCD)
+  // display.setBlockPattern(ABCD);
+  
+  // Rotate display
+  //display.setRotate(true);
+
+  // Flip display
+  //display.setFlip(true);
+
+  // Control the minimum color values that result in an active pixel
+  //display.setColorOffset(5, 5,5);
+
+  // Set the multiplex implemention {BINARY, STRAIGHT} (default is BINARY)
+  //display.setMuxPattern(BINARY);
+
+  // Set the color order {RRGGBB, RRBBGG, GGRRBB, GGBBRR, BBRRGG, BBGGRR} (default is RRGGBB)
+  // display.setColorOrder(BBGGRR);
+
+  // Set the time in microseconds that we pause after selecting each mux channel
+  // (May help if some rows are missing / the mux chip is too slow)
+  //display.setMuxDelay(0,1,0,0,0);
+
+  // Set the number of panels that make up the display area width (default is 1)
+//   display.setPanelsWidth(1);
+//   display.setScanPattern(LINE);
+//   display.setColorOrder(RRGGBB);
+
+  // Set the brightness of the panels (default is 255)
+  //display.setBrightness(50);
+
+  // Set driver chip type
+  //display.setDriverChip(FM6124);
+
+  //ghi chú: bảng led P10 indoor đang để các thông số sau mặc định
+  
+  //display.begin(8, 14, 13, 12, 4);
+
+  // Define multiplex implemention here {BINARY, STRAIGHT} (default is BINARY)
+  //display.setMuxPattern(BINARY);
+
+  // Set the multiplex pattern {LINE, ZIGZAG,ZZAGG, ZAGGIZ, WZAGZIG, VZAG, ZAGZIG} (default is LINE)
+  //display.setScanPattern(LINE);
+
+  // Rotate display
+  //display.setRotate(true);
+
+  // Flip display
+  //display.setFlip(true);
+
+  // Control the minimum color values that result in an active pixel
+  //display.setColorOffset(5, 5,5);
+
+  // Set the multiplex implemention {BINARY, STRAIGHT} (default is BINARY)
+  //display.setMuxPattern(BINARY);
+
+  // Set the color order {RRGGBB, RRBBGG, GGRRBB, GGBBRR, BBRRGG, BBGGRR} (default is RRGGBB)
+  //display.setColorOrder(RRGGBB);
+
+  // Set the time in microseconds that we pause after selecting each mux channel
+  // (May help if some rows are missing / the mux chip is too slow)
+  //display.setMuxDelay(0,1,0,0,0);
+
+  // Set the number of panels that make up the display area width (default is 1)
+  //display.setPanelsWidth(2);
+
+  // Set the brightness of the panels (default is 255)
+  //display.setBrightness(50);
+
+  // Set driver chip type
+  //display.setDriverChip(FM6124);
+	
+	
+}
+void loadvalue()
+{
+	//innit SPIFFS
+	
+	if(!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED)){
+        Serial.println("Card Mount Failed");
+        return;
+    }
+	else
+	{
+		load_config();
+	}
+/*
+	if (!EEPROM.begin(1000)) {
+		Serial.println("Failed to initialise EEPROM");
+	}
+	*/
+	
+	/*
+	else{
+		// int t= EEPROM.read(0);
+		// if(t>1)t=0;
+		// media_manager.status=t;
+		// Serial.println("Status: " + String(media_manager.status));
+
+		int add=0;
+		add+=sizeof(media_manager.status);
+		
+		int t = EEPROM.read(add);
+		
+		// EEPROM.get(e_address_wifi, wifiinfo);		
+		// Serial.println("username = " + String(wifiinfo.wifi_name));
+		// Serial.println("password = " + String(wifiinfo.wifi_pass));
+		
+		if(t==0xfe)
+		{								
+			EEPROM.write(add, 0);
+			EEPROM.commit();
+			
+			setup_upgrade_now();
+		}
+		else if(t==0x6e)
+		{
+			EEPROM.write(add, 0);
+			EEPROM.commit();
+			set_up_ota_now();
+		}
+	}
+*/
+	//preset values
+
+	
+	for(int m3=0;m3<df_max_color_support;m3++)
+	{
+		infocolor[m3].start=0;
+		infocolor[m3].r=0;
+		infocolor[m3].g=255;
+		infocolor[m3].b=0;		
+		dsp_color_start[m3]=0;
+		dsp_color_val[m3] =  display.color565(infocolor[m3].b, infocolor[m3].g, infocolor[m3].r);
+	}	
+	infotext.brighness=255;
+	infotext.mode=2;
+			
+#ifdef display_welcome_name
+	inputString="DSP 1 2 3 3000 <F1><M2><S1><B50>mobi<CT=255,0,0>fone</CT></CT>";
+	get_content_display();
+#endif
+	
+}
+int check1s() {
+  int kq=0;
+  if (millis() > tempus) {
+    tempus = millis() + 1000;			
+	
+	if (status_led == 1) {      
+      status_led = 0;	   
+    }
+    else {
+      status_led = 1;      
+    }
+	// digitalWrite( led_sign, HIGH );      
+	kq=1;
+  }
+  return kq;
+}
+
+void check_erro_firmOTA()
+{
+	if(millis()>ui32timeout_enableOTA)
+	{
+		//không thấy phản hồi trong thời gian qui định
+		//bật OTA
+		Serial.println("set up server for OTA in erro mode...");
+		//off screen
+		display.clearDisplay();
+		delay(1000);
+		display_update_enable(false);  	  
+		delay(1000);						
+		config_OTA_firmware();
+
+		while(millis()>ui32timeout_enableOTA)
+		{
+			server.handleClient();
+			read_serial();
+			delay(1);
+		}
+		
+		Serial.println("Off OTA now...");
+				
+		// esp_wifi_disconnect();
+		server.close();
+		server.stop();
+		
+		WiFi.softAPdisconnect(true);
+		ui8_ota_enable=0;
+		
+		delay(1000);
+		display_update_enable(true);
+	}		
+}
+
+
+#ifdef debug_code_scanled
+int toadox=0;
+int toadoy=0;
+void setkhong()
+{
+		toadox=0;
+	Serial.println("x = " + String(toadox));
+	display.clearDisplay();
+	display.drawPixel(toadox,toadoy,myWHITE);
+			
+	toadox++;
+	display.showBuffer();
+}
+int waitnext()
+{
+
+	if (Serial.available()) 		
+	{
+		int inChar = Serial.read();
+		// if you get a newline, print the string, then the string's value:
+		if (inChar == '\n') {
+			return 0;
+		}
+	}
+	return 1;
+
+}
+#endif 
+#ifdef debug_code_scanled
+void configled(int config_)
+{
+	Serial.print("config_ = " + String(config_) + "->\t" );
+	switch (config_)
+	{
+		case 0:
+		{
+			if(toadox>matrix_width)
+			{
+				toadox=0;
+				display.clearDisplay();
+			}
+			Serial.println("x = " + String(toadox));
+			display.clearDisplay();
+			for(int m=0;m<=toadox;m++)display.drawPixel(m,toadoy,myWHITE);
+					
+			toadox++;
+			display.showBuffer();			
+			break;
+		}
+		case 1:
+		{
+			display.clearDisplay();
+			display.showBuffer();
+			Serial.println("Clear");
+			toadox=0;
+			toadoy=0;
+			break;			
+		}
+		case 2:
+		{
+			if(toadoy>matrix_height)
+			{
+				toadoy=0;
+				display.clearDisplay();
+			}
+			Serial.println("y = " + String(toadoy));
+			display.clearDisplay();
+			for(int m=0;m<=toadox;m++)display.drawPixel(m,toadoy,myWHITE);
+					
+			toadoy++;
+			display.showBuffer();			
+			break;
+		}
+
+		case 10:
+		{
+			// Set the multiplex pattern {LINE, ZIGZAG,ZZAGG, ZAGGIZ, WZAGZIG, VZAG, ZAGZIG} (default is LINE)
+			display.setScanPattern(LINE);
+			setkhong();
+			break;
+		}
+		case 11:
+		{
+			// Set the multiplex pattern {LINE, ZIGZAG,ZZAGG, ZAGGIZ, WZAGZIG, VZAG, ZAGZIG} (default is LINE)
+			display.setScanPattern(ZIGZAG);
+			setkhong();
+			break;
+		}
+		case 12:
+		{
+			// Set the multiplex pattern {LINE, ZIGZAG,ZZAGG, ZAGGIZ, WZAGZIG, VZAG, ZAGZIG} (default is LINE)
+			display.setScanPattern(ZZAGG);
+			setkhong();
+			break;
+		}
+		case 13:
+		{
+			// Set the multiplex pattern {LINE, ZIGZAG,ZZAGG, ZAGGIZ, WZAGZIG, VZAG, ZAGZIG} (default is LINE)
+			display.setScanPattern(ZAGGIZ);setkhong();
+			break;
+		}
+		case 14:
+		{
+			// Set the multiplex pattern {LINE, ZIGZAG,ZZAGG, ZAGGIZ, WZAGZIG, VZAG, ZAGZIG} (default is LINE)
+			display.setScanPattern(WZAGZIG);setkhong();
+			break;
+		}
+		case 15:
+		{
+			// Set the multiplex pattern {LINE, ZIGZAG,ZZAGG, ZAGGIZ, WZAGZIG, VZAG, ZAGZIG} (default is LINE)
+			display.setScanPattern(VZAG);setkhong();
+			break;
+		}
+		case 16:
+		{
+			Serial.println("note this 16");
+			display.setScanPattern(ZAGZIG);setkhong();
+			break;
+		}
+		case 17:
+		{
+			Serial.println("ZAGOUTDOOR");
+			display.setScanPattern(ZAGOUTDOOR);setkhong();
+			break;
+		}
+		
+		
+		case 20:
+		{
+			Serial.println("displayTestPattern");
+			display.clearDisplay();
+			display.showBuffer();
+			display_update_enable(false);  			
+			delay(1000);			
+			int i=waitnext();
+			while (i)
+			{
+				display.displayTestPattern(70);
+				i=waitnext();
+			}
+			display_update_enable(true); 
+			break;
+		}
+		case 21:
+		{
+			Serial.println("displayTestPixel");
+			display.clearDisplay();
+			display.showBuffer();
+			display_update_enable(false);  			
+			delay(1000);			
+			int i=waitnext();
+			while (i)
+			{
+				display.displayTestPixel(70);
+				i=waitnext();
+			}
+			display_update_enable(true); 
+			break;
+		}
+		case 30:
+		{
+			Serial.println("ABCD");
+			display.setBlockPattern(ABCD);setkhong();
+			break;
+		}
+		case 31:
+		{
+			Serial.println("DBCA");
+			display.setBlockPattern(DBCA);setkhong();
+			break;
+		}
+
+		default:
+		Serial.println("Unknow command");				
+	}	
+}
+#endif 
+#ifdef debug_code_scanled
+void test_led()
+{
+  
+	int command_;
+	int wait_=1;
+	inString = "";
+	while(wait_)
+	{
+		if (Serial.available()) 		
+		{
+			int inChar = Serial.read();
+			if (isDigit(inChar)) {
+			  // convert the incoming byte to a char and add it to the string:
+			  inString += (char)inChar;
+			}
+			// if you get a newline, print the string, then the string's value:
+			if (inChar == '\n') {
+			  command_=inString.toInt();
+			  // Serial.print("Value:");
+			  // Serial.println(inString.toInt());
+			  // Serial.print("String: ");
+			  // Serial.println(inString);
+			  // clear the string for new input:
+			  configled(command_);
+			  inString = "";
+			  wait_=0;
+			}
+		}
+	}
+}
+#endif 
+
+void setup() {
+
+ Serial.begin(115200);
+ delay(100);
+ Serial2.begin(9600);
+ delay(100);
+  // pinMode(led_sign,OUTPUT);
+ delay(10);
+  // Define your display layout here, e.g. 1/8 step, and optional SPI pins begin(row_pattern, CLK, MOSI, MISO, SS)
+
+  delay(100);
+  Serial.println("-----------------------------");
+  Serial.println("-----------------------------");
+  Serial.println("Led matrix Display Controller");
+  
+  Serial.println(versionname);
+  Serial.println("-----------------------------");
+  
+
+	Serial.println(appbuild);
+
+  Serial.println("-----------------------------\n");
+  
+  #if defined(debug_receive_serial)
+  Serial.println("WARNING!!!!!!!!!!!!!!!!!!!!!!!!");
+  Serial.println("IN DEBUG MODE RECEIVE SERIAL\n");
+  Serial.println("Remember disable this function\n");
+  #endif
+ 
+  #if defined(debuging_display)
+  Serial.println("WARNING!!!!!!!!!!!!!!!!!!!!!!!!");
+  Serial.println("IN DEBUG MODE debuging_display\n");
+  Serial.println("Remember disable this function\n");
+  #endif 
+  
+  #if defined(debugprocessdata)
+  Serial.println("WARNING!!!!!!!!!!!!!!!!!!!!!!!!");
+  Serial.println("IN DEBUG MODE debugprocessdata\n");
+  Serial.println("Remember disable this function\n");
+  #endif
+  
+  #if defined(debug_code_scanled)
+  Serial.println("WARNING!!!!!!!!!!!!!!!!!!!!!!!!");
+  Serial.println("IN DEBUG MODE debug_code_scanled\n");
+  Serial.println("Remember disable this function\n");
+  #endif
+  
+Serial.println("DSP [INDEX] [MODE] [LOOP] [DURATION] [CONTENT]");
+Serial2.println("LMD RESET 1");
+Serial2.println("LMD RESET 2");
+Serial2.println("LMD RESET 3");
+Serial2.println(versionname);
+  
+  Serial.println("loadvalue");
+  loadvalue();
+  setup_screen();
+	// syncTime();
+  myfont.set_font(MYFONT1616);	
+
+  display.clearDisplay();
+  display.setTextSize(1);	
+  display.setTextColor(myCYAN);
+  display.setCursor(2,0);
+  display.print("Hello");
+  
+  display.setTextColor(myMAGENTA);
+  display.setCursor(2,8);
+  display.print(versionname);
+  display.showBuffer();
+
+  display_update_enable(true);
+  	  
+  // delay(3000);
+	
+	//test
+	// Serial.println("Wait key");
+	/*
+	while(1)
+	{
+		if(Serial.available())
+		{
+			int inChar = Serial.read();
+			if (inChar == '\n') {
+				break;
+			}
+		}
+	}
+	*/
+	ui32timeout_enableOTA=millis()+time_enable_ota;
+	//stop playing
+	media_manager.playing=0;
+	display.clearDisplay();
+	display.showBuffer();
+	
+	Serial.println("Enter main");
+
+	connectWiFi();
+}
+
+bool called = false;
+
+
+void loop() {
+
+	#ifdef debug_code_scanled
+	while(1)test_led();
+	#endif 
+	
+	#ifdef debuging_display
+	if (WiFi.status() == WL_CONNECTED && !called) {
+    CreateDeviceCode_simple(wclient,info_https.host,info_https.port);
+    called = true;   // tránh gọi lặp
+  }
+	// test_scrollUTF();	
+	// test_each_row();
+	// test_colors();
+	// test_green_max();
+	// testTCP443()
+	// testHTTPSInsecure();
+	// delay(1000);
+	#endif
+	
+	if(media_manager.playing==1)
+	{
+		playtext();
+	}
+#ifdef display_welcome_name
+	else{
+		display_status_name();		
+	}
+#else
+	else if(check1s())
+	{		
+		display.clearDisplay();
+		display.showBuffer();
+	}	
+#endif
+	
+	check_erro_firmOTA();
+	
+	read_serial();
+}
+
+
+void test_each_row()
+{
+  for (int y = 0; y < 32; y++)
+  {
+    display.clearDisplay();
+
+    // Vẽ dòng đỏ đang test
+    for (int x = 0; x < 64; x++)
+    {
+      display.drawPixel(x, y, display.color565(0, 255, 0));
+    }
+
+    display.showBuffer();
+
+    // In debug ra Serial
+    Serial.print("Testing row y = ");
+    Serial.println(y);
+
+    delay(1000); // giữ để quan sát
+  }
+}
+
+void test_colors()
+{
+  display.clearDisplay();
+
+  // 3 ô màu: ĐỎ - XANH LÁ - XANH DƯƠNG
+  for (int y=0; y<32; y++) {
+    for (int x=0; x<64; x++) {
+      if (x>=0 && x < 21)        display.drawPixel(x,y, display.color565(0,255,0));   // RED
+      else if (x>=21 && x < 42)   display.drawPixel(x,y, display.color565(255,0,0));   // GREEN
+      else               display.drawPixel(x,y, display.color565(0,0,255));   // BLUE
+    }
+  }
+
+  display.showBuffer();
+  delay(10000);
+}
+
+void test_green_max()
+{
+  display.clearDisplay();
+  for (int y=0; y<32; y++)
+    for (int x=0; x<64; x++)
+      display.drawPixel(x,y, display.color565(0,0,255)); // GREEN max
+
+  display.showBuffer();
+  delay(2000);
+}
+
+
+void testTCP443() {
+  WiFiClient c;
+  if (c.connect("qms-api.dev.altasoftware.vn", 443)) {
+    Serial.println("TCP 443 OK");
+    c.stop();
+  } else {
+    Serial.println("TCP 443 FAIL");
+  }
+}
+
+void syncTime() {
+  configTime(7 * 3600, 0, "pool.ntp.org", "time.nist.gov");
+
+  Serial.print("Sync time");
+  time_t now = time(nullptr);
+  while (now < 1700000000) {  // ~ năm 2023
+    delay(500);
+    Serial.print(".");
+    now = time(nullptr);
+  }
+  Serial.println("\nTime synced");
+
+  struct tm timeinfo;
+  gmtime_r(&now, &timeinfo);
+  Serial.printf("Time: %04d-%02d-%02d %02d:%02d:%02d\n",
+    timeinfo.tm_year + 1900,
+    timeinfo.tm_mon + 1,
+    timeinfo.tm_mday,
+    timeinfo.tm_hour,
+    timeinfo.tm_min,
+    timeinfo.tm_sec
+  );
+}
+
+void testHTTPSInsecure() {
+  WiFiClientSecure client;
+  client.setInsecure();   // ⚠️ bỏ kiểm tra cert
+
+  if (client.connect("qms-api.dev.altasoftware.vn", 443)) {
+    Serial.println("HTTPS insecure OK");
+    client.stop();
+  } else {
+    Serial.println("HTTPS insecure FAIL");
+  }
+}
+
+
+
+
+
+
